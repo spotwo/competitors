@@ -22,6 +22,8 @@ SCHEMA_BY_GLOB = {
     "integrations/*.yml": "schema/integration-registry.schema.json",
     "capabilities/*.yml": "schema/capability.schema.json",
     "workflows/*.yml": "schema/workflow.schema.json",
+    "ledger/*.yml": "schema/ledger-registry.schema.json",
+    "events/*.yml": "schema/event-registry.schema.json",
 }
 TAXONOMY_FIELDS = {
     "markets": "taxonomy/regions.yml",
@@ -83,6 +85,13 @@ def check_evidence_refs(path: Path, data: dict, evidence_ids: set[str], errors: 
             errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
 
 
+def check_nested_evidence_refs(path: Path, records: list[dict], evidence_ids: set[str], label: str, errors: list[str]) -> None:
+    for record in records or []:
+        for ref in record.get("evidence_refs", []) or []:
+            if ref not in evidence_ids:
+                errors.append(f"{path.relative_to(ROOT)}: {label} {record.get('id', record.get('standard', '<unknown>'))!r} missing evidence ref {ref!r}")
+
+
 def check_unique_nested_ids(path: Path, records: list[dict], label: str, errors: list[str]) -> set[str]:
     seen: set[str] = set()
     for record in records or []:
@@ -117,6 +126,8 @@ def main() -> int:
     ontology_ids = record_ids("ontology/*.yml", errors)
     capability_ids = record_ids("capabilities/*.yml", errors)
     workflow_ids = record_ids("workflows/*.yml", errors)
+    ledger_ids = record_ids("ledger/*.yml", errors)
+    event_registry_ids = record_ids("events/*.yml", errors)
     allowed = {field: taxonomy_values(rel) for field, rel in TAXONOMY_FIELDS.items()}
     country_codes = taxonomy_values("taxonomy/countries.yml")
     company_ids: set[str] = set()
@@ -167,7 +178,10 @@ def main() -> int:
         if parent and parent == data.get("id"):
             errors.append(f"{path.relative_to(ROOT)}: company cannot be its own parent")
 
-    for pattern in ("terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml", "integrations/*.yml", "capabilities/*.yml", "workflows/*.yml"):
+    for pattern in (
+        "terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml",
+        "integrations/*.yml", "capabilities/*.yml", "workflows/*.yml", "ledger/*.yml", "events/*.yml"
+    ):
         for path in sorted(ROOT.glob(pattern)):
             data = load_yaml(path)
             if isinstance(data, dict):
@@ -190,9 +204,7 @@ def main() -> int:
             product_id = observation.get("product_id")
             if product_id and product_id not in product_ids:
                 errors.append(f"{path.relative_to(ROOT)}: unresolved vendor product {product_id!r}")
-            for ref in observation.get("evidence_refs", []) or []:
-                if ref not in evidence_ids:
-                    errors.append(f"{path.relative_to(ROOT)}: vendor observation missing evidence ref {ref!r}")
+            check_nested_evidence_refs(path, [observation], evidence_ids, "vendor observation", errors)
 
     workflow_stage_count = 0
     workflow_strategy_count = 0
@@ -209,14 +221,8 @@ def main() -> int:
         check_unique_nested_ids(path, data.get("exceptions", []), "workflow exception", errors)
         workflow_stage_count += len(stage_ids)
         workflow_strategy_count += len(strategy_ids)
-        for item in data.get("strategies", []) or []:
-            for ref in item.get("evidence_refs", []) or []:
-                if ref not in evidence_ids:
-                    errors.append(f"{path.relative_to(ROOT)}: strategy {item.get('id')!r} missing evidence ref {ref!r}")
-        for item in data.get("exceptions", []) or []:
-            for ref in item.get("evidence_refs", []) or []:
-                if ref not in evidence_ids:
-                    errors.append(f"{path.relative_to(ROOT)}: exception {item.get('id')!r} missing evidence ref {ref!r}")
+        check_nested_evidence_refs(path, data.get("strategies", []), evidence_ids, "strategy", errors)
+        check_nested_evidence_refs(path, data.get("exceptions", []), evidence_ids, "exception", errors)
         for model in data.get("vendor_models", []) or []:
             workflow_vendor_model_count += 1
             company_id = model.get("company_id")
@@ -225,9 +231,7 @@ def main() -> int:
             product_id = model.get("product_id")
             if product_id and product_id not in product_ids:
                 errors.append(f"{path.relative_to(ROOT)}: workflow vendor model unresolved product {product_id!r}")
-            for ref in model.get("evidence_refs", []) or []:
-                if ref not in evidence_ids:
-                    errors.append(f"{path.relative_to(ROOT)}: workflow vendor model missing evidence ref {ref!r}")
+        check_nested_evidence_refs(path, data.get("vendor_models", []), evidence_ids, "workflow vendor model", errors)
         spotwo = data.get("spotwo", {})
         for stage in spotwo.get("canonical_spine", []) or []:
             if stage not in stage_ids:
@@ -245,8 +249,11 @@ def main() -> int:
     for path in sorted(ROOT.glob("ontology/*.yml")):
         data = load_yaml(path)
         entity_ids = check_unique_nested_ids(path, data.get("entities", []), "ontology entity", errors)
+        for entity_id in entity_ids:
+            if entity_id in ontology_entity_ids_global:
+                errors.append(f"{path.relative_to(ROOT)}: duplicate global ontology entity id {entity_id!r}")
+            ontology_entity_ids_global.add(entity_id)
         ontology_records.append((path, data, entity_ids))
-        ontology_entity_ids_global.update(entity_ids)
         ontology_entity_count += len(entity_ids)
 
     for path, data, _entity_ids in ontology_records:
@@ -270,9 +277,7 @@ def main() -> int:
             if metric_id in kpi_ids:
                 errors.append(f"{path.relative_to(ROOT)}: duplicate KPI id {metric_id!r}")
             kpi_ids.add(metric_id)
-            for ref in metric.get("evidence_refs", []) or []:
-                if ref not in evidence_ids:
-                    errors.append(f"{path.relative_to(ROOT)}: KPI {metric_id!r} missing evidence ref {ref!r}")
+            check_nested_evidence_refs(path, [metric], evidence_ids, "KPI", errors)
 
     integration_ids: set[str] = set()
     for path in sorted(ROOT.glob("integrations/*.yml")):
@@ -282,6 +287,29 @@ def main() -> int:
             if pattern_id in integration_ids:
                 errors.append(f"{path.relative_to(ROOT)}: duplicate integration pattern {pattern_id!r}")
             integration_ids.add(pattern_id)
+
+    ledger_transaction_type_count = 0
+    for path in sorted(ROOT.glob("ledger/*.yml")):
+        data = load_yaml(path)
+        transaction_type_ids = check_unique_nested_ids(path, data.get("transaction_types", []), "ledger transaction type", errors)
+        check_unique_nested_ids(path, data.get("invariants", []), "ledger invariant", errors)
+        ledger_transaction_type_count += len(transaction_type_ids)
+        check_nested_evidence_refs(path, data.get("transaction_types", []), evidence_ids, "ledger transaction type", errors)
+
+    domain_event_type_count = 0
+    domain_event_types_global: set[str] = set()
+    for path in sorted(ROOT.glob("events/*.yml")):
+        data = load_yaml(path)
+        event_ids = check_unique_nested_ids(path, data.get("events", []), "domain event", errors)
+        domain_event_type_count += len(event_ids)
+        for event in data.get("events", []) or []:
+            event_type = event.get("type")
+            if event_type in domain_event_types_global:
+                errors.append(f"{path.relative_to(ROOT)}: duplicate domain event type {event_type!r}")
+            if event_type:
+                domain_event_types_global.add(event_type)
+        check_nested_evidence_refs(path, data.get("events", []), evidence_ids, "domain event", errors)
+        check_nested_evidence_refs(path, data.get("external_mappings", []), evidence_ids, "external mapping", errors)
 
     resolvers = {"company": company_ids, "product": product_ids, "terminology": term_ids, "authority": authority_ids}
     for path in sorted(ROOT.glob("claims/*.yml")):
@@ -305,7 +333,9 @@ def main() -> int:
         f"{len(claim_ids)} claims, {len(term_ids)} terms, {len(authority_ids)} authorities, "
         f"{len(ontology_ids)} ontologies/{ontology_entity_count} entities, {len(kpi_ids)} KPIs, "
         f"{len(integration_ids)} integration patterns, {len(capability_ids)} capabilities, "
-        f"{len(workflow_ids)} workflows/{workflow_stage_count} stages/{workflow_strategy_count} strategies/{workflow_vendor_model_count} vendor models"
+        f"{len(workflow_ids)} workflows/{workflow_stage_count} stages/{workflow_strategy_count} strategies/{workflow_vendor_model_count} vendor models, "
+        f"{len(ledger_ids)} ledger registries/{ledger_transaction_type_count} transaction types, "
+        f"{len(event_registry_ids)} event registries/{domain_event_type_count} event types"
     )
     return 0
 
