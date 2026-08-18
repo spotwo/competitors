@@ -11,9 +11,9 @@
 | Bastian Solutions | Verify current Exacta deployment models and broader geographic support footprint. |
 | Daifuku | Map region-specific WMS product naming such as WareNavi and eWareNavi and verify deployment models. |
 | Deposco | Verify geographic coverage outside North America. |
-| Element Logic | Verify canonical eManager and eController deployment models and customer-size segmentation. |
 | ERPNext | Distinguish ERP inventory and warehouse functionality from full WMS competitor scope in future comparisons. |
 | ERPNext | Verify canonical hosted versus self-hosted deployment taxonomy from current Frappe documentation. |
+| Element Logic | Verify canonical eManager and eController deployment models and customer-size segmentation. |
 | Exotec | Add evidence-backed customer-size segmentation. |
 | Extensiv | Verify geographic coverage outside North America. |
 | FORTNA | Add evidence-backed customer-size segmentation. |
