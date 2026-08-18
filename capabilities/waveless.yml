@@ -1,0 +1,23 @@
+id: waveless
+group: fulfillment
+label: Waveless / Continuous Release
+status: candidate
+definition: Continuously prioritize and release fulfilment work without relying on fixed batch waves as the primary execution boundary.
+purpose: Adapt work release to live demand, deadlines, inventory, labor, and automation state.
+inputs: [orders, priorities, inventory, resource-state]
+outputs: [continuously-released-work]
+entities: [order, shipment, warehouse-task]
+strategies: [continuous-release, dynamic-prioritization, dependency-aware]
+related_capabilities: [allocation, waving, picking, replenishment, automation-orchestration]
+vendor_observations:
+  - company_id: blue-yonder
+    level: advanced
+    notes: WES dynamically prioritizes work and assigns tasks based on priorities, due times, proximity, and dependencies.
+    evidence_refs: [blue-yonder-wes-2026]
+spotwo:
+  canonical_term: Waveless Execution
+  status: candidate
+research_gaps:
+  - Determine whether continuous release, waveless, order streaming, and dynamic release should be aliases or distinct strategies.
+last_verified: 2026-08-18
+evidence_refs: [blue-yonder-wes-2026]
