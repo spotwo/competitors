@@ -1,0 +1,13 @@
+id: sap-difference-analysis-2026
+subject: physical-inventory-workflow
+source_type: official-docs
+grade: A
+title: Difference Analysis
+url: https://help.sap.com/docs/PRODUCT_ID/3d97bec9bf1649099384bb8167df3cf2/4cb4e7d24c1f1921e10000000a15822b.html
+publisher: SAP
+captured_at: '2026-08-18'
+supports:
+  - SAP EWM separates physical or operational quantity differences from the act of posting them to ERP and financial inventory records.
+  - Difference Analyzer supports review of differences before posting.
+  - Difference reasons and priorities are explicit configuration concepts.
+  - Posting differences reconciles EWM stock with ERP and creates the corresponding material movement in ERP.
