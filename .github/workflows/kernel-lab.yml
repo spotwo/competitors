@@ -7,6 +7,8 @@ on:
       - 'bin/check-kernel-lab'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
+      - 'decisions/domain/0016-inventory-holds-eligibility.md'
+      - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
       - '.github/workflows/kernel-lab.yml'
@@ -19,6 +21,8 @@ on:
       - 'bin/check-kernel-lab'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
+      - 'decisions/domain/0016-inventory-holds-eligibility.md'
+      - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
       - '.github/workflows/kernel-lab.yml'
@@ -54,6 +58,8 @@ jobs:
             bin/check-kernel-lab \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
+            decisions/domain/0016-inventory-holds-eligibility.md \
+            ontology/inventory.yml \
             ontology/inventory-transaction.yml \
             ontology/handling-unit.yml \
             .github/workflows/kernel-lab.yml; then

@@ -1,0 +1,13 @@
+id: dynamics365-inventory-blocking-2026
+subject: inventory-hold-eligibility
+source_type: official-docs
+grade: A
+title: Create and maintain an inventory blocking
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/inventory/tasks/create-maintain-inventory-blocking
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 inventory blocking prevents blocked physical on-hand inventory from being reserved by other outbound source documents.
+  - Blocking records identify an item, quantity, site, warehouse, and other inventory dimensions rather than deleting or removing physical stock.
+  - Blocking can later be removed, restoring the inventory to reservation eligibility.
+  - Blocking is therefore separable from physical quantity and can participate in action-specific availability decisions.

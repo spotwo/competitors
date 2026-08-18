@@ -2,7 +2,7 @@ id: inventory
 title: Inventory Ontology
 kind: inventory
 status: candidate
-description: Core inventory concepts independent of a specific WMS implementation. Physical quantity, commitments, allocation, operational condition and availability are modeled as separate concerns rather than one overloaded inventory-status enum.
+description: Core inventory concepts independent of a specific WMS implementation. Physical quantity, commitments, allocation, operational condition, holds and action eligibility are modeled as separate concerns rather than one overloaded inventory-status enum.
 entities:
   - id: item
     term: Item
@@ -43,10 +43,18 @@ entities:
     term: Allocation Eligibility
     definition: Whether inventory may participate in new allocation independent of its physical presence.
     examples: [allocatable, unallocatable]
+  - id: inventory-action-eligibility
+    term: Inventory Action Eligibility
+    definition: A derived decision about whether inventory may participate in a particular action after active holds and other operational rules are evaluated.
+    examples: [allocation, movement, picking, shipping]
   - id: inventory-hold
     term: Inventory Hold
-    definition: Operational restriction that prevents one or more inventory actions without implying that the inventory is physically absent.
-    aliases: [lock, lock code]
+    definition: An applied operational restriction on inventory that references a hold policy and can independently start, expire or be released without removing physical stock.
+    aliases: [lock, blocking]
+  - id: inventory-hold-policy
+    term: Inventory Hold Policy
+    definition: Reusable policy semantics describing which inventory actions an applied hold prevents, such as allocation, movement, picking or shipping.
+    aliases: [hold code, hold reason policy]
   - id: lot
     term: Lot
     definition: A batch identity shared by a quantity of otherwise equivalent item units.
@@ -71,11 +79,15 @@ relationships:
   - {subject: stock, predicate: may-have, object: allocated-quantity}
   - {subject: stock, predicate: derives, object: available-quantity}
   - {subject: availability-view, predicate: derives-from, object: stock}
+  - {subject: availability-view, predicate: evaluates, object: inventory-action-eligibility}
   - {subject: reservation, predicate: commits, object: stock}
   - {subject: allocation, predicate: binds, object: stock}
   - {subject: stock, predicate: has, object: inventory-condition}
   - {subject: stock, predicate: has, object: allocation-eligibility}
+  - {subject: stock, predicate: derives, object: inventory-action-eligibility}
   - {subject: stock, predicate: may-have, object: inventory-hold}
+  - {subject: inventory-hold, predicate: uses, object: inventory-hold-policy}
+  - {subject: inventory-hold-policy, predicate: constrains, object: inventory-action-eligibility}
   - {subject: stock, predicate: may-reference, object: lot}
   - {subject: stock, predicate: may-reference, object: serial}
   - {subject: stock, predicate: may-have, object: owner}
@@ -83,7 +95,8 @@ relationships:
 research_gaps:
   - Compare exact available-to-reserve, available-to-allocate and available-to-pick calculations across SAP Oracle Manhattan Blue Yonder Infor and 3PL WMS products.
   - Validate whether Reservation and Allocation should be separate persisted Spotwo aggregates or one commitment aggregate with changing specificity.
-  - Define concurrency and idempotency invariants for competing inventory commitments.
+  - Compare location, license-plate, lot and broader selector semantics for holds before adding wildcard hold targets to the kernel.
+  - Determine which hold policies should block reservation separately from allocation and which policies should permit controlled picking or movement of held stock.
   - Define 3PL ownership and hold semantics where owner client facility and regulatory restrictions overlap.
 last_verified: '2026-08-18'
-evidence_refs: [oracle-wms-lpn-uom-2026, oracle-inventory-types-2026, infor-cycle-counting-2026, dynamics365-reservations-2026, dynamics365-onhand-availability-2026, oracle-allocation-model-2026]
+evidence_refs: [oracle-wms-lpn-uom-2026, oracle-inventory-types-2026, infor-cycle-counting-2026, dynamics365-reservations-2026, dynamics365-onhand-availability-2026, oracle-allocation-model-2026, infor-inventory-holds-2026, infor-held-inventory-eligibility-2026, dynamics365-inventory-blocking-2026]
