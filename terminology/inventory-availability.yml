@@ -1,0 +1,10 @@
+id: inventory-availability
+preferred_term: Inventory Availability
+definition: Derived view of inventory quantity eligible for a specified action under a defined inventory scope, commitment state, hold state, process context, and policy.
+domain: [inventory, availability, fulfillment]
+aliases: [available inventory, available quantity, available physical, availability view]
+status: candidate
+spotwo_term: Availability View
+notes: Spotwo should treat availability as a calculated projection rather than an independently mutable authoritative stock bucket.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-onhand-availability-2026, dynamics365-reservations-2026]
