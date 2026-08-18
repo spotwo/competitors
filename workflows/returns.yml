@@ -1,0 +1,145 @@
+id: returns
+capability_id: returns
+title: Customer Returns Workflow
+status: candidate
+definition: A decomposition of warehouse reverse-flow receiving where returned goods are identified, optionally matched to prior shipment or authorization, physically received, assessed, assigned a disposition, and routed into restock, quarantine, repair, scrap, replacement, or return-to-customer outcomes.
+stages:
+  - id: return-arrival
+    label: Return Arrival
+    purpose: Establish physical arrival of returned goods into warehouse control.
+    inputs: [returned-goods]
+    outputs: [arrived-return]
+  - id: identification
+    label: Return Identification
+    purpose: Identify customer or source, item, quantity, tracking dimensions, handling unit, and any return authorization or return-detail reference.
+    inputs: [arrived-return, return-reference]
+    outputs: [identified-return]
+  - id: authorization-match
+    label: Authorization / Blind Return Resolution
+    purpose: Match the return to expected return details when available or establish a controlled blind-return record when policy permits.
+    inputs: [identified-return, return-policy]
+    outputs: [return-demand]
+  - id: return-receipt
+    label: Return Receipt
+    purpose: Record the physical quantity received into controlled warehouse inventory context without yet implying sellable availability.
+    inputs: [return-demand, returned-goods]
+    outputs: [return-receipt, received-return-inventory]
+  - id: inspection-disposition
+    label: Inspection and Disposition
+    purpose: Assess condition and select the operational disposition that determines inventory status, downstream work, and location routing.
+    inputs: [received-return-inventory, reason-code, disposition-policy]
+    outputs: [return-disposition, inventory-condition]
+  - id: work-creation
+    label: Disposition Work Creation
+    purpose: Create putaway quarantine repair scrap return-to-vendor or other executable work required by the selected disposition.
+    inputs: [return-disposition, received-return-inventory]
+    outputs: [return-work]
+  - id: disposition-execution
+    label: Disposition Execution
+    purpose: Execute warehouse movement or processing that places returned goods into their approved operational outcome.
+    inputs: [return-work]
+    outputs: [disposition-confirmation]
+  - id: return-resolution
+    label: Return Resolution
+    purpose: Close the warehouse return and emit inventory and commercial outcome signals without conflating physical disposition with refund or replacement accounting.
+    inputs: [disposition-confirmation]
+    outputs: [resolved-return, inventory-update, commercial-outcome-signal]
+objects:
+  - {id: returned-goods, term: Returned Goods, role: Physical inventory arriving through a reverse logistics flow.}
+  - {id: return-reference, term: Return Reference, role: Optional RMA return-detail shipment or source-system reference.}
+  - {id: return-demand, term: Return Demand, role: Controlled expectation or accepted blind-return record describing what may be received.}
+  - {id: return-receipt, term: Return Receipt, role: Warehouse record of returned quantity physically received.}
+  - {id: reason-code, term: Return Reason, role: Explanation of why the goods were returned; it does not by itself determine physical handling.}
+  - {id: return-disposition, term: Return Disposition, role: Decision describing what operational and inventory outcome should occur for the returned goods.}
+  - {id: inventory-condition, term: Inventory Condition, role: Quality or business condition assigned to returned inventory after assessment.}
+  - {id: return-work, term: Return Work, role: Executable warehouse work required to realize the disposition.}
+  - {id: commercial-outcome, term: Commercial Outcome, role: Credit replacement rejection or other commercial consequence communicated to the owning sales or order system.}
+states:
+  - {id: arrived, label: Arrived, meaning: Returned goods are physically present but not yet registered.}
+  - {id: identified, label: Identified, meaning: Core return identity and quantity are captured.}
+  - {id: received, label: Received, meaning: Returned quantity is recorded under warehouse control.}
+  - {id: pending-disposition, label: Pending Disposition, meaning: Received return awaits condition assessment or disposition decision.}
+  - {id: dispositioned, label: Dispositioned, meaning: Operational outcome has been selected.}
+  - {id: in-progress, label: In Progress, meaning: Disposition work is being executed.}
+  - {id: resolved, label: Resolved, meaning: Warehouse disposition is complete., terminal: true}
+  - {id: rejected, label: Rejected, meaning: Return is not accepted into the normal warehouse return flow., terminal: true}
+  - {id: exception, label: Exception, meaning: Identity authorization condition or disposition prevents normal completion.}
+strategies:
+  - id: authorized-return
+    category: identification
+    label: Authorized / Referenced Return
+    definition: Receive against pre-existing return details RMA shipment or return authorization.
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+  - id: blind-return
+    category: identification
+    label: Blind Return
+    definition: Accept controlled return receiving without a pre-existing RMA or original shipment reference when policy allows.
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+  - id: disposition-driven-routing
+    category: disposition
+    label: Disposition-Driven Routing
+    definition: Use disposition to choose inventory status work template and location routing for received returns.
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+  - id: restock
+    category: disposition
+    label: Restock
+    definition: Return accepted goods to inventory eligible for future use or sale after required controls.
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+  - id: quarantine
+    category: disposition
+    label: Quarantine / Inspection
+    definition: Hold returned goods outside normal available inventory until further inspection or decision.
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+  - id: scrap
+    category: disposition
+    label: Scrap / Dispose
+    definition: Remove returned goods from reusable inventory and route them to controlled disposal.
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+exceptions:
+  - id: unidentified-return
+    label: Unidentified Return
+    trigger: Item source customer or required tracking identity cannot be established.
+    outcomes: [hold-return, supervisor-review, reject-return]
+    status: candidate
+    evidence_refs: [dynamics365-returns-2026]
+  - id: unauthorized-return
+    label: Unauthorized Return
+    trigger: Policy requires a valid return reference but no eligible authorization can be matched.
+    outcomes: [reject-return, hold-return, create-exception-record]
+    status: candidate
+    evidence_refs: [dynamics365-returns-2026]
+  - id: disposition-required
+    label: Disposition Required
+    trigger: Return is received but no valid operational disposition can be determined.
+    outcomes: [hold-inventory, request-disposition, block-allocation]
+    status: adopted
+    evidence_refs: [dynamics365-returns-2026]
+vendor_models:
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {expected_return: Return Details, blind_flow: Blind Return, decision: Disposition Code, inventory_identity: License Plate}
+    workflow: [return-arrival, return-details-or-blind-identification, mobile-receiving, disposition-code, inventory-status-and-location-routing, work-execution, commercial-resolution]
+    strategies: [return-details, blind-return, disposition-code, quarantine, restock, scrap]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics365-returns-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [return-arrival, identification, authorization-match, return-receipt, inspection-disposition, work-creation, disposition-execution, return-resolution]
+  canonical_objects: [returned-goods, return-reference, return-demand, return-receipt, reason-code, return-disposition, inventory-condition, return-work, commercial-outcome]
+  task_states: [arrived, identified, received, pending-disposition, dispositioned, in-progress, resolved, rejected, exception]
+  commands: [register-return-arrival, identify-return, receive-return, assign-return-disposition, release-return-work, confirm-return-disposition, reject-return]
+  events: [return-arrived, return-identified, return-received, return-disposition-assigned, return-work-released, return-disposition-confirmed, return-resolved, return-rejected]
+  notes: Return Reason explains why goods came back. Return Disposition decides operational handling. Receiving returned quantity does not automatically make it available for allocation, and warehouse disposition is separate from commercial credit or replacement accounting.
+research_gaps:
+  - Add Oracle WMS Manhattan Blue Yonder Infor Extensiv and ecommerce-focused WMS return workflows.
+  - Separate customer returns supplier returns and internal reverse movements into explicit subtypes.
+  - Define inspection evidence repair refurbishment and return-to-vendor handoff models.
+  - Determine whether blind returns should create Return Demand before receipt or use a receipt-first exception aggregate.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-returns-2026]
