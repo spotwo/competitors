@@ -1,0 +1,12 @@
+id: infios-voice-picking-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: Voice, Vision and Mobility for Warehouse Picking
+url: https://www.infios.com/en/supply-chain-solutions/voice-solutions/what-is-a-voice-vision-and-mobility-solution
+publisher: Infios
+captured_at: '2026-08-18'
+supports:
+  - Infios voice picking directs workers to an item location and quantity through a headset.
+  - Workers verbally confirm completed work and can report short quantity or damage as execution exceptions.
+  - After confirmation the system directs the worker to the next task, separating task assignment from execution channel.
