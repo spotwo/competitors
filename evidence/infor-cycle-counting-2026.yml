@@ -1,0 +1,12 @@
+id: infor-cycle-counting-2026
+subject: cycle-counting-workflow
+source_type: official-docs
+grade: A
+title: Performing an assisted cycle count by item and location
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/sceinmgtug/uha1612893687823.html
+publisher: Infor
+captured_at: 2026-08-18
+supports:
+  - Assisted cycle counting validates inventory by item and location and captures counted inventory through RF.
+  - Allocated inventory and HOLD locations constrain automatic correction behavior.
+  - Cycle count results can create variance or location-mismatch records requiring resolution.
