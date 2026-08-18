@@ -1,0 +1,109 @@
+id: golden-warehouse-scenarios
+title: Golden Warehouse Scenarios
+status: candidate
+description: Executable end-to-end warehouse scenarios that compose inventory, commitment, hold, work, task, confirmation and reconciliation semantics into stable regression contracts.
+scenarios:
+  - id: order-fulfillment-happy-path
+    title: Receive to Ship Happy Path
+    purpose: Prove that receipt, putaway, reservation, allocation, pick consumption, packing and shipping compose without double-counting availability or bypassing Work confirmation boundaries.
+    preconditions:
+      - One empty inbound InventoryPosition, one empty storage InventoryPosition and one empty staging InventoryPosition exist for the same Inventory Key dimensions.
+      - A staging hold policy blocks allocation but allows shipping.
+    steps:
+      - {id: receipt, action: Post receipt of 100 EA into inbound stock, domain_result: InventoryTransaction}
+      - {id: putaway, action: Execute Putaway Work moving 100 EA inbound to storage, domain_result: InventoryTransaction}
+      - {id: reserve, action: Reserve 20 EA for ORDER-100, domain_result: Reservation}
+      - {id: allocate, action: Allocate 20 EA from storage to ORDER-100, domain_result: Allocation}
+      - {id: pick, action: Execute Pick Work consuming the allocation and moving 20 EA to staging under an allocation-blocking hold, domain_result: InventoryTransaction}
+      - {id: pack, action: Execute Packing Work without mutating inventory, domain_result: TaskConfirmation}
+      - {id: ship, action: Release the staging allocation hold and execute Shipping Work issuing 20 EA from the warehouse, domain_result: InventoryTransaction}
+    checkpoints:
+      - after: receipt
+        expect: [physical=100, reserved=0, allocated=0, available=100]
+      - after: putaway
+        expect: [inbound_physical=0, storage_physical=100, global_physical=100]
+      - after: reserve
+        expect: [reservation_remaining=20, available=80]
+      - after: allocate
+        expect: [reservation_remaining=0, reservation_allocated=20, position_allocated=20, available=80]
+      - after: pick
+        expect: [storage_physical=80, staging_physical=20, reservation_consumed=20, allocation_remaining=0, available=80]
+      - after: pack
+        expect: [global_physical=100, packing_work=completed]
+      - after: ship
+        expect: [global_physical=80, allocated=0, reservation_remaining=0, shipping_work=completed]
+    invariants:
+      - Reservation to Allocation conversion does not reduce availability twice.
+      - Pick consumes Allocation instead of releasing it back to free stock.
+      - Picked staging stock remains unavailable to new allocation until shipment releases its staging hold.
+      - Packing does not mutate inventory merely because Work completed.
+      - Shipping crosses the warehouse boundary through an Issue posting.
+    executable_test: tests/test_golden_scenarios.py::test_order_fulfillment_happy_path
+
+  - id: whole-hu-relocation
+    title: Whole Handling Unit Relocation
+    purpose: Prove that relocating a whole HU changes HU placement and Work history without rewriting the InventoryPosition keys contained by that HU.
+    preconditions:
+      - One HU at Location A contains 40 EA in a single InventoryPosition anchored to that HU.
+    steps:
+      - {id: work, action: Create and execute Relocation Work for the HU, domain_result: HandlingUnitMovement}
+      - {id: relocate, action: Move the HU from Location A to Location B, domain_result: HandlingUnitMovement}
+    checkpoints:
+      - after: relocate
+        expect: [hu_location=B, contained_position_anchor=unchanged, physical=40, work=completed]
+    invariants:
+      - Whole-HU relocation does not rewrite contained InventoryPosition rows.
+      - HU placement is the physical location source for contained stock.
+      - Work confirmation references the HU movement result rather than pretending Work itself moved inventory.
+    executable_test: tests/test_golden_scenarios.py::test_whole_hu_relocation
+
+  - id: short-pick-recovery
+    title: Short Pick Recovery
+    purpose: Prove that partial allocation consumption survives a Task Exception and retry without reopening already consumed reservation capacity.
+    preconditions:
+      - ORDER-200 has a Reservation and Allocation for 10 EA.
+      - The Pick Task is assigned and started.
+    steps:
+      - {id: partial-pick, action: Consume and move 6 EA from the 10 EA allocation, domain_result: InventoryTransaction}
+      - {id: exception, action: Raise SHORT_PICK exception on the active Pick Task, domain_result: TaskException}
+      - {id: retry, action: Resolve the exception and start a new execution attempt, domain_result: TaskExecution}
+      - {id: residual-pick, action: Consume and move the remaining 4 EA and confirm the Pick Task, domain_result: Allocation}
+    checkpoints:
+      - after: partial-pick
+        expect: [allocation_consumed=6, allocation_remaining=4, reservation_consumed=6, reservation_allocated=4]
+      - after: exception
+        expect: [task=exception, work=exception, old_execution=blocked]
+      - after: retry
+        expect: [old_execution=aborted, new_execution=in_progress]
+      - after: residual-pick
+        expect: [allocation_consumed=10, allocation_remaining=0, reservation_consumed=10, reservation_remaining=0, task=completed]
+    invariants:
+      - Consumed commitment quantity never becomes available again merely because execution retries.
+      - Exception resolution creates a new execution attempt and preserves the failed attempt.
+      - Partial Pick consumption remains balanced physical movement.
+    executable_test: tests/test_golden_scenarios.py::test_short_pick_recovery
+
+  - id: cycle-count-reconciliation
+    title: Cycle Count Before Reconciliation
+    purpose: Prove that a CountResult is evidence about observed quantity and does not mutate authoritative inventory until an explicit reconciliation posting is accepted.
+    preconditions:
+      - System physical quantity is 100 EA at the counted InventoryPosition.
+    steps:
+      - {id: count, action: Execute Cycle Count Work and record counted quantity 97 EA, domain_result: CountResult}
+      - {id: review, action: Verify the -3 variance while physical stock remains unchanged, domain_result: CountResult}
+      - {id: reconcile, action: Post explicit count reconciliation of -3 EA, domain_result: InventoryTransaction}
+    checkpoints:
+      - after: count
+        expect: [system_snapshot=100, counted=97, variance=-3, physical=100, count_result=observed]
+      - after: reconcile
+        expect: [physical=97, count_result=reconciled, reconciliation_delta=-3]
+    invariants:
+      - CountResult is not an InventoryTransaction.
+      - Recording a count does not silently mutate physical quantity.
+      - Reconciliation is explicit, auditable and rejected if the counted position changed after the snapshot.
+    executable_test: tests/test_golden_scenarios.py::test_cycle_count_reconciliation
+research_gaps:
+  - Replace the staging allocation hold with explicit location/process eligibility when that policy layer is modeled.
+  - Decide whether one TaskConfirmation may reference a typed result set containing multiple domain results rather than one aggregate reference.
+  - Extend Golden Scenarios with cross-warehouse transfer, returns, cross-docking and lot/serial genealogy.
+last_verified: '2026-08-18'
