@@ -2,7 +2,7 @@ id: inventory
 title: Inventory Ontology
 kind: inventory
 status: candidate
-description: Core inventory concepts independent of a specific WMS implementation.
+description: Core inventory concepts independent of a specific WMS implementation. Physical quantity, allocation, operational condition and availability are modeled as separate concerns rather than one overloaded inventory-status enum.
 entities:
   - id: item
     term: Item
@@ -11,7 +11,30 @@ entities:
     attributes: [item_code, description, base_uom]
   - id: stock
     term: Stock
-    definition: A quantity of an item held under a specific set of inventory dimensions such as location, owner, status, lot or serial.
+    definition: A quantity of an item held under a specific set of inventory dimensions such as location, owner, condition, lot or serial.
+  - id: physical-quantity
+    term: Physical Quantity
+    definition: Quantity physically recorded in the warehouse regardless of whether it is currently allocatable.
+    aliases: [on-hand quantity, current quantity]
+  - id: allocated-quantity
+    term: Allocated Quantity
+    definition: Portion of physical inventory committed to existing outbound or execution demand.
+  - id: available-quantity
+    term: Available Quantity
+    definition: Portion of physical inventory currently eligible for new allocation under active inventory rules.
+    aliases: [allocatable quantity]
+  - id: inventory-condition
+    term: Inventory Condition
+    definition: Business or quality condition attached to stock such as normal damaged quarantine or inspection status.
+    examples: [normal, damaged, quarantine, inspection]
+  - id: allocation-eligibility
+    term: Allocation Eligibility
+    definition: Whether inventory may participate in new allocation independent of its physical presence.
+    examples: [allocatable, unallocatable]
+  - id: inventory-hold
+    term: Inventory Hold
+    definition: Operational restriction that prevents one or more inventory actions without implying that the inventory is physically absent.
+    aliases: [lock, lock code]
   - id: lot
     term: Lot
     definition: A batch identity shared by a quantity of otherwise equivalent item units.
@@ -21,10 +44,6 @@ entities:
     term: Serial Number
     definition: An identifier assigned to an individual serialized item unit.
     attributes: [serial_number]
-  - id: inventory-status
-    term: Inventory Status
-    definition: A state constraining how stock may be allocated or processed.
-    examples: [available, hold, damaged, quarantine]
   - id: owner
     term: Inventory Owner
     definition: The party that owns or is entitled to dispose of stock.
@@ -35,13 +54,19 @@ entities:
     examples: [each, case, pack, pallet]
 relationships:
   - {subject: stock, predicate: references, object: item}
+  - {subject: stock, predicate: has, object: physical-quantity}
+  - {subject: stock, predicate: may-have, object: allocated-quantity}
+  - {subject: stock, predicate: derives, object: available-quantity}
+  - {subject: stock, predicate: has, object: inventory-condition}
+  - {subject: stock, predicate: has, object: allocation-eligibility}
+  - {subject: stock, predicate: may-have, object: inventory-hold}
   - {subject: stock, predicate: may-reference, object: lot}
   - {subject: stock, predicate: may-reference, object: serial}
-  - {subject: stock, predicate: has, object: inventory-status}
   - {subject: stock, predicate: may-have, object: owner}
   - {subject: stock, predicate: measured-in, object: uom}
 research_gaps:
-  - Compare WMS treatment of stock, quant and inventory-line concepts across SAP, Oracle, Manhattan and SMB systems.
-  - Define Spotwo canonical ownership and stock-status dimensions for multi-client 3PL use.
-last_verified: 2026-08-18
-evidence_refs: [oracle-wms-lpn-uom-2026]
+  - Compare exact available-to-allocate calculations across SAP Oracle Manhattan Blue Yonder Infor and 3PL WMS products.
+  - Determine whether reservation and allocation should be separate canonical concepts or phases of one commitment model.
+  - Define 3PL ownership and hold semantics where owner client facility and regulatory restrictions overlap.
+last_verified: '2026-08-18'
+evidence_refs: [oracle-wms-lpn-uom-2026, oracle-inventory-types-2026, infor-cycle-counting-2026]
