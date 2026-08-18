@@ -1,0 +1,80 @@
+id: cycle-counting
+capability_id: cycle-counting
+title: Cycle Counting Workflow
+status: candidate
+definition: Cross-vendor decomposition of how inventory is selected for audit, converted into count work, physically counted, compared with system quantity, reviewed and adjusted.
+stages:
+  - {id: selection, label: Count Selection, purpose: Select location item LPN or inventory scope based on plan trigger request or opportunity.}
+  - {id: work-creation, label: Count Work Creation, purpose: Create executable count work or task for the selected scope.}
+  - {id: assignment, label: Assignment, purpose: Make count work available to or associated with a worker or automation resource.}
+  - {id: count-execution, label: Count Execution, purpose: Capture physical count evidence through guided blind spot or automated counting.}
+  - {id: comparison, label: Comparison, purpose: Compare counted inventory with the system record and calculate discrepancy.}
+  - {id: review, label: Variance Review, purpose: Apply tolerance approval or investigation rules to discrepancies.}
+  - {id: adjustment, label: Inventory Adjustment, purpose: Apply or approve the inventory correction when required.}
+  - {id: close, label: Count Close, purpose: Close the audit work and preserve traceability of the count result.}
+objects:
+  - {id: count-policy, term: Count Policy, role: Rules controlling when and what inventory should be counted.}
+  - {id: count-plan, term: Count Plan, role: Scheduled or criteria-driven definition used to create count work.}
+  - {id: count-work, term: Count Work, role: Executable warehouse audit work.}
+  - {id: count-line, term: Count Line, role: Item location LPN or inventory detail to be physically counted.}
+  - {id: expected-quantity, term: Expected Quantity, role: System quantity before count reconciliation.}
+  - {id: counted-quantity, term: Counted Quantity, role: Physical quantity observed during execution.}
+  - {id: variance, term: Count Variance, role: Difference between expected and counted inventory.}
+  - {id: adjustment, term: Inventory Adjustment, role: Controlled inventory correction resulting from approved variance.}
+  - {id: count-approval, term: Count Approval, role: Review decision that accepts rejects or requires recount of a discrepancy.}
+states:
+  - {id: planned, label: Planned, meaning: Count scope is selected but work is not yet executable.}
+  - {id: ready, label: Ready, meaning: Count work can be assigned or executed.}
+  - {id: assigned, label: Assigned, meaning: Count work is associated with an execution resource.}
+  - {id: in-progress, label: In Progress, meaning: Physical counting is active.}
+  - {id: pending-review, label: Pending Review, meaning: Count completed with a discrepancy requiring review.}
+  - {id: adjustment-pending, label: Adjustment Pending, meaning: Approved discrepancy awaits inventory update.}
+  - {id: completed, label: Completed, meaning: Count and required reconciliation are complete., terminal: true}
+  - {id: cancelled, label: Cancelled, meaning: Count work has been invalidated., terminal: true}
+strategies:
+  - {id: guided-count, category: execution, label: Guided Count, definition: Direct the worker to predefined count work and locations., status: adopted, evidence_refs: [dynamics-cycle-counting-2026]}
+  - {id: blind-count, category: execution, label: Blind Count, definition: Hide expected quantity while the worker records the physical count., status: adopted, evidence_refs: [dynamics-cycle-counting-2026]}
+  - {id: spot-count, category: trigger, label: Spot Count, definition: Start an unscheduled count directly during warehouse operations., status: adopted, evidence_refs: [dynamics-cycle-counting-2026]}
+  - {id: threshold-trigger, category: trigger, label: Threshold Trigger, definition: Generate count work when inventory quantity or capacity crosses a configured threshold., status: adopted, evidence_refs: [dynamics-cycle-counting-2026, oracle-cycle-counting-2026]}
+  - {id: plan-driven, category: trigger, label: Plan-Driven Count, definition: Generate count work from recurring item or location criteria., status: adopted, evidence_refs: [dynamics-cycle-counting-2026, oracle-cycle-counting-2026]}
+  - {id: event-triggered, category: trigger, label: Event-Triggered Count, definition: Generate count work from operational exceptions such as short pick or alternate putaway., status: observed, evidence_refs: [oracle-cycle-counting-2026]}
+  - {id: immediate-adjustment, category: adjustment, label: Immediate Adjustment, definition: Apply accepted count result directly to inventory., status: observed, evidence_refs: [oracle-cycle-count-adjustment-2026]}
+  - {id: deferred-approval, category: adjustment, label: Deferred Approval, definition: Hold inventory adjustment until a reviewer accepts or rejects the discrepancy., status: adopted, evidence_refs: [oracle-cycle-count-adjustment-2026]}
+exceptions:
+  - {id: variance, label: Count Variance, trigger: Counted quantity differs from expected system quantity., outcomes: [accept, recount, review, adjust], status: adopted, evidence_refs: [dynamics-cycle-counting-2026, oracle-cycle-count-adjustment-2026]}
+  - {id: location-mismatch, label: Location Mismatch, trigger: Count identifies inventory in a different location than the system record., outcomes: [review, move-if-eligible, create-discrepancy], status: observed, evidence_refs: [infor-cycle-counting-2026]}
+  - {id: allocated-or-hold-conflict, label: Allocated or Hold Conflict, trigger: Correction would affect allocated inventory or inventory/location on hold., outcomes: [block-automatic-correction, supervisor-review], status: observed, evidence_refs: [infor-cycle-counting-2026]}
+vendor_models:
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {work: Cycle Count Work, review_state: Pending Review, plan: Cycle Count Plan}
+    workflow: [plan-threshold-or-spot, create-work, guided-or-blind-mobile-count, compare, pending-review-if-needed, resolve]
+    strategies: [guided-count, blind-count, spot-count, threshold-trigger, plan-driven]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics-cycle-counting-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    terminology: {task: Cycle Count Task, adjustment: Inventory Adjustment, mode: Immediate-or-Deferred}
+    workflow: [trigger-template-api-or-manual, create-task, execute-count, compare, immediate-or-deferred-adjustment, close]
+    strategies: [threshold-trigger, plan-driven, event-triggered, immediate-adjustment, deferred-approval]
+    execution_channels: [rf, ui, api]
+    evidence_refs: [oracle-cycle-counting-2026, oracle-cycle-count-adjustment-2026]
+  - company_id: infor
+    product_id: infor/wms
+    terminology: {task: Cycle Count Task, discrepancy: Cycle Count Detail, constraint: HOLD-or-Allocated}
+    workflow: [assisted-count, validate-item-location-lpn, compare, variance-or-location-mismatch, conditional-correction, complete]
+    execution_channels: [rf]
+    evidence_refs: [infor-cycle-counting-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [selection, work-creation, assignment, count-execution, comparison, review, adjustment, close]
+  canonical_objects: [count-policy, count-plan, count-work, count-line, expected-quantity, counted-quantity, variance, adjustment, count-approval]
+  task_states: [planned, ready, assigned, in-progress, pending-review, adjustment-pending, completed, cancelled]
+  commands: [request-cycle-count, create-count-work, assign-count-work, submit-count, approve-count-variance, reject-count-variance, apply-inventory-adjustment, close-count]
+  events: [cycle-count-requested, count-work-created, count-submitted, count-variance-detected, count-variance-approved, inventory-adjusted, cycle-count-completed]
+  notes: Physical count evidence, discrepancy review and inventory mutation must be separate domain steps.
+research_gaps:
+  - Define recount policy and tolerance hierarchy across item location owner and facility scopes.
+  - Compare count freezing versus live-counting behavior across vendors and automation environments.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics-cycle-counting-2026, oracle-cycle-counting-2026, oracle-cycle-count-adjustment-2026, infor-cycle-counting-2026]
