@@ -6,21 +6,35 @@ LAB="$ROOT/labs/postgres-inventory-kernel"
 COMPOSE=(docker compose -f "$LAB/compose.yaml")
 PERF_PROFILE="${KERNEL_LAB_PERF_PROFILE:-smoke}"
 
-if [[ -n "${KERNEL_LAB_PORT:-}" ]]; then
-  PORT="$KERNEL_LAB_PORT"
-else
-  PORT="$(python - <<'PY'
+free_port() {
+  python - <<'PY'
 import socket
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.bind(("127.0.0.1", 0))
     print(sock.getsockname()[1])
 PY
-)"
+}
+
+if [[ -n "${KERNEL_LAB_PORT:-}" ]]; then
+  PORT="$KERNEL_LAB_PORT"
+else
+  PORT="$(free_port)"
+fi
+
+if [[ -n "${KERNEL_LAB_NATS_PORT:-}" ]]; then
+  NATS_PORT="$KERNEL_LAB_NATS_PORT"
+else
+  NATS_PORT="$(free_port)"
+  while [[ "$NATS_PORT" == "$PORT" ]]; do
+    NATS_PORT="$(free_port)"
+  done
 fi
 
 export KERNEL_LAB_PORT="$PORT"
 export KERNEL_LAB_DATABASE_URL="${KERNEL_LAB_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:${PORT}/kernel_lab}"
+export KERNEL_LAB_NATS_PORT="$NATS_PORT"
+export KERNEL_LAB_NATS_URL="${KERNEL_LAB_NATS_URL:-nats://127.0.0.1:${NATS_PORT}}"
 
 cleanup() {
   "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -57,6 +71,43 @@ if [[ "$stable_probes" -lt 2 ]]; then
   "${COMPOSE[@]}" logs db >&2 || true
   exit 2
 fi
+
+python - <<'PY'
+import asyncio
+import os
+
+import nats
+
+
+async def ignore_client_error(_error: Exception) -> None:
+    return None
+
+
+async def wait_for_nats() -> None:
+    url = os.environ["KERNEL_LAB_NATS_URL"]
+    for _attempt in range(30):
+        try:
+            client = await asyncio.wait_for(
+                nats.connect(
+                    servers=[url],
+                    error_cb=ignore_client_error,
+                    allow_reconnect=False,
+                    connect_timeout=0.5,
+                    reconnect_time_wait=0,
+                    max_reconnect_attempts=1,
+                ),
+                timeout=0.5,
+            )
+        except Exception:
+            await asyncio.sleep(1)
+            continue
+        await client.close()
+        return
+    raise SystemExit("NATS did not become ready")
+
+
+asyncio.run(wait_for_nats())
+PY
 
 for migration in "$LAB"/sql/*.sql; do
   echo "Applying $(basename "$migration")"

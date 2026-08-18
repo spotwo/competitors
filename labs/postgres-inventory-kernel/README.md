@@ -1,14 +1,16 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for ADR 0014, ADR 0015, ADR 0016, ADR 0017, and the inventory/work transaction kernel.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0024.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
 ## Runtime
 
 - PostgreSQL 18.4 (`postgres:18.4-bookworm`, pinned by multi-platform digest)
+- NATS Server 2.14.5 (`nats:2.14.5`, pinned by multi-platform digest)
 - Python 3.12+
 - Psycopg 3.3.4
+- nats-py 2.15.0
 - pytest 9.1.1
 - Docker Compose v2
 
@@ -25,11 +27,11 @@ bash bin/check-kernel-lab
 The command:
 
 1. installs the pinned lab Python dependencies;
-2. selects a free localhost port and starts an isolated PostgreSQL container there;
-3. waits for two consecutive SQL readiness probes through the migration execution path;
+2. selects free localhost ports and starts isolated PostgreSQL and NATS JetStream containers;
+3. waits for two consecutive SQL readiness probes and a successful NATS connection;
 4. applies every `sql/*.sql` migration in lexical order with `ON_ERROR_STOP=1`;
-5. runs the concurrency/invariant tests;
-6. destroys the lab database volume on exit.
+5. runs the database, publisher, and real JetStream integration tests;
+6. destroys the lab database and JetStream volumes on exit.
 
 Pin the host port explicitly when needed:
 
@@ -198,6 +200,10 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | pre-start cancellation | cancelling unstarted work releases assignment and cancels remaining tasks |
 | late cancellation rejection | generic cancellation cannot bypass capability compensation after execution starts |
 | work command retry | exact command replay is idempotent and changed payload under the same key is rejected |
+| JetStream PUB ACK | Outbox ACK happens only after the real transport confirms stream acceptance |
+| JetStream dedupe | retrying the same stable `event_id` uses `Nats-Msg-Id` and appends one stream record |
+| durable pull redelivery | an unacknowledged message is redelivered and then explicitly ACKed |
+| broker outage isolation | NATS failure leaves committed Inventory and durable Outbox facts intact |
 
 ## Deliberate simplifications
 
@@ -239,5 +245,12 @@ The conceptual decisions are:
 - `decisions/domain/0015-inventory-commitment-engine.md`
 - `decisions/domain/0016-inventory-holds-eligibility.md`
 - `decisions/domain/0017-warehouse-work-execution-engine.md`
+- `decisions/domain/0018-golden-warehouse-scenarios.md`
+- `decisions/domain/0019-postgresql-performance-contention-lab.md`
+- `decisions/domain/0020-wms-kernel-v0.1.md`
+- `decisions/domain/0021-transactional-outbox-domain-events.md`
+- `decisions/domain/0022-outbox-publisher-runtime.md`
+- `decisions/domain/0023-domain-event-transport-selection.md`
+- `decisions/domain/0024-nats-jetstream-transport-adapter.md`
 
-The lab exists to falsify or strengthen those candidate models with executable PostgreSQL behavior.
+The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.

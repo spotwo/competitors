@@ -20,6 +20,7 @@ from publisher_runtime import (  # noqa: E402
     PublishReceipt,
     PublisherRuntime,
 )
+from nats_transport import NatsJetStreamTransport  # noqa: E402
 
 
 class JsonLineStdoutTransport:
@@ -47,7 +48,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--retry-after-seconds", type=int, default=5)
     parser.add_argument("--idle-sleep-seconds", type=float, default=1.0)
     parser.add_argument("--once", action="store_true", help="process at most one claim batch")
+    parser.add_argument(
+        "--transport",
+        choices=("stdout", "nats"),
+        default=os.getenv("KERNEL_LAB_TRANSPORT", "stdout"),
+    )
+    parser.add_argument("--nats-url", default=os.getenv("KERNEL_LAB_NATS_URL"))
+    parser.add_argument("--nats-stream", default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"))
+    parser.add_argument(
+        "--nats-subject-prefix",
+        default=os.getenv("KERNEL_LAB_NATS_SUBJECT_PREFIX", "spotwo.wms.events"),
+    )
     return parser.parse_args()
+
+
+def build_transport(args: argparse.Namespace):
+    if args.transport == "stdout":
+        return JsonLineStdoutTransport()
+    if not args.nats_url:
+        raise SystemExit("--nats-url or KERNEL_LAB_NATS_URL is required for --transport nats")
+    return NatsJetStreamTransport(
+        server_url=args.nats_url,
+        stream_name=args.nats_stream,
+        subject_prefix=args.nats_subject_prefix,
+        client_name=args.worker_id,
+    )
 
 
 def main() -> int:
@@ -66,40 +91,46 @@ def main() -> int:
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
+    transport = build_transport(args)
     publisher = PublisherRuntime(
         store=PostgresOutboxStore(args.database_url),
-        transport=JsonLineStdoutTransport(),
+        transport=transport,
         worker_id=args.worker_id,
         batch_size=args.batch_size,
         lease_seconds=args.lease_seconds,
         retry_after_seconds=args.retry_after_seconds,
     )
 
-    while not stopping:
-        result = publisher.run_once()
-        print(
-            json.dumps(
-                {
-                    "publisher_cycle": {
-                        "worker_id": args.worker_id,
-                        "claimed": result.claimed,
-                        "published": result.published,
-                        "failed": result.failed,
-                        "stale_ack": result.stale_ack,
-                        "stale_nack": result.stale_nack,
-                    }
-                },
-                sort_keys=True,
-                separators=(",", ":"),
-            ),
-            file=sys.stderr,
-            flush=True,
-        )
+    try:
+        while not stopping:
+            result = publisher.run_once()
+            print(
+                json.dumps(
+                    {
+                        "publisher_cycle": {
+                            "worker_id": args.worker_id,
+                            "claimed": result.claimed,
+                            "published": result.published,
+                            "failed": result.failed,
+                            "stale_ack": result.stale_ack,
+                            "stale_nack": result.stale_nack,
+                        }
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
 
-        if args.once:
-            break
-        if result.claimed == 0 and args.idle_sleep_seconds:
-            time.sleep(args.idle_sleep_seconds)
+            if args.once:
+                break
+            if result.claimed == 0 and args.idle_sleep_seconds:
+                time.sleep(args.idle_sleep_seconds)
+    finally:
+        close = getattr(transport, "close", None)
+        if close is not None:
+            close()
 
     return 0
 

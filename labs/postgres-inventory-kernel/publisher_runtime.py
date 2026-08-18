@@ -21,6 +21,7 @@ class ClaimedEvent:
 @dataclass(frozen=True)
 class PublishReceipt:
     transport_message_id: str | None = None
+    deduplicated: bool = False
 
 
 @dataclass(frozen=True)
