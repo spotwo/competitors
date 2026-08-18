@@ -1,0 +1,16 @@
+id: vdma
+name: VDMA
+authority_type: industry-association
+scope:
+- intralogistics
+- automation
+- production-supply
+- warehouse-processes
+jurisdictions:
+- europe
+- global
+website: https://www.vdma.org/
+notes: Useful umbrella reference for intralogistics spanning warehouse processes and production supply.
+last_verified: '2026-08-18'
+evidence_refs:
+- vdma-intralogistics-2026

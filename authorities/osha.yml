@@ -1,0 +1,16 @@
+id: osha
+name: Occupational Safety and Health Administration (OSHA)
+authority_type: regulator
+scope:
+- warehouse-safety
+- materials-handling
+- aisles
+- clearances
+- storage
+jurisdictions:
+- US
+website: https://www.osha.gov/
+notes: US regulatory source. Do not apply OSHA rules as global requirements.
+last_verified: '2026-08-18'
+evidence_refs:
+- osha-1910-176

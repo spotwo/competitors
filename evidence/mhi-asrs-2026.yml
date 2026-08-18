@@ -1,0 +1,12 @@
+id: mhi-asrs-2026
+subject: mhi
+source_type: association-guide
+grade: A
+title: Automated Storage & Retrieval Systems
+url: https://www.mhi.org/asrs
+publisher: MHI
+captured_at: '2026-08-18'
+supports:
+- AS/RS terminology
+- defined storage locations
+- manufacturing and distribution applicability

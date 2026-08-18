@@ -1,0 +1,17 @@
+id: gs1
+name: GS1
+authority_type: standards-body
+scope:
+- identification
+- barcodes
+- logistic-units
+- locations
+- transport-and-logistics
+jurisdictions:
+- global
+website: https://www.gs1.org/
+notes: Primary reference for standardized identifiers such as GLN and SSCC and GS1 logistic labels.
+last_verified: '2026-08-18'
+evidence_refs:
+- gs1-gln-standard
+- gs1-logistic-label

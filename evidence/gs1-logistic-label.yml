@@ -1,0 +1,12 @@
+id: gs1-logistic-label
+subject: gs1
+source_type: standard
+grade: A
+title: GS1 Logistic Label Guideline
+url: https://www.gs1.org/standards/gs1-logistic-label-guideline/1-3
+publisher: GS1
+captured_at: '2026-08-18'
+supports:
+- logistic unit terminology
+- SSCC as mandatory logistic-unit identifier
+- human-readable and machine-readable label content

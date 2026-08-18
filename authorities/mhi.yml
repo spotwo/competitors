@@ -1,0 +1,18 @@
+id: mhi
+name: MHI
+authority_type: industry-association
+scope:
+- material-handling
+- warehouse-processes
+- automation
+- asrs
+- racking
+- robotics
+jurisdictions:
+- global
+website: https://www.mhi.org/
+notes: Useful for material-handling taxonomy, industry groups, nomenclature, and educational references.
+last_verified: '2026-08-18'
+evidence_refs:
+- mhi-industry-groups-2026
+- mhi-asrs-2026

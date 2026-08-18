@@ -1,0 +1,14 @@
+id: werc
+name: Warehousing Education and Research Council (WERC)
+authority_type: industry-guide
+scope:
+- warehouse-kpis
+- distribution-center-benchmarking
+- operations-metrics
+jurisdictions:
+- global
+website: https://werc.org/
+notes: Use DC Measures for metric definitions and benchmarking terminology. The detailed report is commercial.
+last_verified: '2026-08-18'
+evidence_refs:
+- werc-dc-measures-2026
