@@ -250,8 +250,16 @@ def command_gaps(args):
         if workflow.get("status") in {"candidate", "observed", "needs-research"}:
             gaps.append({"type": "workflow", "subject": workflow["title"], "gap": f"status={workflow['status']}; vendors={len(workflow.get('vendor_models', []))}; evidence_refs={len(workflow.get('evidence_refs', []))}"})
         for gap in workflow.get("research_gaps", []) or []: gaps.append({"type": "workflow", "subject": workflow["title"], "gap": gap})
-    for pattern, kind in (("ontology/*.yml", "ontology"), ("kpis/*.yml", "kpi-registry"), ("integrations/*.yml", "integration-registry")):
+    for pattern, kind in (
+        ("ontology/*.yml", "ontology"),
+        ("kpis/*.yml", "kpi-registry"),
+        ("integrations/*.yml", "integration-registry"),
+        ("ledger/*.yml", "ledger"),
+        ("events/*.yml", "event-registry"),
+    ):
         for record in load_records(pattern):
+            if kind in {"ledger", "event-registry"} and record.get("status") in {"candidate", "observed", "needs-research"}:
+                gaps.append({"type": kind, "subject": record["title"], "gap": f"status={record['status']}; evidence_refs={len(record.get('evidence_refs', []))}"})
             for gap in record.get("research_gaps", []) or []: gaps.append({"type": kind, "subject": record["title"], "gap": gap})
     if args.json: return dump_json(gaps)
     print("| Type | Subject | Gap |")
@@ -265,6 +273,8 @@ def command_stats(args):
     ontologies = load_records("ontology/*.yml")
     capabilities = load_records("capabilities/*.yml")
     workflows = load_records("workflows/*.yml")
+    ledgers = load_records("ledger/*.yml")
+    event_registries = load_records("events/*.yml")
     stats = {
         "companies": len(companies),
         "products": sum(len(c.get("products", [])) for c in companies),
@@ -283,6 +293,11 @@ def command_stats(args):
         "workflow_stages": sum(len(w.get("stages", [])) for w in workflows),
         "workflow_strategies": sum(len(w.get("strategies", [])) for w in workflows),
         "workflow_vendor_models": sum(len(w.get("vendor_models", [])) for w in workflows),
+        "ledger_registries": len(ledgers),
+        "ledger_transaction_types": sum(len(r.get("transaction_types", [])) for r in ledgers),
+        "ledger_invariants": sum(len(r.get("invariants", [])) for r in ledgers),
+        "event_registries": len(event_registries),
+        "domain_event_types": sum(len(r.get("events", [])) for r in event_registries),
     }
     if args.json: return dump_json(stats)
     for key, value in stats.items(): print(f"{key}: {value}")
