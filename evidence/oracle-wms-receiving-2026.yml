@@ -1,0 +1,12 @@
+id: oracle-wms-receiving-2026
+subject: receiving-workflow
+source_type: official-docs
+grade: A
+title: Receiving Operations Setup
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmim/shipment-verification.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Oracle WMS supports inbound shipments with or without purchase orders.
+  - RF receiving can operate at shipment or load level and capture batch expiry serial and inventory attributes.
+  - Shipment verification is a separate completion step after physical receiving and can enforce required header information.
