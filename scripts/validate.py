@@ -16,6 +16,9 @@ SCHEMA_BY_GLOB = {
     "authorities/*.yml": "schema/authority.schema.json",
     "claims/*.yml": "schema/claim.schema.json",
     "taxonomy/*.yml": "schema/taxonomy.schema.json",
+    "ontology/*.yml": "schema/ontology.schema.json",
+    "kpis/*.yml": "schema/kpi-registry.schema.json",
+    "integrations/*.yml": "schema/integration-registry.schema.json",
 }
 TAXONOMY_FIELDS = {
     "markets": "taxonomy/regions.yml",
@@ -61,6 +64,12 @@ def record_ids(pattern: str, errors: list[str]) -> set[str]:
     return result
 
 
+def check_evidence_refs(path: Path, data: dict, evidence_ids: set[str], errors: list[str]) -> None:
+    for ref in data.get("evidence_refs", []) or []:
+        if ref not in evidence_ids:
+            errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -81,6 +90,7 @@ def main() -> int:
     term_ids = record_ids("terminology/*.yml", errors)
     authority_ids = record_ids("authorities/*.yml", errors)
     claim_ids = record_ids("claims/*.yml", errors)
+    ontology_ids = record_ids("ontology/*.yml", errors)
 
     allowed = {field: taxonomy_values(rel) for field, rel in TAXONOMY_FIELDS.items()}
     country_codes = taxonomy_values("taxonomy/countries.yml")
@@ -98,12 +108,10 @@ def main() -> int:
             if company_id in company_ids:
                 errors.append(f"{path.relative_to(ROOT)}: duplicate company id {company_id!r}")
             company_ids.add(company_id)
-
         for field, values in allowed.items():
             for value in data.get(field, []) or []:
                 if value not in values:
                     errors.append(f"{path.relative_to(ROOT)}: unknown {field} value {value!r}")
-
         hq_country = data.get("hq_country")
         if hq_country and hq_country not in country_codes:
             errors.append(f"{path.relative_to(ROOT)}: unknown ISO country code {hq_country!r}")
@@ -111,7 +119,6 @@ def main() -> int:
             for value in data.get(field, []) or []:
                 if value not in country_codes:
                     errors.append(f"{path.relative_to(ROOT)}: unknown {field} country code {value!r}")
-
         for product in data.get("products", []) or []:
             pid = product.get("id")
             if pid:
@@ -126,10 +133,7 @@ def main() -> int:
                 for value in product.get(field, []) or []:
                     if value not in allowed[field]:
                         errors.append(f"{path.relative_to(ROOT)}: product {pid!r} has unknown {field} value {value!r}")
-
-        for ref in data.get("evidence_refs", []) or []:
-            if ref not in evidence_ids:
-                errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
+        check_evidence_refs(path, data, evidence_ids, errors)
 
     for path, data in company_records:
         parent = data.get("parent_company_id")
@@ -138,14 +142,43 @@ def main() -> int:
         if parent and parent == data.get("id"):
             errors.append(f"{path.relative_to(ROOT)}: company cannot be its own parent")
 
-    for pattern in ("terminology/*.yml", "authorities/*.yml"):
+    for pattern in ("terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml", "integrations/*.yml"):
         for path in sorted(ROOT.glob(pattern)):
             data = load_yaml(path)
-            if not isinstance(data, dict):
-                continue
-            for ref in data.get("evidence_refs", []) or []:
+            if isinstance(data, dict):
+                check_evidence_refs(path, data, evidence_ids, errors)
+
+    ontology_entity_count = 0
+    for path in sorted(ROOT.glob("ontology/*.yml")):
+        data = load_yaml(path)
+        seen: set[str] = set()
+        for entity in data.get("entities", []) or []:
+            entity_id = entity["id"]
+            if entity_id in seen:
+                errors.append(f"{path.relative_to(ROOT)}: duplicate ontology entity {entity_id!r}")
+            seen.add(entity_id)
+        ontology_entity_count += len(seen)
+
+    kpi_ids: set[str] = set()
+    for path in sorted(ROOT.glob("kpis/*.yml")):
+        data = load_yaml(path)
+        for metric in data.get("metrics", []) or []:
+            metric_id = metric["id"]
+            if metric_id in kpi_ids:
+                errors.append(f"{path.relative_to(ROOT)}: duplicate KPI id {metric_id!r}")
+            kpi_ids.add(metric_id)
+            for ref in metric.get("evidence_refs", []) or []:
                 if ref not in evidence_ids:
-                    errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
+                    errors.append(f"{path.relative_to(ROOT)}: KPI {metric_id!r} missing evidence ref {ref!r}")
+
+    integration_ids: set[str] = set()
+    for path in sorted(ROOT.glob("integrations/*.yml")):
+        data = load_yaml(path)
+        for pattern in data.get("patterns", []) or []:
+            pattern_id = pattern["id"]
+            if pattern_id in integration_ids:
+                errors.append(f"{path.relative_to(ROOT)}: duplicate integration pattern {pattern_id!r}")
+            integration_ids.add(pattern_id)
 
     resolvers = {
         "company": company_ids,
@@ -161,9 +194,7 @@ def main() -> int:
         subject = data.get("subject")
         if subject_type in resolvers and subject not in resolvers[subject_type]:
             errors.append(f"{path.relative_to(ROOT)}: unresolved {subject_type} subject {subject!r}")
-        for ref in data.get("evidence_refs", []) or []:
-            if ref not in evidence_ids:
-                errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
+        check_evidence_refs(path, data, evidence_ids, errors)
 
     if errors:
         print(f"Validation failed with {len(errors)} error(s):")
@@ -173,8 +204,9 @@ def main() -> int:
 
     print(
         f"Validation OK: {len(company_ids)} companies, {len(product_ids)} products, "
-        f"{len(evidence_ids)} evidence records, {len(claim_ids)} claims, "
-        f"{len(term_ids)} terms, {len(authority_ids)} authorities"
+        f"{len(evidence_ids)} evidence records, {len(claim_ids)} claims, {len(term_ids)} terms, "
+        f"{len(authority_ids)} authorities, {len(ontology_ids)} ontologies/{ontology_entity_count} entities, "
+        f"{len(kpi_ids)} KPIs, {len(integration_ids)} integration patterns"
     )
     return 0
 
