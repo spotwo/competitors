@@ -9,9 +9,9 @@ solution_layers: [wms, lms]
 deployment_models: [saas, cloud]
 industries: [3pl, manufacturing, wholesale, retail]
 operating_environments: [distribution-center, manufacturing-warehouse, 3pl]
-capabilities: [receiving, putaway, inspection, cross-docking, storage, replenishment, picking, packing, shipping, labor-management, billing, automation-orchestration]
+capabilities: [receiving, putaway, inspection, cross-docking, storage, replenishment, relocation, cycle-counting, physical-inventory, picking, packing, shipping, labor-management, billing, automation-orchestration]
 products:
 - {id: wms, name: Infor WMS, categories: [wms, lms]}
 status: active
 last_verified: '2026-08-18'
-evidence_refs: [infor-wms-2026]
+evidence_refs: [infor-wms-2026, infor-cycle-counting-2026, infor-physical-inventory-2026, infor-inventory-movement-2026]
