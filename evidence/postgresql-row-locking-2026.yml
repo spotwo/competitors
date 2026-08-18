@@ -1,0 +1,12 @@
+id: postgresql-row-locking-2026
+subject: postgresql-inventory-position
+source_type: official-docs
+grade: A
+title: PostgreSQL explicit row locking
+url: https://www.postgresql.org/docs/current/explicit-locking.html
+publisher: PostgreSQL Global Development Group
+captured_at: 2026-08-18
+supports:
+  - PostgreSQL supports row-level locks for coordinating concurrent updates to specific rows.
+  - Row locks block conflicting writers/lockers on the same row without preventing ordinary readers.
+notes: Supports position-level locking as one candidate implementation for high-contention inventory postings; exact isolation and retry policy remains workload-specific.
