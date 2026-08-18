@@ -1,6 +1,6 @@
 # Outbox Publisher Runtime
 
-Executable companion to ADR 0021 through ADR 0025.
+Executable companion to ADR 0021 through ADR 0026.
 
 ## Boundary
 
@@ -153,6 +153,12 @@ SELECT kernel_lab.replay_quarantined_domain_event(
 
 Replay records the prior error, quarantine reason, and attempt count in `domain_event_outbox_operator_actions`, then clears quarantine and resets the attempt budget. Replaying a published, ready, or unknown event returns `false` and creates no audit row.
 
+## Operational telemetry
+
+`read_domain_event_outbox_telemetry()` and `bin/inspect-kernel-outbox` expose a read-only snapshot independently of publisher process liveness. It classifies every unpublished row as ready, delayed, leased, or quarantined; reports attempt buckets and oldest ages; evaluates stable alert codes; and renders JSON or bounded-cardinality Prometheus metrics.
+
+See `OBSERVABILITY.md` for the exact state invariant, metric names, thresholds, exit codes, and operator response.
+
 ## Executable tests
 
 `tests/test_publisher_runtime.py` proves:
@@ -166,6 +172,15 @@ Replay records the prior error, quarantine reason, and attempt count in `domain_
 7. retry delay is bounded and deterministic for one event attempt;
 8. a poison event stops at the attempt limit and cannot be reclaimed;
 9. operator replay is audited and gives the event a fresh attempt budget.
+
+`tests/test_outbox_telemetry.py` proves:
+
+1. state and attempt partitions equal total backlog;
+2. published rows are excluded;
+3. expired leases/delays transition to ready by observation time;
+4. empty states omit age samples rather than reporting false zero ages;
+5. quarantine, backlog, and ready-age alerts are deterministic;
+6. JSON and Prometheus representations preserve the same snapshot.
 
 `tests/test_nats_transport.py` additionally proves against a real pinned NATS server:
 
@@ -181,9 +196,9 @@ Replay records the prior error, quarantine reason, and attempt count in `domain_
 The runtime intentionally does not yet hide these choices behind defaults:
 
 - outbox retention and archival;
-- quarantine alerting and bulk operator tooling;
+- bulk quarantine review/replay tooling;
 - async/bulk broker APIs;
-- OpenTelemetry publisher spans and backlog metrics;
+- OpenTelemetry publisher spans and hosted exporter integration;
 - NATS authentication, TLS, account isolation, clustering, Leaf Nodes, and production stream provisioning;
 - strict per-aggregate processing lanes where a capability requires them.
 

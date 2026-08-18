@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0025.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0026.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -207,6 +207,8 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | bounded Outbox retry | exponential delay is capped and deterministically jittered per event attempt |
 | poison-event quarantine | a permanently failing event stops consuming publisher capacity at its attempt limit |
 | audited operator replay | replay requires operator identity/reason and preserves the previous failure state in an audit row |
+| Outbox state telemetry | every unpublished event is exactly ready, delayed, leased, or quarantined |
+| backlog health | oldest ready age, attempt buckets, and bounded alert codes render as JSON or Prometheus |
 
 ## Deliberate simplifications
 
@@ -256,5 +258,6 @@ The conceptual decisions are:
 - `decisions/domain/0023-domain-event-transport-selection.md`
 - `decisions/domain/0024-nats-jetstream-transport-adapter.md`
 - `decisions/domain/0025-outbox-retry-quarantine.md`
+- `decisions/domain/0026-outbox-operational-telemetry.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.
