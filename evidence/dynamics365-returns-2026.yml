@@ -1,0 +1,13 @@
+id: dynamics365-returns-2026
+subject: returns-workflow
+source_type: official-docs
+grade: A
+title: Receive unannounced sales returns
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/sales-returns-unannounced
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 supports both return-details-based receiving and blind returns without a pre-existing RMA or original shipment reference.
+  - Return receiving identifies customer or source, item, quantity, license plate, and disposition code.
+  - Disposition code can determine inventory status, work template, and location directive for returned inventory.
+  - Return disposition can route accepted goods back to inventory or direct rejected, damaged, scrap, replacement, or other outcomes.
