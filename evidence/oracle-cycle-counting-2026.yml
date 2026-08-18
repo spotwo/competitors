@@ -1,0 +1,12 @@
+id: oracle-cycle-counting-2026
+subject: cycle-counting-workflow
+source_type: official-docs
+grade: A
+title: Cycle Count Task Creation
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/configuring-cycle-count-triggers.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Cycle count tasks can be created by configured triggers, task templates, APIs or item-driven rules.
+  - Task types can require LPN scan or full location content counting.
+  - Operational events such as alternate putaway or short pick can trigger cycle count work.
