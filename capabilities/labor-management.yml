@@ -1,0 +1,29 @@
+id: labor-management
+group: cross-functional
+label: Labor Management
+status: adopted
+definition: Plan, assign, measure, and improve warehouse labor work using workload, permissions, standards, productivity, and operational priorities.
+purpose: Match people to warehouse work while measuring execution performance and reducing avoidable labor cost.
+inputs: [workload, worker, schedule, labor-standard]
+outputs: [work-assignment, productivity-measurement, labor-plan]
+entities: [worker, shift, warehouse-task, labor-standard, performance-record]
+strategies: [system-directed-work, engineered-standards, proximity-based-assignment, incentive-management]
+related_capabilities: [picking, replenishment, automation-orchestration]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: module
+    terminology: [Labor management]
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: core
+    terminology: [Integrated Labor Management]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    level: module
+    terminology: [Labor]
+    evidence_refs: [infios-wms-capabilities-2026]
+spotwo:
+  canonical_term: Labor Management
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-wms-capabilities-2026]
