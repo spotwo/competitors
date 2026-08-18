@@ -2,17 +2,30 @@ id: physical-inventory
 group: inventory
 label: Physical Inventory
 status: adopted
-definition: Perform a broad or complete physical count of warehouse inventory and reconcile counted stock with system records.
+definition: Perform a broad or complete physical count of warehouse inventory and reconcile accepted count evidence with system records through controlled difference review and adjustment posting.
 purpose: Establish or verify authoritative inventory balances for audit, control, or operational reset.
-inputs: [inventory, count-scope]
-outputs: [count-result, discrepancy, inventory-adjustment]
-entities: [inventory, location, sku, lot, serial, count-task]
-strategies: [full-count, location-count, blind-count, freeze-and-count]
+inputs: [inventory, count-scope, inventory-policy]
+outputs: [count-result, accepted-count-result, inventory-difference, inventory-adjustment, reconciled-inventory]
+entities: [inventory, location, sku, lot, serial, handling-unit, inventory-document, count-work, count-result, inventory-difference]
+strategies: [full-count, location-count, blind-count, document-driven-count, recount, multi-team-count]
 related_capabilities: [cycle-counting, storage]
+vendor_observations:
+  - company_id: sap
+    product_id: sap/ewm
+    level: core
+    terminology: [physical inventory document, count result, recount, difference analyzer]
+    evidence_refs: [sap-physical-inventory-2026, sap-difference-analysis-2026]
+  - company_id: infor
+    product_id: infor/wms
+    level: core
+    terminology: [physical review, inventory tag, quantity counted]
+    evidence_refs: [infor-physical-inventory-2026]
 spotwo:
   canonical_term: Physical Inventory
   status: adopted
+  notes: Count observation, accepted count, inventory difference and adjustment posting are separate domain steps. Physical Inventory is broader audit/reconciliation scope than routine Cycle Counting.
 research_gaps:
-  - Map freeze, snapshot, recount, and approval workflows across vendors.
-last_verified: 2026-08-18
-evidence_refs: []
+  - Map snapshot versus live-count and freeze semantics across Dynamics Oracle Manhattan and Blue Yonder.
+  - Define recount tolerance approval and segregation-of-duties controls.
+last_verified: '2026-08-18'
+evidence_refs: [sap-physical-inventory-2026, sap-difference-analysis-2026, infor-physical-inventory-2026]
