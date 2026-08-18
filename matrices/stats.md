@@ -6,8 +6,8 @@
 |---|---:|
 | Companies | 50 |
 | Products | 88 |
-| Evidence records | 124 |
-| Claims | 21 |
+| Evidence records | 128 |
+| Claims | 22 |
 | Terminology records | 30 |
 | Authorities | 8 |
 | Taxonomy vocabularies | 9 |
@@ -17,7 +17,7 @@
 | Integration patterns | 8 |
 | Capability records | 27 |
 | Vendor capability observations | 64 |
-| Workflow decompositions | 1 |
-| Workflow stages | 8 |
-| Workflow strategies | 18 |
-| Workflow vendor models | 10 |
+| Workflow decompositions | 2 |
+| Workflow stages | 16 |
+| Workflow strategies | 30 |
+| Workflow vendor models | 13 |
