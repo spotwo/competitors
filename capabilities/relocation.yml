@@ -1,18 +1,36 @@
 id: relocation
 group: storage
 label: Relocation
-status: candidate
-definition: Move inventory or handling units between internal warehouse locations without satisfying a customer or production demand.
+status: adopted
+definition: Move inventory or handling units between internal warehouse locations for storage correction balancing consolidation quality follow-up or operational reorganization rather than direct customer or production fulfilment.
 purpose: Reorganize stock, free capacity, correct placement, or support operational balancing.
-inputs: [inventory, source-location, destination-location]
-outputs: [warehouse-work, updated-inventory-location]
-entities: [inventory, handling-unit, location, warehouse-task]
-strategies: [manual-relocation, directed-relocation, capacity-balancing]
-related_capabilities: [storage, slotting, replenishment]
+inputs: [inventory, source-location, destination-policy, movement-reason]
+outputs: [movement-work, movement-confirmation, updated-inventory-location]
+entities: [inventory, handling-unit, location, inventory-movement, movement-work, movement-confirmation]
+strategies: [worker-directed, system-directed, full-handling-unit, partial-inventory, ad-hoc]
+related_capabilities: [storage, slotting, replenishment, putaway]
+vendor_observations:
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    level: core
+    terminology: [movement, movement by template, warehouse work]
+    evidence_refs: [dynamics365-inventory-movement-2026]
+  - company_id: sap
+    product_id: sap/ewm
+    level: core
+    terminology: [internal stock transfer, move product, move handling unit, warehouse task]
+    evidence_refs: [sap-inventory-movement-2026]
+  - company_id: infor
+    product_id: infor/wms
+    level: core
+    terminology: [standard move, RF move]
+    evidence_refs: [infor-inventory-movement-2026]
 spotwo:
   canonical_term: Relocation
-  status: candidate
+  status: adopted
+  notes: Relocation is a capability-specific reason for the generic Inventory Movement primitive. Transfer remains a separate business concept when movement crosses warehouse or organizational boundaries.
 research_gaps:
-  - Compare vendor terms such as relocate, transfer, move, internal transfer, and bin-to-bin transfer.
-last_verified: 2026-08-18
-evidence_refs: []
+  - Compare Oracle Manhattan Blue Yonder and 3PL-first terms such as relocate transfer move internal transfer and bin-to-bin transfer.
+  - Define reservation and allocation behavior when committed stock is relocated.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-inventory-movement-2026, sap-inventory-movement-2026, infor-inventory-movement-2026]
