@@ -1,0 +1,12 @@
+id: blue-yonder-wes-picking-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: Warehouse Execution - Blue Yonder
+url: https://blueyonder.com/solutions/warehouse-management/warehouse-execution
+publisher: Blue Yonder
+captured_at: '2026-08-18'
+supports:
+  - Blue Yonder WES dynamically prioritizes and assigns warehouse tasks based on priority, due time, worker proximity and permissions.
+  - The system can group tasks by outbound load or shipment and build picking tours from multiple pick lists.
+  - Replenishment dependencies can be linked to outbound orders, demonstrating orchestration across picking prerequisites.
