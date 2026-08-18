@@ -1,0 +1,13 @@
+id: softeon-picking-model
+subject_type: company
+subject: softeon
+predicate: picking-model
+value:
+  release: [wave, waveless, dual]
+  assignment: [dynamic]
+  routing_factors: [location, order-priority, travel-distance]
+  execution: [rf, voice, rfid]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [softeon-waveless-picking-2026]
