@@ -2,13 +2,13 @@ id: cross-docking
 group: inbound
 label: Cross-docking
 status: adopted
-definition: Route eligible inbound goods directly or near-directly into outbound fulfilment with minimal or no storage dwell.
-purpose: Reduce storage touches, inventory dwell time, and handling for demand already known at receipt.
-inputs: [receipt, demand, outbound-order]
-outputs: [cross-dock-work, outbound-allocation]
-entities: [receipt, handling-unit, order, shipment, staging-location]
-strategies: [pre-allocated, opportunistic, flow-through]
-related_capabilities: [receiving, allocation, staging, loading, shipping]
+definition: Match eligible inbound supply to outbound demand and route the matched quantity directly or near-directly into outbound fulfilment with minimal or no normal storage dwell.
+purpose: Reduce storage touches, inventory dwell time, and later picking for demand that can be satisfied at receipt.
+inputs: [receipt, inbound-inventory, outbound-demand, cross-dock-policy]
+outputs: [cross-dock-allocation, cross-dock-work, outbound-ready-inventory, residual-putaway-demand]
+entities: [receipt, handling-unit, order, allocation, shipment, staging-location, cross-dock-work]
+strategies: [planned-cross-dock, lpn-match, sku-match, attribute-match, flow-through]
+related_capabilities: [receiving, allocation, putaway, staging, loading, shipping]
 vendor_observations:
   - company_id: blue-yonder
     level: core
@@ -16,10 +16,22 @@ vendor_observations:
   - company_id: infios
     level: core
     evidence_refs: [infios-enterprise-capabilities-2026]
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    level: core
+    terminology: [planned cross-docking, cross docking work]
+    evidence_refs: [dynamics365-cross-docking-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    level: core
+    terminology: [cross-dock allocation, XDock mode, LPN cross-dock]
+    evidence_refs: [oracle-cross-docking-2026]
 spotwo:
   canonical_term: Cross-docking
   status: adopted
+  notes: Cross-docking is a demand-linked allocation and routing decision, not merely a special storage location. Matched quantity bypasses normal putaway and later picking; residual quantity follows normal inbound handling.
 research_gaps:
-  - Compare pre-allocated versus opportunistic cross-dock terminology across additional WMS products.
-last_verified: 2026-08-18
-evidence_refs: [blue-yonder-wm-operations-2026, infios-enterprise-capabilities-2026]
+  - Compare pre-allocated versus opportunistic cross-dock terminology and matching rules across SAP Manhattan Blue Yonder and 3PL-first WMS products.
+  - Decide whether CrossDockAllocation is a typed use of generic Allocation or a separate aggregate.
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wm-operations-2026, infios-enterprise-capabilities-2026, dynamics365-cross-docking-2026, oracle-cross-docking-2026]
