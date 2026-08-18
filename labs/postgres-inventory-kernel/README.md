@@ -26,7 +26,7 @@ The command:
 
 1. installs the pinned lab Python dependencies;
 2. starts an isolated PostgreSQL container on port `55432` by default;
-3. applies `sql/001_schema.sql` with `ON_ERROR_STOP=1`;
+3. applies every `sql/*.sql` migration in lexical order with `ON_ERROR_STOP=1`;
 4. runs the concurrency/invariant tests;
 5. destroys the lab database volume on exit.
 
@@ -82,7 +82,7 @@ Exact serial tracking uses `inventory_serial_memberships`; a tenant/serial can h
 
 ### Retry safety
 
-Inventory posting commands carry a tenant-scoped idempotency key. A retry returns the already-posted transaction instead of applying the quantity delta a second time.
+Inventory posting commands carry a tenant-scoped idempotency key bound to a canonical request fingerprint. An exact retry returns the already-posted transaction instead of applying the quantity delta a second time; reuse of the same key for a different position, quantity, or movement payload is rejected.
 
 ## Executable scenarios
 
@@ -96,6 +96,7 @@ Inventory posting commands carry a tenant-scoped idempotency key. A retry return
 | repack | moving part of stock HU A -> HU B is a real position split |
 | deadlock ordering | opposite concurrent transfers lock the same pair in deterministic order |
 | idempotent retry | repeating one logical allocation does not double-post it |
+| idempotency collision | reusing one key for a different payload is rejected |
 
 ## Deliberate simplifications
 
