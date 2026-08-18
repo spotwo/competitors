@@ -1,0 +1,12 @@
+id: mecalux-picking-methods-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: Pick/Put-to-Light Integration and Voice Picking - Easy WMS
+url: https://www.mecalux.com/software/updates/ptl
+publisher: Mecalux
+captured_at: '2026-08-18'
+supports:
+  - Easy WMS supports pick-to-light and put-to-light as assisted execution methods while preserving WMS task allocation and status tracking.
+  - Light displays identify source or destination positions and quantities while operator confirmation is returned to WMS.
+  - Mecalux also supports RF, voice and goods-to-person picking, reinforcing execution channel as a strategy below the Picking capability.
