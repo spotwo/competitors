@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass, field
+from hashlib import sha256
 from typing import Any, Mapping
 
 from nats.aio.client import Client as NatsClient
@@ -11,7 +12,11 @@ from nats.errors import TimeoutError as NatsTimeoutError
 from nats.js.api import AckPolicy
 from nats.js.client import JetStreamContext
 
-from consumer_runtime import InboxDeliveryMetadata
+from consumer_runtime import (
+    ConsumedEvent,
+    InboxDeliveryMetadata,
+    MalformedDeliveryEvidence,
+)
 from nats_transport import (
     AGGREGATE_ID_HEADER,
     AGGREGATE_TYPE_HEADER,
@@ -20,6 +25,8 @@ from nats_transport import (
     NATS_MESSAGE_ID_HEADER,
 )
 
+PAYLOAD_PREVIEW_BYTES = 4096
+
 
 def _required_name(value: str, field_name: str) -> str:
     if not value or value != value.strip():
@@ -27,12 +34,19 @@ def _required_name(value: str, field_name: str) -> str:
     return value
 
 
+class MalformedJetStreamMessage(ValueError):
+    def __init__(self, failure_code: str, message: str):
+        super().__init__(message)
+        self.failure_code = failure_code
+
+
 @dataclass
 class NatsJetStreamDelivery:
-    envelope: Mapping[str, Any]
+    envelope: Mapping[str, Any] | None
     metadata: InboxDeliveryMetadata
     _source: NatsJetStreamPullSource = field(repr=False)
     _message: Msg = field(repr=False)
+    malformed: MalformedDeliveryEvidence | None = None
     _acknowledged: bool = field(default=False, init=False, repr=False)
 
     def ack(self) -> None:
@@ -166,27 +180,69 @@ class NatsJetStreamPullSource:
             raise
 
         message = messages[0]
-        envelope = self._decode_envelope(message)
-        self._validate_headers(message, envelope)
-        broker_metadata = message.metadata
+        # JetStream metadata is transport-owned identity and must be captured before
+        # any payload, envelope, event_id, or application header is trusted.
+        metadata = self._delivery_metadata(message)
+
+        try:
+            envelope = self._decode_envelope(message)
+            self._validate_headers(message, envelope)
+            try:
+                ConsumedEvent.from_envelope(envelope)
+            except ValueError as exc:
+                raise MalformedJetStreamMessage(
+                    "invalid_event_envelope",
+                    str(exc),
+                ) from exc
+        except MalformedJetStreamMessage as exc:
+            return NatsJetStreamDelivery(
+                envelope=None,
+                metadata=metadata,
+                malformed=self._malformed_evidence(message, exc),
+                _source=self,
+                _message=message,
+            )
+
         return NatsJetStreamDelivery(
             envelope=envelope,
-            metadata=InboxDeliveryMetadata(
-                transport="nats-jetstream",
-                transport_message_id=(
-                    f"{broker_metadata.stream}:{broker_metadata.sequence.stream}"
-                ),
-                subject=message.subject,
-                delivery_count=broker_metadata.num_delivered,
-                stream=broker_metadata.stream,
-                consumer=broker_metadata.consumer,
-                stream_sequence=broker_metadata.sequence.stream,
-                consumer_sequence=broker_metadata.sequence.consumer,
-                pending_count=broker_metadata.num_pending,
-                broker_timestamp=broker_metadata.timestamp,
-            ),
+            metadata=metadata,
             _source=self,
             _message=message,
+        )
+
+    @staticmethod
+    def _delivery_metadata(message: Msg) -> InboxDeliveryMetadata:
+        broker_metadata = message.metadata
+        return InboxDeliveryMetadata(
+            transport="nats-jetstream",
+            transport_message_id=(
+                f"{broker_metadata.stream}:{broker_metadata.sequence.stream}"
+            ),
+            subject=message.subject,
+            delivery_count=broker_metadata.num_delivered,
+            stream=broker_metadata.stream,
+            consumer=broker_metadata.consumer,
+            stream_sequence=broker_metadata.sequence.stream,
+            consumer_sequence=broker_metadata.sequence.consumer,
+            pending_count=broker_metadata.num_pending,
+            broker_timestamp=broker_metadata.timestamp,
+        )
+
+    @staticmethod
+    def _malformed_evidence(
+        message: Msg,
+        error: MalformedJetStreamMessage,
+    ) -> MalformedDeliveryEvidence:
+        payload = bytes(message.data)
+        preview = payload[:PAYLOAD_PREVIEW_BYTES]
+        return MalformedDeliveryEvidence(
+            failure_code=error.failure_code,
+            error=str(error),
+            payload_sha256=sha256(payload).hexdigest(),
+            payload_size=len(payload),
+            payload_preview=preview,
+            payload_truncated=len(preview) < len(payload),
+            headers={str(key): str(value) for key, value in (message.headers or {}).items()},
         )
 
     async def _close_client(self) -> None:
@@ -220,11 +276,24 @@ class NatsJetStreamPullSource:
     @staticmethod
     def _decode_envelope(message: Msg) -> dict[str, Any]:
         try:
-            envelope = json.loads(message.data.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise ValueError("JetStream message must contain a UTF-8 JSON envelope") from exc
+            decoded = message.data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise MalformedJetStreamMessage(
+                "invalid_message_encoding",
+                "JetStream message must contain a UTF-8 JSON envelope",
+            ) from exc
+        try:
+            envelope = json.loads(decoded)
+        except json.JSONDecodeError as exc:
+            raise MalformedJetStreamMessage(
+                "invalid_message_json",
+                "JetStream message must contain a UTF-8 JSON envelope",
+            ) from exc
         if not isinstance(envelope, dict):
-            raise ValueError("JetStream event envelope must be a JSON object")
+            raise MalformedJetStreamMessage(
+                "invalid_event_envelope",
+                "JetStream event envelope must be a JSON object",
+            )
         return envelope
 
     @staticmethod
@@ -240,6 +309,12 @@ class NatsJetStreamPullSource:
         for header, value in expected.items():
             actual = headers.get(header)
             if actual is None:
-                raise ValueError(f"JetStream message is missing required header {header}")
+                raise MalformedJetStreamMessage(
+                    "invalid_transport_headers",
+                    f"JetStream message is missing required header {header}",
+                )
             if actual != str(value):
-                raise ValueError(f"JetStream header {header} does not match envelope")
+                raise MalformedJetStreamMessage(
+                    "invalid_transport_headers",
+                    f"JetStream header {header} does not match envelope",
+                )
