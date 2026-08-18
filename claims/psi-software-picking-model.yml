@@ -1,0 +1,13 @@
+id: psi-software-picking-model
+subject_type: company
+subject: psi-software
+predicate: picking-model
+value:
+  grouping: [single-order, multi-order, picking-batch]
+  routing: [route-optimized]
+  execution: [person-to-goods, goods-to-person]
+  downstream: [consolidation, pick-and-pack, packing, shipping]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [psi-wms-picking-model-2026]
