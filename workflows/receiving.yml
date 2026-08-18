@@ -1,0 +1,75 @@
+id: receiving
+capability_id: receiving
+title: Receiving Workflow
+status: candidate
+definition: Cross-vendor decomposition of how an expected or unexpected inbound arrival becomes registered warehouse inventory and is handed to quality, verification, cross-dock or putaway execution.
+stages:
+  - {id: arrival, label: Arrival, purpose: Establish that an inbound vehicle load shipment or handling unit has physically arrived.}
+  - {id: unloading, label: Unloading, purpose: Remove inbound handling units or goods from the transport asset into warehouse control.}
+  - {id: registration, label: Identification and Registration, purpose: Identify shipment order item handling unit lot serial and actual received quantity.}
+  - {id: quality, label: Quality Gate, purpose: Apply optional inspection or quality routing before normal storage.}
+  - {id: receipt, label: Goods Receipt, purpose: Record the physical receipt so inventory exists under warehouse control.}
+  - {id: verification, label: Receipt Verification, purpose: Validate completion of inbound shipment data and resolve remaining receipt discrepancies.}
+  - {id: handoff, label: Downstream Handoff, purpose: Route received inventory to putaway cross-dock production supply or exception handling.}
+objects:
+  - {id: inbound-shipment, term: Inbound Shipment, role: Expected inbound movement or delivery context.}
+  - {id: inbound-load, term: Inbound Load, role: Transport-level grouping of one or more inbound shipments.}
+  - {id: inbound-handling-unit, term: Inbound Handling Unit, role: Pallet case LPN or other identifiable received unit.}
+  - {id: receipt-line, term: Receipt Line, role: Actual received item quantity and attributes against expected demand.}
+  - {id: receiving-location, term: Receiving Location, role: Dock or inbound location where inventory first enters warehouse control.}
+  - {id: quality-result, term: Quality Result, role: Pass fail or inspection outcome controlling downstream disposition.}
+  - {id: receipt, term: Receipt, role: Recorded physical receipt event and inventory result.}
+  - {id: receiving-exception, term: Receiving Exception, role: Structured over under unknown damaged or validation deviation.}
+states:
+  - {id: expected, label: Expected, meaning: Inbound demand exists but has not physically arrived.}
+  - {id: arrived, label: Arrived, meaning: Physical arrival is known to the warehouse.}
+  - {id: unloading, label: Unloading, meaning: Goods are being transferred from transport into warehouse control.}
+  - {id: registering, label: Registering, meaning: Actual identity quantity and attributes are being captured.}
+  - {id: quality-hold, label: Quality Hold, meaning: Inventory awaits or failed a quality decision.}
+  - {id: received, label: Received, meaning: Physical receipt is recorded.}
+  - {id: verification-pending, label: Verification Pending, meaning: Receipt exists but inbound shipment completion has not been verified.}
+  - {id: verified, label: Verified, meaning: Inbound receipt is accepted as complete for downstream flow., terminal: true}
+  - {id: exception, label: Exception, meaning: Receipt cannot complete normally without resolution.}
+strategies:
+  - {id: asn-based, category: registration, label: ASN-Based Receiving, definition: Identify expected handling-unit contents from an advance ship notice., status: adopted, evidence_refs: [dynamics-license-plate-receiving-2026]}
+  - {id: license-plate-receiving, category: registration, label: License Plate Receiving, definition: Scan an inbound license plate and register its expected or captured contents., status: adopted, evidence_refs: [dynamics-license-plate-receiving-2026, oracle-wms-receiving-2026]}
+  - {id: load-level-receiving, category: grouping, label: Load-Level Receiving, definition: Receive multiple inbound shipments within one transport load context., status: observed, evidence_refs: [oracle-wms-receiving-2026]}
+  - {id: combined-receive-putaway, category: execution, label: Receive and Putaway, definition: Continue directly from receipt registration into putaway execution in one worker flow., status: adopted, evidence_refs: [dynamics-license-plate-receiving-2026]}
+  - {id: quality-gate, category: quality, label: Quality Gate, definition: Route received inventory through pass fail or inspection logic before normal storage., status: adopted, evidence_refs: [dynamics-license-plate-receiving-2026]}
+exceptions:
+  - {id: over-receipt, label: Over Receipt, trigger: Actual received quantity exceeds expected or permitted quantity., outcomes: [warn-block-or-accept, record-exception], status: adopted, evidence_refs: [oracle-wms-receiving-2026]}
+  - {id: under-receipt, label: Under Receipt, trigger: Receipt is completed with less quantity than expected., outcomes: [record-actual, preserve-or-close-remaining-demand], status: adopted, evidence_refs: [oracle-wms-receiving-2026]}
+  - {id: quality-failure, label: Quality Failure, trigger: Inbound quality check fails., outcomes: [hold-or-divert, create-quality-work], status: adopted, evidence_refs: [dynamics-license-plate-receiving-2026]}
+vendor_models:
+  - company_id: sap
+    product_id: sap/ewm
+    terminology: {document: Inbound Delivery, receipt: Goods Receipt, task: Warehouse Task}
+    workflow: [arrival, ready-for-warehouse-processing, unloading, goods-receipt, putaway-task-creation]
+    execution_channels: [rf, app]
+    evidence_refs: [sap-ewm-inbound-process-2026]
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {container: License Plate, receipt: Registration, downstream_work: Putaway Work}
+    workflow: [asn-or-order, license-plate-scan, registration, optional-work-creation, putaway]
+    strategies: [license-plate-receiving, combined-receive-putaway]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics-license-plate-receiving-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    terminology: {document: Inbound Shipment, container: IBLPN, completion: Shipment Verification}
+    workflow: [shipment-or-load, rf-receiving, attribute-capture, receipt, shipment-verification, putaway]
+    execution_channels: [rf, ui]
+    evidence_refs: [oracle-wms-receiving-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [arrival, unloading, registration, quality, receipt, verification, handoff]
+  canonical_objects: [inbound-shipment, inbound-load, inbound-handling-unit, receipt-line, receiving-location, receipt, receiving-exception]
+  task_states: [expected, arrived, unloading, registering, quality-hold, received, verification-pending, verified, exception]
+  commands: [register-arrival, unload-inbound-unit, register-receipt, record-quality-result, post-receipt, verify-receipt, report-receiving-exception]
+  events: [inbound-arrived, inbound-unit-unloaded, receipt-registered, quality-result-recorded, goods-received, receipt-verified, receiving-exception-reported]
+  notes: Receipt existence must remain separate from putaway completion.
+research_gaps:
+  - Sample unexpected receiving and blind receiving models across additional WMS products.
+  - Decide whether Shipment Verification is a canonical object or vendor-specific completion policy.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-inbound-process-2026, dynamics-license-plate-receiving-2026, oracle-wms-receiving-2026]
