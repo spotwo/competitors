@@ -6,6 +6,7 @@
 |---|---|---|---:|---:|
 | Facility and Physical Location Ontology | facility | candidate | 7 | 2 |
 | Handling Unit and Logistic Unit Ontology | handling-unit | candidate | 8 | 3 |
-| Inventory Ontology | inventory | candidate | 12 | 3 |
-| Warehouse Process Ontology | process | candidate | 17 | 2 |
+| Inventory Movement Ontology | movement | candidate | 11 | 9 |
+| Inventory Ontology | inventory | candidate | 16 | 6 |
+| Warehouse Process Ontology | process | candidate | 18 | 5 |
 | Storage Location Ontology | storage-location | candidate | 9 | 4 |
