@@ -1,0 +1,13 @@
+id: kardex-power-pick-cloud-2026
+subject: kardex
+source_type: official-product-page
+grade: B
+title: Kardex Power Pick Cloud
+url: https://www.kardex.com/en-gb/products/software/kardex-power-pick-cloud
+publisher: Kardex
+captured_at: '2026-08-18'
+supports:
+- cloud-native warehouse execution and orchestration platform
+- location and bin management
+- small warehouse through enterprise plan segmentation
+- REST API and automation integration

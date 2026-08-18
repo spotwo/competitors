@@ -1,0 +1,19 @@
+id: erpnext
+name: ERPNext
+entity_type: open-source-project
+website: https://erpnext.com/
+markets: [global]
+solution_layers: [erp, wms]
+industries: [manufacturing, retail, wholesale]
+operating_environments: [distribution-center, manufacturing-warehouse, production-supply]
+capabilities: [receiving, storage, relocation, replenishment, physical-inventory, picking, packing, shipping]
+products:
+- id: stock-and-warehouse
+  name: ERPNext Stock and Warehouse
+  categories: [erp, wms]
+status: active
+research_gaps:
+- Distinguish ERP inventory and warehouse functionality from full WMS competitor scope in future comparisons.
+- Verify canonical hosted versus self-hosted deployment taxonomy from current Frappe documentation.
+last_verified: '2026-08-18'
+evidence_refs: [erpnext-warehouse-2026]

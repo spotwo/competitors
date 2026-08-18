@@ -1,0 +1,17 @@
+id: kardex
+name: Kardex
+entity_type: automation-vendor
+website: https://www.kardex.com/
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms, wes, robotics-orchestration]
+deployment_models: [cloud, on-premise]
+industries: [retail, ecommerce, manufacturing, industrial]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply]
+capabilities: [storage, replenishment, picking, packing, physical-inventory, automation-orchestration]
+products:
+- {id: power-pick-system, name: Kardex Power Pick System, categories: [wms], deployment_models: [on-premise]}
+- {id: power-pick-cloud, name: Kardex Power Pick Cloud, categories: [wes, robotics-orchestration], deployment_models: [cloud]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [kardex-power-pick-2026, kardex-power-pick-cloud-2026]

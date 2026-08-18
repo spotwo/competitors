@@ -1,0 +1,20 @@
+id: openboxes
+name: OpenBoxes
+entity_type: open-source-project
+website: https://openboxes.com/
+markets: [global]
+solution_layers: [wms]
+deployment_models: [cloud, on-premise]
+industries: [healthcare]
+operating_environments: [distribution-center]
+capabilities: [receiving, inspection, storage, cycle-counting, physical-inventory, picking, packing, shipping, returns]
+products:
+- id: openboxes
+  name: OpenBoxes
+  categories: [wms]
+  deployment_models: [cloud, on-premise]
+status: active
+research_gaps:
+- Map OpenBoxes Lift commercial service separately from self-hosted open-source deployments.
+last_verified: '2026-08-18'
+evidence_refs: [openboxes-platform-2026]

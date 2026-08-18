@@ -1,0 +1,20 @@
+id: vanderlande
+name: Vanderlande
+entity_type: automation-vendor
+website: https://www.vanderlande.com/
+hq_country: NL
+markets: [global]
+solution_layers: [wes, robotics-orchestration]
+industries: [retail, ecommerce, food-beverage]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [storage, replenishment, picking, packing, sortation, shipping, automation-orchestration]
+products:
+- id: vision
+  name: VISION
+  categories: [wes, robotics-orchestration]
+  notes: Single warehousing software platform orchestrating equipment, robotics, people, and processes.
+status: active
+research_gaps:
+- Map the exact VISION WES/WCS boundary and canonical deployment model.
+last_verified: '2026-08-18'
+evidence_refs: [vanderlande-vision-2026]

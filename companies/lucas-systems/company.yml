@@ -1,0 +1,18 @@
+id: lucas-systems
+name: Lucas Systems
+entity_type: vendor
+website: https://www.lucasware.com/
+markets: [north-america, europe]
+solution_layers: [wes]
+industries: [retail, ecommerce, 3pl, wholesale]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [replenishment, picking, packing, labor-management, automation-orchestration]
+products:
+- id: warehouse-optimization-suite
+  name: Lucas Warehouse Optimization Suite
+  categories: [wes]
+status: active
+research_gaps:
+- Verify canonical deployment model and customer-size segmentation.
+last_verified: '2026-08-18'
+evidence_refs: [lucas-wes-2026]

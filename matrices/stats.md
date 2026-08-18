@@ -4,9 +4,9 @@
 
 | Metric | Count |
 |---|---:|
-| Companies | 40 |
-| Products | 75 |
-| Evidence records | 73 |
+| Companies | 50 |
+| Products | 88 |
+| Evidence records | 85 |
 | Claims | 12 |
 | Terminology records | 30 |
 | Authorities | 8 |

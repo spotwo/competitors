@@ -1,0 +1,19 @@
+id: honeywell-intelligrated
+name: Honeywell Intelligrated
+entity_type: automation-vendor
+website: https://automation.honeywell.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wes, wcs, machine-control, analytics]
+deployment_models: [cloud]
+industries: [retail, ecommerce, 3pl]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, storage, replenishment, picking, sortation, packing, shipping, labor-management, automation-orchestration]
+products:
+- id: momentum-core
+  name: Momentum Core
+  categories: [wes, wcs, machine-control, analytics]
+  deployment_models: [cloud]
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [honeywell-momentum-core-2026]

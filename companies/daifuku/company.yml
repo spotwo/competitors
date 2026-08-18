@@ -1,0 +1,18 @@
+id: daifuku
+name: Daifuku
+entity_type: automation-vendor
+website: https://www.daifuku.com/
+hq_country: JP
+markets: [global]
+solution_layers: [wms, wcs]
+industries: [retail, ecommerce, food-beverage, pharma, electronics, manufacturing, cold-chain]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, cold-storage]
+capabilities: [receiving, storage, replenishment, picking, packing, sortation, shipping, physical-inventory, automation-orchestration]
+products:
+- {id: warenavi, name: WareNavi, categories: [wms]}
+- {id: warehouse-rx, name: Warehouse Rx, categories: [wcs]}
+status: active
+research_gaps:
+- Map region-specific WMS product naming such as WareNavi and eWareNavi and verify deployment models.
+last_verified: '2026-08-18'
+evidence_refs: [daifuku-warenavi-2026, daifuku-software-2026]

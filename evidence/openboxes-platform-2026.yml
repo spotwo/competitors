@@ -1,0 +1,14 @@
+id: openboxes-platform-2026
+subject: openboxes
+source_type: official-docs
+grade: A
+title: OpenBoxes Features and Platform
+url: https://docs.openboxes.com/en/stable/about/features/
+publisher: OpenBoxes
+captured_at: '2026-08-18'
+supports:
+- open-source warehouse management system
+- inventory management
+- lot and expiry tracking
+- healthcare supply-chain focus
+notes: OpenBoxes also offers a managed cloud option through OpenBoxes Lift according to its official site.

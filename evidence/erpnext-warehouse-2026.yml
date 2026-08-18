@@ -1,0 +1,13 @@
+id: erpnext-warehouse-2026
+subject: erpnext
+source_type: official-docs
+grade: A
+title: ERPNext Warehouse
+url: https://docs.frappe.io/erpnext/warehouse
+publisher: Frappe
+captured_at: '2026-08-18'
+supports:
+- warehouse and storage-location hierarchy
+- sub-warehouse modeling down to room, row, shelf and bin
+- manufacturing, wholesale and transport warehouse context
+- stock balance by item and warehouse

@@ -1,0 +1,19 @@
+id: tgw-logistics
+name: TGW Logistics
+entity_type: automation-vendor
+website: https://www.tgw-group.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, wes, wcs]
+industries: [retail, ecommerce, food-beverage, industrial]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, storage, replenishment, picking, packing, sortation, shipping, automation-orchestration]
+products:
+- id: werx
+  name: WERX
+  categories: [wms, wes, wcs]
+status: active
+research_gaps:
+- Verify canonical WERX deployment models.
+last_verified: '2026-08-18'
+evidence_refs: [tgw-werx-2026]

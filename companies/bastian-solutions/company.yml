@@ -1,0 +1,18 @@
+id: bastian-solutions
+name: Bastian Solutions
+entity_type: automation-vendor
+website: https://www.bastiansolutions.com/
+markets: [north-america, latam]
+solution_layers: [wms, wes, wcs]
+industries: [retail, ecommerce, food-beverage, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, sortation, shipping, automation-orchestration]
+products:
+- id: exacta
+  name: Exacta Intralogistics Software
+  categories: [wms, wes, wcs]
+status: active
+research_gaps:
+- Verify current Exacta deployment models and broader geographic support footprint.
+last_verified: '2026-08-18'
+evidence_refs: [bastian-exacta-2026]
