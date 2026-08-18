@@ -1,0 +1,10 @@
+id: oracle-allocation-source-binding
+subject_type: product
+subject: oracle/warehouse-management-cloud
+predicate: allocation-binds-demand-to-source-inventory
+value: true
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [oracle-allocation-model-2026]
+notes: Oracle WMS allocation associates order detail with source inventory and may be created through waves direct allocation pick-and-allocate or cross-docking.
