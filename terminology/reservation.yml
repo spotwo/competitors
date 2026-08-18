@@ -1,0 +1,10 @@
+id: reservation
+preferred_term: Reservation
+definition: Commitment of inventory capacity to demand that may be expressed at a coarser inventory scope than the final warehouse execution source.
+domain: [inventory, fulfillment, commitment]
+aliases: [inventory reservation, stock reservation]
+status: candidate
+spotwo_term: Reservation
+notes: Candidate Spotwo semantics intentionally allow exact location or handling-unit binding to be deferred. Vendor terminology varies and may overlap with allocation.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-reservations-2026, oracle-allocation-model-2026]
