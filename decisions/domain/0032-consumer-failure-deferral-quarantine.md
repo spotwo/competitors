@@ -132,9 +132,9 @@ The PostgreSQL and pinned NATS lab proves:
 
 ### Costs and limits
 
-- deployments must run and monitor the local retry worker;
+- deployments must run the local retry worker and poll the ADR 0033 health snapshot;
 - failure rows and action audit require an explicit retention policy;
 - classifier policy must evolve with each concrete handler;
 - malformed transport messages still need an adapter-level poison policy;
-- operator authentication, authorization, approvals, alerts, and UI remain deployment concerns;
+- operator authentication, authorization, approvals, notification routing, and UI remain deployment concerns;
 - Inbox cleanup, failure-row cleanup, bulk replay, and generic multi-handler routing remain later slices.
