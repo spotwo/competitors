@@ -9,9 +9,9 @@ solution_layers: [erp, wms]
 deployment_models: [saas, cloud]
 industries: [retail, ecommerce, manufacturing]
 operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
-capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+capabilities: [receiving, putaway, cross-docking, storage, replenishment, allocation, picking, packing, shipping, automation-orchestration]
 products:
 - {id: warehouse-management-cloud, name: Oracle Warehouse Management Cloud, categories: [wms]}
 status: active
 last_verified: '2026-08-18'
-evidence_refs: [oracle-wms-26c]
+evidence_refs: [oracle-wms-26c, oracle-allocation-model-2026, oracle-cross-docking-2026]
