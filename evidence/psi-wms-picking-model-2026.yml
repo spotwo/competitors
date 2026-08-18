@@ -1,0 +1,12 @@
+id: psi-wms-picking-model-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: PSIwms Core Functions - Order Picking
+url: https://www.psi.de/en/solutions/products/psiwms/module/psiwms-core-functions
+publisher: PSI Software
+captured_at: '2026-08-18'
+supports:
+  - PSIwms supports person-to-goods and goods-to-person picking as well as single-order and multi-order processes.
+  - Picking can be route optimized and feeds consolidation, packing and shipping.
+  - PSIwms can merge delivery orders into bulk orders and reserves inventory before subsequent execution steps.
