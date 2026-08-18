@@ -8,9 +8,12 @@ on:
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
+      - 'decisions/domain/0017-warehouse-work-execution-engine.md'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
+      - 'ontology/process.yml'
+      - 'ontology/work.yml'
       - '.github/workflows/kernel-lab.yml'
   merge_group:
     types: [checks_requested]
@@ -22,9 +25,12 @@ on:
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
+      - 'decisions/domain/0017-warehouse-work-execution-engine.md'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
+      - 'ontology/process.yml'
+      - 'ontology/work.yml'
       - '.github/workflows/kernel-lab.yml'
   workflow_dispatch:
 
@@ -59,9 +65,12 @@ jobs:
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
+            decisions/domain/0017-warehouse-work-execution-engine.md \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
             ontology/handling-unit.yml \
+            ontology/process.yml \
+            ontology/work.yml \
             .github/workflows/kernel-lab.yml; then
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
