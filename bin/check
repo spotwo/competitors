@@ -4,7 +4,8 @@ set -euo pipefail
 python scripts/validate.py
 python scripts/validate_kernel_semantics.py
 python scripts/generate_matrices.py --check
-python scripts/generate_audit.py --check
-python scripts/generate_domain_views.py --check
-python scripts/generate_workflow_views.py --check
-python scripts/generate_kernel_views.py --check
+python scripts/generate_audit.py
+
+echo "--- generated audit diff ---"
+git diff -- matrices/stats.md matrices/research-gaps.md
+exit 1
