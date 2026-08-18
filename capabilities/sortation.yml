@@ -1,0 +1,23 @@
+id: sortation
+group: fulfillment
+label: Sortation
+status: candidate
+definition: Route units, packages, or handling units into destinations, sequences, lanes, or groups according to operational rules.
+purpose: Direct material flow efficiently after receiving, picking, packing, or consolidation.
+inputs: [handling-unit, destination-rule, routing-data]
+outputs: [routed-unit, destination-assignment]
+entities: [handling-unit, chute, lane, destination, conveyor]
+strategies: [manual-sort, conveyor-sort, inbound-sort, outbound-sort]
+related_capabilities: [receiving, consolidation, packing, automation-orchestration]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: advanced
+    terminology: [inbound sortation]
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+spotwo:
+  canonical_term: Sortation
+  status: candidate
+research_gaps:
+  - Separate software routing logic from physical sorter control in WES/WCS products.
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026]
