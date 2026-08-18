@@ -1,7 +1,7 @@
 id: spotwo-wms-kernel
 version: 0.1.0
 status: frozen-reference
-frozen_on: 2026-08-18
+frozen_on: '2026-08-18'
 purpose: Evidence-backed executable reference kernel for warehouse inventory and execution semantics.
 production_ready: false
 
