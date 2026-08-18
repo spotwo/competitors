@@ -1,0 +1,13 @@
+id: oracle-allocation-model-2026
+subject: inventory-commitment-model
+source_type: official-docs
+grade: A
+title: Allocation
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmwr/allocation.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+  - Oracle WMS defines allocations as reservations of inbound or on-hand inventory for order demand.
+  - An allocation associates an order detail with specific source inventory and may reference outbound inventory into which the stock will be packed.
+  - Allocations can be created by waves, cross-docking, direct allocation, or pick-and-allocate transactions.
+  - Multiple allocations can be grouped to form an executable task.
