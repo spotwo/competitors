@@ -1,0 +1,13 @@
+id: dynamics365-inventory-movement-2026
+subject: inventory-movement-model
+source_type: official-docs
+grade: A
+title: Set up a mobile device menu item for moving items by template
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/mobile-device-move-by-template-menu
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 models warehouse movement as executable warehouse work.
+  - Movement by template can create movement work while the system determines target location through work templates and location directives.
+  - Movement can capture from inventory status, to inventory status, source location, destination, quantity, and license plate semantics.
+  - Full license plate and partial quantity movement are distinct execution modes.
