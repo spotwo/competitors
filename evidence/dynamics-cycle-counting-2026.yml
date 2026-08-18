@@ -1,0 +1,12 @@
+id: dynamics-cycle-counting-2026
+subject: cycle-counting-workflow
+source_type: official-docs
+grade: A
+title: Cycle counting example scenarios
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/cycle-counting-scenarios
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Cycle counting work can be created by location or item and executed through guided mobile work.
+  - Dynamics supports guided, blind, spot, threshold-driven and plan-driven cycle counts.
+  - Count discrepancies can require review before resolution.
