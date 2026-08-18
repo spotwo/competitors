@@ -63,3 +63,14 @@
 | Unloading - Sample WMS and YMS products to determine whether unloading is modeled as a first-class task, a dock activity, or only a physical operation. | research | 0 | 0 |
 | Waveless / Continuous Release | candidate | 1 | 1 |
 | Waveless / Continuous Release - Determine whether continuous release, waveless, order streaming, and dynamic release should be aliases or distinct strategies. | research | 1 | 1 |
+
+## Workflow research
+
+| Workflow / gap | Status | Vendor models | Evidence refs |
+|---|---|---:|---:|
+| Picking Workflow | candidate | 10 | 15 |
+| Picking Workflow - Add UI interaction observations for handheld RF, voice, pick-to-light and goods-to-person stations without treating presentation details as domain semantics. | research | 10 | 15 |
+| Picking Workflow - Compare short-pick residual-demand and automatic reallocation behavior across SAP, Manhattan, Blue Yonder, Oracle, Infor and Mecalux. | research | 10 | 15 |
+| Picking Workflow - Determine whether zone handoff should create a new Pick Work Group or preserve one group across zones. | research | 10 | 15 |
+| Picking Workflow - Sample at least ten more WMS products before adopting the Spotwo task state model. | research | 10 | 15 |
+| Picking Workflow - Separate inventory allocation from pick-source selection where vendors model them independently. | research | 10 | 15 |
