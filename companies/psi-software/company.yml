@@ -1,0 +1,21 @@
+id: psi-software
+name: PSI Software
+entity_type: vendor
+website: https://www.psi.de/
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms]
+deployment_models: [saas, cloud, on-premise]
+industries: [retail, ecommerce, 3pl, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, returns, automation-orchestration]
+products:
+- id: psiwms
+  name: PSIwms
+  categories: [wms]
+  segments: [smb, mid-market, enterprise, large-enterprise]
+  deployment_models: [saas, cloud, on-premise]
+  notes: GO, FLEX and PRO editions cover different complexity levels.
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [psi-wms-2026]

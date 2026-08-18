@@ -1,0 +1,20 @@
+id: mantis
+name: Mantis
+entity_type: vendor
+website: https://www.mantis.group/
+hq_country: GR
+local_presence_countries: [GR, US, CA, DE, PL, RO, UA, IL, TR, CY]
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, analytics]
+industries: [3pl, retail, wholesale, manufacturing, ecommerce]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, slotting, picking, packing, shipping, yard-management, billing, automation-orchestration]
+products:
+- {id: lvs, name: Logistics Vision Suite (LVS), categories: [wms, analytics]}
+status: active
+notes: Mantis merged with ecovium in 2022 and continues to operate the LVS product and brand.
+research_gaps:
+- Verify current canonical deployment models for LVS.
+last_verified: '2026-08-18'
+evidence_refs: [mantis-lvs-2026]

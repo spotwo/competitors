@@ -1,0 +1,17 @@
+id: greyorange
+name: GreyOrange
+entity_type: automation-vendor
+website: https://www.greyorange.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wes, robotics-orchestration]
+industries: [retail, ecommerce, food-beverage, fmcg, pharma, healthcare]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [storage, replenishment, picking, sortation, automation-orchestration]
+products:
+- {id: greymatter, name: GreyMatter, categories: [wes, robotics-orchestration]}
+status: active
+research_gaps:
+- Verify canonical deployment model for GreyMatter.
+last_verified: '2026-08-18'
+evidence_refs: [greyorange-wes-2026]

@@ -1,0 +1,19 @@
+id: odoo
+name: Odoo
+entity_type: erp-vendor
+website: https://www.odoo.com/
+markets: [global]
+segments: [smb, mid-market]
+solution_layers: [erp, wms]
+deployment_models: [saas, cloud, on-premise]
+industries: [retail, ecommerce, manufacturing, wholesale]
+operating_environments: [distribution-center, manufacturing-warehouse, retail-backroom]
+capabilities: [receiving, putaway, storage, replenishment, cycle-counting, physical-inventory, picking, packing, shipping]
+products:
+- id: inventory
+  name: Odoo Inventory
+  categories: [wms]
+  deployment_models: [saas, cloud, on-premise]
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [odoo-inventory-wms-2026, odoo-putaway-2026, odoo-hosting-2026]

@@ -1,0 +1,17 @@
+id: hai-robotics
+name: Hai Robotics
+entity_type: automation-vendor
+website: https://www.hairobotics.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wes, robotics-orchestration, machine-control, analytics]
+industries: [retail, ecommerce, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply]
+capabilities: [receiving, storage, replenishment, picking, physical-inventory, automation-orchestration]
+products:
+- {id: haiq, name: HaiQ, categories: [wes, robotics-orchestration, machine-control, analytics]}
+status: active
+research_gaps:
+- Verify canonical deployment model for HaiQ.
+last_verified: '2026-08-18'
+evidence_refs: [haiq-2026]

@@ -1,0 +1,20 @@
+id: deposco
+name: Deposco
+entity_type: platform-vendor
+website: https://deposco.com/
+markets: [north-america]
+segments: [mid-market, enterprise]
+solution_layers: [wms, oms, analytics]
+deployment_models: [saas, cloud]
+industries: [retail, ecommerce, 3pl, wholesale]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [receiving, putaway, cross-docking, storage, replenishment, cycle-counting, physical-inventory, waving, waveless, picking, packing, shipping, returns, automation-orchestration]
+products:
+- id: bright-warehouse
+  name: Bright Warehouse
+  categories: [wms]
+status: active
+research_gaps:
+- Verify geographic coverage outside North America.
+last_verified: '2026-08-18'
+evidence_refs: [deposco-bright-warehouse-2026, deposco-platform-2026]

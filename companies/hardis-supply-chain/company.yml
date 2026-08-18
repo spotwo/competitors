@@ -1,0 +1,30 @@
+id: hardis-supply-chain
+name: Hardis Supply Chain
+entity_type: platform-vendor
+website: https://www.hardis-supplychain.com/
+hq_country: FR
+former_names: [Reflex Logistics]
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms, oms, wcs, lms, tms, analytics]
+deployment_models: [saas, cloud]
+industries: [retail, ecommerce, 3pl, manufacturing, fmcg]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply, 3pl, retail-backroom, dark-store]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, returns, labor-management, automation-orchestration]
+products:
+- id: hardis-wms
+  name: Hardis WMS
+  former_names: [Reflex WMS]
+  categories: [wms, lms]
+- id: hardis-oms
+  name: Hardis OMS
+  former_names: [OIL OMS]
+  categories: [oms]
+- {id: hardis-wcs-master, name: Hardis WCS Master, categories: [wcs]}
+- id: hardis-sc-network
+  name: Hardis SC Network
+  former_names: [Reflex Visibility]
+  categories: [analytics]
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [hardis-wms-2026, hardis-rebrand-2025, hardis-platform-2026]

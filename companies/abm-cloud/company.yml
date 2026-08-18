@@ -1,0 +1,25 @@
+id: abm-cloud
+name: ABM Cloud
+entity_type: platform-vendor
+website: https://abmcloud.com/en/
+served_countries: [AZ, CZ, GE, KZ, KG, LT, MD, SI, AE, UA, UZ]
+local_presence_countries: [EE, UA, GE, UZ, KZ, MD]
+markets: [europe, caucasus, central-asia, mena]
+segments: [smb, mid-market, enterprise]
+solution_layers: [wms, tms]
+deployment_models: [saas, on-premise]
+industries: [retail, wholesale, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, cross-docking, storage, relocation, replenishment, physical-inventory, waving, picking, packing, shipping, returns, billing, automation-orchestration]
+products:
+- id: abm-wms
+  name: ABM WMS
+  categories: [wms]
+  segments: [smb, mid-market, enterprise]
+  deployment_models: [saas, on-premise]
+- {id: abm-rinkai-tms, name: ABM Rinkai TMS, categories: [tms]}
+status: active
+research_gaps:
+- Verify legal headquarters country before setting hq_country.
+last_verified: '2026-08-18'
+evidence_refs: [abm-wms-2026, abm-footprint-2026, abm-company-2026, abm-portfolio-2026]

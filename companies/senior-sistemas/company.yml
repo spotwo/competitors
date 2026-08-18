@@ -1,0 +1,23 @@
+id: senior-sistemas
+name: Senior Sistemas
+entity_type: platform-vendor
+website: https://site.senior.com.br/
+hq_country: BR
+markets: [latam]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms]
+deployment_models: [saas, cloud]
+industries: [3pl, retail, ecommerce, manufacturing, wholesale]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, physical-inventory, billing, automation-orchestration]
+products:
+- id: senior-wms
+  name: Senior WMS
+  categories: [wms]
+  segments: [smb, mid-market, enterprise, large-enterprise]
+  deployment_models: [saas, cloud]
+status: active
+research_gaps:
+- Resolve exact country-by-country commercial coverage beyond Brazil.
+last_verified: '2026-08-18'
+evidence_refs: [senior-wms-2026, senior-about-2026]

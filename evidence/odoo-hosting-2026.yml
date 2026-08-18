@@ -1,0 +1,13 @@
+id: odoo-hosting-2026
+subject: odoo
+source_type: official-docs
+grade: A
+title: Odoo 19 Hosting
+url: https://www.odoo.com/documentation/19.0/administration/hosting.html
+publisher: Odoo
+captured_at: '2026-08-18'
+supports:
+- Odoo Online managed hosting
+- Odoo.sh cloud hosting
+- on-premise deployment
+- hosting regions in Americas, Europe and Asia

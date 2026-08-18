@@ -1,0 +1,19 @@
+id: microsoft
+name: Microsoft
+entity_type: erp-vendor
+website: https://www.microsoft.com/dynamics-365/
+markets: [global]
+segments: [mid-market, enterprise, large-enterprise]
+solution_layers: [erp, wms]
+deployment_models: [saas, cloud]
+industries: [manufacturing, retail, wholesale]
+operating_environments: [distribution-center, manufacturing-warehouse, production-supply]
+capabilities: [receiving, putaway, inspection, cross-docking, storage, replenishment, cycle-counting, waving, picking, packing, shipping, returns]
+products:
+- id: dynamics-365-scm-warehouse-management
+  name: Dynamics 365 Supply Chain Management - Warehouse Management
+  categories: [erp, wms]
+  deployment_models: [saas, cloud]
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [microsoft-d365-wms-2026]

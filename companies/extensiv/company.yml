@@ -1,0 +1,21 @@
+id: extensiv
+name: Extensiv
+entity_type: vendor
+website: https://www.extensiv.com/
+markets: [north-america]
+segments: [smb, mid-market]
+solution_layers: [wms]
+deployment_models: [saas, cloud]
+industries: [3pl, ecommerce]
+operating_environments: [3pl, fulfillment-center]
+capabilities: [receiving, storage, cycle-counting, picking, packing, shipping, returns, billing]
+products:
+- id: 3pl-warehouse-manager
+  name: 3PL Warehouse Manager
+  categories: [wms]
+  segments: [smb, mid-market]
+status: active
+research_gaps:
+- Verify geographic coverage outside North America.
+last_verified: '2026-08-18'
+evidence_refs: [extensiv-3pl-wm-2026]
