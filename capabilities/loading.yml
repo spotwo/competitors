@@ -1,0 +1,27 @@
+id: loading
+group: outbound
+label: Loading
+status: adopted
+definition: Move staged outbound goods or handling units onto the assigned trailer, vehicle, container, or carrier asset and confirm the load operation.
+purpose: Execute the final physical warehouse-to-transport handoff in the required sequence and quantity.
+inputs: [staged-unit, shipment, vehicle, loading-sequence]
+outputs: [loaded-unit, load-confirmation]
+entities: [shipment, load, vehicle, dock-door, handling-unit]
+strategies: [sequenced-loading, route-loading, trailer-cubing]
+related_capabilities: [staging, shipping, yard-management]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: core
+    terminology: [sequenced loading]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-enterprise-capabilities-2026]
+spotwo:
+  canonical_term: Loading
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-enterprise-capabilities-2026]
