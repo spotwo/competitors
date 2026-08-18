@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from malformed_delivery_retention import (  # noqa: E402
+    DEFAULT_RETENTION_DAYS,
+    MAX_ARCHIVE_BATCH_SIZE,
+    MalformedDeliveryRetentionPolicy,
+    PostgresMalformedDeliveryArchiveStore,
+)
+
+
+def parse_timestamp(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("timestamp must be ISO 8601") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise argparse.ArgumentTypeError("timestamp must include a timezone")
+    return parsed
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Archive one bounded batch of inactive malformed JetStream deliveries"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument(
+        "--consumer-name",
+        required=True,
+        help="stable logical consumer scope to archive",
+    )
+    cutoff = parser.add_mutually_exclusive_group()
+    cutoff.add_argument(
+        "--before",
+        type=parse_timestamp,
+        help="archive poison records last observed before this timezone-aware timestamp",
+    )
+    cutoff.add_argument(
+        "--retention-days",
+        type=int,
+        help=f"inactive poison-evidence grace period (default: {DEFAULT_RETENTION_DAYS})",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=MAX_ARCHIVE_BATCH_SIZE,
+        help=f"maximum poison records in this transaction (max: {MAX_ARCHIVE_BATCH_SIZE})",
+    )
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+
+    try:
+        policy = MalformedDeliveryRetentionPolicy(
+            retention_days=(
+                args.retention_days
+                if args.retention_days is not None
+                else DEFAULT_RETENTION_DAYS
+            ),
+            batch_size=args.batch_size,
+        )
+        before = args.before or policy.cutoff()
+        result = PostgresMalformedDeliveryArchiveStore(
+            args.database_url
+        ).archive_batch(
+            consumer_name=args.consumer_name,
+            before=before,
+            batch_size=policy.batch_size,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    print(
+        json.dumps(
+            result.to_dict(),
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+            separators=None if args.pretty else (",", ":"),
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

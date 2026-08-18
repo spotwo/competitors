@@ -16,6 +16,8 @@ on:
       - 'bin/replay-kernel-consumer-failure'
       - 'bin/inspect-kernel-consumer-failures'
       - 'bin/archive-kernel-consumer-failures'
+      - 'bin/inspect-kernel-malformed-deliveries'
+      - 'bin/archive-kernel-malformed-deliveries'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -37,6 +39,9 @@ on:
       - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
       - 'decisions/domain/0033-consumer-failure-operational-telemetry.md'
       - 'decisions/domain/0034-consumer-failure-retention-archive.md'
+      - 'decisions/domain/0035-nats-malformed-delivery-quarantine.md'
+      - 'decisions/domain/0036-nats-malformed-delivery-operational-telemetry.md'
+      - 'decisions/domain/0037-nats-malformed-delivery-retention-archive.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -62,6 +67,8 @@ on:
       - 'bin/replay-kernel-consumer-failure'
       - 'bin/inspect-kernel-consumer-failures'
       - 'bin/archive-kernel-consumer-failures'
+      - 'bin/inspect-kernel-malformed-deliveries'
+      - 'bin/archive-kernel-malformed-deliveries'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -83,6 +90,9 @@ on:
       - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
       - 'decisions/domain/0033-consumer-failure-operational-telemetry.md'
       - 'decisions/domain/0034-consumer-failure-retention-archive.md'
+      - 'decisions/domain/0035-nats-malformed-delivery-quarantine.md'
+      - 'decisions/domain/0036-nats-malformed-delivery-operational-telemetry.md'
+      - 'decisions/domain/0037-nats-malformed-delivery-retention-archive.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -141,6 +151,8 @@ jobs:
             bin/replay-kernel-consumer-failure \
             bin/inspect-kernel-consumer-failures \
             bin/archive-kernel-consumer-failures \
+            bin/inspect-kernel-malformed-deliveries \
+            bin/archive-kernel-malformed-deliveries \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -162,6 +174,9 @@ jobs:
             decisions/domain/0032-consumer-failure-deferral-quarantine.md \
             decisions/domain/0033-consumer-failure-operational-telemetry.md \
             decisions/domain/0034-consumer-failure-retention-archive.md \
+            decisions/domain/0035-nats-malformed-delivery-quarantine.md \
+            decisions/domain/0036-nats-malformed-delivery-operational-telemetry.md \
+            decisions/domain/0037-nats-malformed-delivery-retention-archive.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
