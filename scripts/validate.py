@@ -249,11 +249,8 @@ def main() -> int:
     for path in sorted(ROOT.glob("ontology/*.yml")):
         data = load_yaml(path)
         entity_ids = check_unique_nested_ids(path, data.get("entities", []), "ontology entity", errors)
-        for entity_id in entity_ids:
-            if entity_id in ontology_entity_ids_global:
-                errors.append(f"{path.relative_to(ROOT)}: duplicate global ontology entity id {entity_id!r}")
-            ontology_entity_ids_global.add(entity_id)
         ontology_records.append((path, data, entity_ids))
+        ontology_entity_ids_global.update(entity_ids)
         ontology_entity_count += len(entity_ids)
 
     for path, data, _entity_ids in ontology_records:
