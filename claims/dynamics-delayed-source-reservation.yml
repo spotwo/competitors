@@ -1,0 +1,10 @@
+id: dynamics-delayed-source-reservation
+subject_type: product
+subject: microsoft/dynamics-365-scm-warehouse-management
+predicate: reservation-allows-delayed-source-binding
+value: true
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [dynamics365-reservations-2026]
+notes: Reservation may be made above location in the reservation hierarchy so exact location or license plate binding can be deferred until warehouse execution.
