@@ -92,7 +92,7 @@ The recommended adapter profile is a durable pull consumer with explicit acknowl
 The accepted weighted result is:
 
 ```text
-NATS JetStream       4.75 / 5
+NATS JetStream       4.80 / 5
 Redpanda / Kafka     3.95 / 5
 AWS SNS + SQS FIFO   3.40 / 5
 Cloudflare Queues    2.75 / 5
