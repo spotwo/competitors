@@ -1,0 +1,14 @@
+id: epg-picking-model
+subject_type: company
+subject: epg
+predicate: picking-model
+value:
+  work_group: work-package
+  grouping: [single-stage, two-stage, multi-order]
+  execution: [paper, rf, voice, pick-to-light]
+  routing: [path-optimized]
+  downstream: [pick-and-pack, consolidation]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [epg-lfs-picking-model-2026]
