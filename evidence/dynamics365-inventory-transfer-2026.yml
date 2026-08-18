@@ -1,0 +1,13 @@
+id: dynamics365-inventory-transfer-2026
+subject: inventory-movement-model
+source_type: official-docs
+grade: A
+title: Dynamics 365 business process glossary - Inventory transfers
+url: https://learn.microsoft.com/en-us/dynamics365/guidance/business-processes/glossary
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 distinguishes inventory movements from inventory transfers.
+  - Transfer journals can perform immediate inventory transfer between inventory dimensions without tracking in-transit inventory.
+  - Transfer orders track in-transit inventory and use picking shipping receiving and putaway processes between physical locations.
+  - An inter-warehouse transfer can therefore span multiple warehouse process boundaries rather than being one atomic location movement.
