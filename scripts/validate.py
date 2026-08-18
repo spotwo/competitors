@@ -21,6 +21,7 @@ SCHEMA_BY_GLOB = {
     "kpis/*.yml": "schema/kpi-registry.schema.json",
     "integrations/*.yml": "schema/integration-registry.schema.json",
     "capabilities/*.yml": "schema/capability.schema.json",
+    "workflows/*.yml": "schema/workflow.schema.json",
 }
 TAXONOMY_FIELDS = {
     "markets": "taxonomy/regions.yml",
@@ -82,6 +83,18 @@ def check_evidence_refs(path: Path, data: dict, evidence_ids: set[str], errors: 
             errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
 
 
+def check_unique_nested_ids(path: Path, records: list[dict], label: str, errors: list[str]) -> set[str]:
+    seen: set[str] = set()
+    for record in records or []:
+        record_id = record.get("id")
+        if not record_id:
+            continue
+        if record_id in seen:
+            errors.append(f"{path.relative_to(ROOT)}: duplicate {label} id {record_id!r}")
+        seen.add(record_id)
+    return seen
+
+
 def main() -> int:
     errors: list[str] = []
     for pattern, schema_rel in SCHEMA_BY_GLOB.items():
@@ -103,6 +116,7 @@ def main() -> int:
     claim_ids = record_ids("claims/*.yml", errors)
     ontology_ids = record_ids("ontology/*.yml", errors)
     capability_ids = record_ids("capabilities/*.yml", errors)
+    workflow_ids = record_ids("workflows/*.yml", errors)
     allowed = {field: taxonomy_values(rel) for field, rel in TAXONOMY_FIELDS.items()}
     country_codes = taxonomy_values("taxonomy/countries.yml")
     company_ids: set[str] = set()
@@ -153,7 +167,7 @@ def main() -> int:
         if parent and parent == data.get("id"):
             errors.append(f"{path.relative_to(ROOT)}: company cannot be its own parent")
 
-    for pattern in ("terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml", "integrations/*.yml", "capabilities/*.yml"):
+    for pattern in ("terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml", "integrations/*.yml", "capabilities/*.yml", "workflows/*.yml"):
         for path in sorted(ROOT.glob(pattern)):
             data = load_yaml(path)
             if isinstance(data, dict):
@@ -179,6 +193,51 @@ def main() -> int:
             for ref in observation.get("evidence_refs", []) or []:
                 if ref not in evidence_ids:
                     errors.append(f"{path.relative_to(ROOT)}: vendor observation missing evidence ref {ref!r}")
+
+    workflow_stage_count = 0
+    workflow_strategy_count = 0
+    workflow_vendor_model_count = 0
+    for path in sorted(ROOT.glob("workflows/*.yml")):
+        data = load_yaml(path)
+        capability_id = data.get("capability_id")
+        if capability_id not in capability_ids:
+            errors.append(f"{path.relative_to(ROOT)}: unresolved capability {capability_id!r}")
+        stage_ids = check_unique_nested_ids(path, data.get("stages", []), "workflow stage", errors)
+        object_ids = check_unique_nested_ids(path, data.get("objects", []), "workflow object", errors)
+        state_ids = check_unique_nested_ids(path, data.get("states", []), "workflow state", errors)
+        strategy_ids = check_unique_nested_ids(path, data.get("strategies", []), "workflow strategy", errors)
+        check_unique_nested_ids(path, data.get("exceptions", []), "workflow exception", errors)
+        workflow_stage_count += len(stage_ids)
+        workflow_strategy_count += len(strategy_ids)
+        for item in data.get("strategies", []) or []:
+            for ref in item.get("evidence_refs", []) or []:
+                if ref not in evidence_ids:
+                    errors.append(f"{path.relative_to(ROOT)}: strategy {item.get('id')!r} missing evidence ref {ref!r}")
+        for item in data.get("exceptions", []) or []:
+            for ref in item.get("evidence_refs", []) or []:
+                if ref not in evidence_ids:
+                    errors.append(f"{path.relative_to(ROOT)}: exception {item.get('id')!r} missing evidence ref {ref!r}")
+        for model in data.get("vendor_models", []) or []:
+            workflow_vendor_model_count += 1
+            company_id = model.get("company_id")
+            if company_id not in company_ids:
+                errors.append(f"{path.relative_to(ROOT)}: workflow vendor model unresolved company {company_id!r}")
+            product_id = model.get("product_id")
+            if product_id and product_id not in product_ids:
+                errors.append(f"{path.relative_to(ROOT)}: workflow vendor model unresolved product {product_id!r}")
+            for ref in model.get("evidence_refs", []) or []:
+                if ref not in evidence_ids:
+                    errors.append(f"{path.relative_to(ROOT)}: workflow vendor model missing evidence ref {ref!r}")
+        spotwo = data.get("spotwo", {})
+        for stage in spotwo.get("canonical_spine", []) or []:
+            if stage not in stage_ids:
+                errors.append(f"{path.relative_to(ROOT)}: Spotwo spine references unknown stage {stage!r}")
+        for object_id in spotwo.get("canonical_objects", []) or []:
+            if object_id not in object_ids:
+                errors.append(f"{path.relative_to(ROOT)}: Spotwo canonical_objects references unknown object {object_id!r}")
+        for state_id in spotwo.get("task_states", []) or []:
+            if state_id not in state_ids:
+                errors.append(f"{path.relative_to(ROOT)}: Spotwo task_states references unknown state {state_id!r}")
 
     ontology_entity_count = 0
     for path in sorted(ROOT.glob("ontology/*.yml")):
@@ -233,7 +292,8 @@ def main() -> int:
         f"Validation OK: {len(company_ids)} companies, {len(product_ids)} products, {len(evidence_ids)} evidence records, "
         f"{len(claim_ids)} claims, {len(term_ids)} terms, {len(authority_ids)} authorities, "
         f"{len(ontology_ids)} ontologies/{ontology_entity_count} entities, {len(kpi_ids)} KPIs, "
-        f"{len(integration_ids)} integration patterns, {len(capability_ids)} capabilities"
+        f"{len(integration_ids)} integration patterns, {len(capability_ids)} capabilities, "
+        f"{len(workflow_ids)} workflows/{workflow_stage_count} stages/{workflow_strategy_count} strategies/{workflow_vendor_model_count} vendor models"
     )
     return 0
 
