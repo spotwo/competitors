@@ -1,0 +1,12 @@
+id: sap-inventory-movement-2026
+subject: inventory-movement-model
+source_type: official-docs
+grade: A
+title: EWM Warehouse Order Processing Transactions
+url: https://help.sap.com/docs/SUPPORT_CONTENT/sewm/3354623031.html
+publisher: SAP
+captured_at: '2026-08-18'
+supports:
+  - SAP EWM exposes warehouse-task creation for internal stock transfer separately from putaway and outbound stock removal.
+  - SAP EWM also supports ad-hoc product movement and handling-unit movement without a delivery reference.
+  - Warehouse tasks are confirmed as execution records after movement.
