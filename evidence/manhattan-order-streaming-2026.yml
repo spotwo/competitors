@@ -1,0 +1,12 @@
+id: manhattan-order-streaming-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: Order Streaming - Manhattan Active Warehouse Management
+url: https://www.manh.com/en-in/our-solutions/supply-chain-management-software/warehouse-management-system/order-streaming
+publisher: Manhattan Associates
+captured_at: '2026-08-18'
+supports:
+  - Manhattan Order Streaming can execute wave and waveless fulfillment simultaneously.
+  - Large blocks of work can be bundled like traditional waves while individual direct-to-consumer work can be released immediately.
+  - The orchestration layer continuously prioritizes work, allocates inventory and responds to labor and equipment availability.
