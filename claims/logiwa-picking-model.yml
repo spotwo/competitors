@@ -1,0 +1,12 @@
+id: logiwa-picking-model
+subject_type: company
+subject: logiwa
+predicate: picking-model
+value:
+  methods: [order-based, cluster, batch, zone, pick-and-pass, wave]
+  execution: [mobile-scanning]
+  consolidation: [put-to-wall]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [logiwa-picking-model-2026]
