@@ -1,0 +1,12 @@
+id: tecsys-picking-methods-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: The Definitive Guide to Warehouse Management - Picking
+url: https://www.tecsys.com/the-definitive-guide-to-warehouse-management
+publisher: Tecsys
+captured_at: '2026-08-18'
+supports:
+  - Elite WMS uses system-directed RF task management and task interleaving.
+  - Picking methods include wave, waveless, zone, batch, cluster and user-defined workflows.
+  - Picking method selection is configurable independently from the underlying Picking capability.
