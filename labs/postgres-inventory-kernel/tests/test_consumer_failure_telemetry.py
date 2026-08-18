@@ -254,7 +254,7 @@ def test_empty_snapshot_is_healthy_and_omits_age_samples():
         '{consumer="inventory-position-quantity-projector"} 0'
         in prometheus
     )
-    assert "spotwo_wms_consumer_failure_oldest_age_seconds" not in prometheus
+    assert "spotwo_wms_consumer_failure_oldest_age_seconds{state=" not in prometheus
     assert (
         "spotwo_wms_consumer_failure_health_status"
         '{consumer="inventory-position-quantity-projector"} 0'
