@@ -1,0 +1,40 @@
+id: replenishment
+group: storage
+label: Replenishment
+status: adopted
+definition: Move inventory from reserve or upstream storage into locations that supply picking, production, or another downstream demand.
+purpose: Keep forward or active locations adequately stocked while controlling travel and excess inventory.
+inputs: [inventory, demand, min-max-rule, capacity]
+outputs: [replenishment-work, replenished-location]
+entities: [inventory, sku, reserve-location, active-location, warehouse-task]
+strategies: [min-max, percentage-of-max, reactive, order-based, dynamic, demand-driven]
+related_capabilities: [storage, allocation, picking, automation-orchestration]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: advanced
+    terminology: [Dynamic replenishment]
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: core
+    terminology: [tailored replenishment rules]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: blue-yonder
+    level: advanced
+    notes: WES can link replenishment tasks to dependent orders.
+    evidence_refs: [blue-yonder-wes-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-enterprise-capabilities-2026, infios-3pl-capabilities-2026]
+  - company_id: mecalux
+    level: advanced
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+  - company_id: oracle
+    level: core
+    notes: Documents min-capacity, percentage-of-max, reactive and order-based modes.
+    evidence_refs: [oracle-wms-replenishment-2026]
+spotwo:
+  canonical_term: Replenishment
+  status: adopted
+  notes: Model trigger/strategy separately from the physical replenishment task.
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, blue-yonder-wes-2026, infios-enterprise-capabilities-2026, infios-3pl-capabilities-2026, mecalux-easy-wms-capabilities-2026, oracle-wms-replenishment-2026]
