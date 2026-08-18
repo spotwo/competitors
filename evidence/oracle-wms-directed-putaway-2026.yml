@@ -1,0 +1,12 @@
+id: oracle-wms-directed-putaway-2026
+subject: putaway-workflow
+source_type: official-docs
+grade: A
+title: System Directed Putaway
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/system-directed-putaway-.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Directed putaway scans an inbound LPN or pallet and directs the worker to a specific destination location.
+  - The directed location can be overridden with another eligible location in the same zone.
+  - Capacity and location-priority rules participate in destination selection.
