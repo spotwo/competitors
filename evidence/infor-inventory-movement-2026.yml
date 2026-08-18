@@ -1,0 +1,13 @@
+id: infor-inventory-movement-2026
+subject: inventory-movement-model
+source_type: official-docs
+grade: A
+title: Using the Standard Move RF option
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/sceinmgtug/qba1612893660213.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS Standard Move supports controlled movement of full or partial inventory between locations.
+  - Movement can identify source inventory by location, LPN, item, and other inventory identity fields.
+  - Partial movement can move inventory to a different location or split it to a different license plate.
+  - RF is a first-class execution channel for inventory movement.
