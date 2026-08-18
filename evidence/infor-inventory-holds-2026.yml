@@ -1,0 +1,13 @@
+id: infor-inventory-holds-2026
+subject: inventory-hold-model
+source_type: official-docs
+grade: A
+title: Creating holds with inventory holds maintenance
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/sceinmgtug/voo1612893979833.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS can place inventory on hold by lot, license plate, or location.
+  - A hold has a reason and can be removed independently from the inventory record itself.
+  - Allocated inventory cannot be newly placed on hold through Hold Maintenance until it is unallocated.
+  - Hold is therefore an operational restriction distinct from physical quantity and from allocation itself.
