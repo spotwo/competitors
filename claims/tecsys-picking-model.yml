@@ -1,0 +1,11 @@
+id: tecsys-picking-model
+subject_type: company
+subject: tecsys
+predicate: picking-model
+value:
+  assignment: [system-directed-rf, task-interleaving]
+  methods: [wave, waveless, zone, batch, cluster, user-defined]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [tecsys-picking-methods-2026]
