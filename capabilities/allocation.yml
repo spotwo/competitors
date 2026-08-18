@@ -2,22 +2,36 @@ id: allocation
 group: fulfillment
 label: Allocation
 status: adopted
-definition: Reserve or assign available inventory and fulfilment resources to demand before or during execution.
-purpose: Decide which inventory should satisfy which order, shipment, wave, or downstream requirement.
-inputs: [demand, available-inventory, allocation-rule]
-outputs: [inventory-reservation, fulfilment-plan]
-entities: [order, order-line, inventory, sku, location]
-strategies: [hard-allocation, soft-allocation, priority-based, proximity-aware]
-related_capabilities: [waving, waveless, picking, cross-docking]
+definition: Bind eligible demand to inventory at a specificity sufficient for downstream warehouse execution, while preserving reservation as a distinct coarser commitment concept where required.
+purpose: Decide which inventory source should satisfy which order, shipment, wave, cross-dock requirement, or other warehouse demand.
+inputs: [demand, availability-view, reservation, allocation-rule]
+outputs: [inventory-allocation, residual-demand, execution-demand]
+entities: [order, order-line, inventory, sku, location, handling-unit, reservation, allocation]
+strategies: [wave-allocation, direct-allocation, cross-dock-allocation, delayed-source-binding, partial-commitment]
+related_capabilities: [waving, waveless, picking, cross-docking, replenishment]
 vendor_observations:
   - company_id: manhattan-associates
     level: advanced
     notes: Current WMS material describes AI-driven order allocation and pick-density optimization.
     evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    level: observed
+    terminology: [reservation, reservation hierarchy, available physical]
+    notes: Reservation can be made above location and exact source detail postponed until warehouse execution.
+    evidence_refs: [dynamics365-reservations-2026, dynamics365-onhand-availability-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    level: core
+    terminology: [allocation, order detail, source inventory]
+    notes: Allocation binds order detail to source inventory and can be created by wave, direct allocation, or cross-docking.
+    evidence_refs: [oracle-allocation-model-2026]
 spotwo:
   canonical_term: Allocation
   status: adopted
+  notes: Allocation is execution-relevant source binding. Reservation is modeled separately as an optional coarser inventory commitment; availability is a derived view.
 research_gaps:
-  - Separate inventory allocation, order allocation, reservation, and WES task assignment terminology.
-last_verified: 2026-08-18
-evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - Validate Reservation versus Allocation semantics across SAP EWM, Manhattan, Blue Yonder, Infor, Tecsys and 3PL-first systems.
+  - Separate warehouse allocation from commercial allocation quotas and WES task assignment.
+last_verified: '2026-08-18'
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, dynamics365-reservations-2026, dynamics365-onhand-availability-2026, oracle-allocation-model-2026]
