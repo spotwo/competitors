@@ -60,6 +60,10 @@ def seed_dataset(position_count: int) -> dict[str, object]:
     location_count = math.ceil(position_count / item_count)
 
     with connect(autocommit=True) as conn:
+        # Dataset generation is setup, not the workload under measurement.
+        # Keep workload statements capped at 30s, but allow the 1M-row scale
+        # seed enough time to build FK/index state on a hosted runner.
+        conn.execute("SET statement_timeout = '5min'")
         conn.execute(
             """
             TRUNCATE TABLE
