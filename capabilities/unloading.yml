@@ -1,0 +1,18 @@
+id: unloading
+group: inbound
+label: Unloading
+status: candidate
+definition: Physically remove inbound handling units or goods from a vehicle or carrier asset into a receiving or staging area.
+purpose: Represent the physical dock operation that precedes or overlaps system receiving.
+inputs: [inbound-load, vehicle, dock-door]
+outputs: [staged-handling-unit]
+entities: [vehicle, dock-door, handling-unit, staging-location]
+related_capabilities: [receiving, yard-management, staging]
+spotwo:
+  canonical_term: Unloading
+  status: candidate
+  notes: Keep distinct from Receiving because many WMS products begin system control at receipt confirmation rather than physical trailer unload.
+research_gaps:
+  - Sample WMS and YMS products to determine whether unloading is modeled as a first-class task, a dock activity, or only a physical operation.
+last_verified: 2026-08-18
+evidence_refs: []
