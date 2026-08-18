@@ -1,0 +1,12 @@
+id: dynamics-location-directives-putaway-2026
+subject: putaway-workflow
+source_type: official-docs
+grade: A
+title: Work with location directives
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/create-location-directive
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Location directives determine put locations for warehouse inventory movement.
+  - Putaway destination selection is rule-driven and tied to warehouse work order types.
+  - The same location-directive mechanism also supports outbound pick and stage location decisions.
