@@ -1,0 +1,12 @@
+id: oracle-cycle-count-adjustment-2026
+subject: cycle-counting-workflow
+source_type: official-docs
+grade: A
+title: Cycle Count Inventory Updates
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmol/reinitiate-in-progress-deferred-cycle-counts.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Cycle count discrepancies can update inventory immediately or enter deferred approval mode.
+  - Deferred mode allows approval or rejection before warehouse inventory is changed.
+  - Count execution and inventory adjustment are separate domain steps.
