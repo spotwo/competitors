@@ -1,0 +1,99 @@
+id: inventory-events
+title: Inventory Domain Event Registry
+status: candidate
+envelope:
+  fields:
+    - {name: event_id, required: true, description: Globally unique stable identity used for deduplication.}
+    - {name: type, required: true, description: Stable semantic event type such as inventory.movement.confirmed.}
+    - {name: source, required: true, description: Service or bounded context that produced the committed fact.}
+    - {name: subject, required: true, description: Canonical aggregate or business-object reference.}
+    - {name: occurred_at, required: true, description: Business time when the fact occurred.}
+    - {name: recorded_at, required: true, description: Time the fact was durably recorded.}
+    - {name: aggregate_type, required: true, description: Aggregate type for ordering and consumer routing.}
+    - {name: aggregate_id, required: true, description: Aggregate identity.}
+    - {name: aggregate_version, required: true, description: Monotonic version for per-aggregate ordering and stale-event detection.}
+    - {name: causation_id, required: false, description: Command or prior event that directly caused this event.}
+    - {name: correlation_id, required: false, description: End-to-end workflow or request correlation identity.}
+    - {name: actor, required: false, description: Human system equipment or integration principal responsible for the action.}
+    - {name: warehouse_id, required: false, description: Warehouse context for routing and tenancy.}
+    - {name: schema_version, required: true, description: Version of the event payload contract.}
+    - {name: data, required: true, description: Event-specific immutable fact payload.}
+events:
+  - id: transaction-posted
+    type: inventory.transaction.posted
+    category: inventory
+    meaning: An immutable inventory transaction and its legs committed successfully.
+    trigger: Ledger posting commits.
+    ledger_relation: Directly references transaction_id and affected inventory keys.
+  - id: position-changed
+    type: inventory.position.changed
+    category: inventory
+    meaning: One or more current inventory positions changed as the result of an accepted posting.
+    trigger: A physical or commitment transaction changes a materialized position.
+    ledger_relation: Carries transaction_id plus before and after position version or deltas.
+  - id: reservation-created
+    type: inventory.reservation.created
+    category: commitment
+    meaning: Demand successfully acquired a reservation commitment.
+    trigger: Reservation transaction posts.
+    ledger_relation: References reservation transaction and demand reference.
+  - id: reservation-released
+    type: inventory.reservation.released
+    category: commitment
+    meaning: A reservation commitment was released.
+    trigger: Reservation-release transaction posts.
+    ledger_relation: References release transaction and reservation identity.
+  - id: allocation-created
+    type: inventory.allocation.created
+    category: commitment
+    meaning: Demand was bound to an execution-relevant inventory source.
+    trigger: Allocation transaction posts.
+    ledger_relation: References allocation transaction and source inventory key.
+  - id: allocation-released
+    type: inventory.allocation.released
+    category: commitment
+    meaning: An execution source commitment was removed or replaced.
+    trigger: Allocation-release transaction posts.
+    ledger_relation: References release transaction and prior allocation identity.
+  - id: movement-confirmed
+    type: inventory.movement.confirmed
+    category: movement
+    meaning: Inventory physically moved from a confirmed source context to a confirmed destination context.
+    trigger: Conserving movement transaction posts after execution confirmation.
+    ledger_relation: References movement transaction with source and destination legs.
+    external_visibility: true
+    evidence_refs: [gs1-epcis-event-model-2026]
+  - id: adjustment-posted
+    type: inventory.adjustment.posted
+    category: reconciliation
+    meaning: An authorized non-conserving inventory adjustment changed recorded physical quantity.
+    trigger: Adjustment-in or adjustment-out transaction posts.
+    ledger_relation: References adjustment transaction reason and authority.
+  - id: reconciliation-posted
+    type: inventory.reconciliation.posted
+    category: reconciliation
+    meaning: Accepted count or consistency evidence produced an inventory reconciliation transaction.
+    trigger: Count reconciliation commits.
+    ledger_relation: References reconciliation transaction and accepted evidence.
+publication:
+  atomicity: Domain-event outbox rows are committed in the same database transaction as the authoritative ledger and position changes.
+  delivery: At-least-once publication; retries may redeliver the same event_id.
+  ordering: Guarantee monotonic ordering only within an aggregate or inventory-key stream where sequence/version is supplied; no global ordering guarantee.
+  deduplication: Consumers persist or otherwise enforce event_id idempotency and use aggregate_version when ordering matters.
+  retention: Outbox delivery state may be compacted separately from the durable domain or visibility event archive.
+external_mappings:
+  - standard: CloudEvents
+    scope: Transport envelope for internal and partner-facing domain-event delivery where supported.
+    notes: CloudEvents standardizes event metadata and transport representation but does not define Spotwo warehouse semantics.
+    evidence_refs: [cloudevents-event-envelope-2026]
+  - standard: GS1 EPCIS / CBV
+    scope: External supply-chain visibility events for relevant physical object movements states and business steps.
+    notes: EPCIS visibility events are not the internal inventory ledger. Map only events with sufficient what when where why and identifier context.
+    evidence_refs: [gs1-epcis-event-model-2026]
+research_gaps:
+  - Define exact event payload schemas and PII/data-minimization rules for each event type.
+  - Map Receiving Shipping Packing Handling Unit aggregation and Cross-docking events to EPCIS 2.0 event classes and CBV vocabulary.
+  - Define replay and snapshot behavior for consumers rebuilding derived views from domain events versus querying the inventory ledger directly.
+  - Decide whether inventory.position.changed is published externally or remains an internal projection event only.
+last_verified: '2026-08-18'
+evidence_refs: [cloudevents-event-envelope-2026, gs1-epcis-event-model-2026, oracle-inventory-history-2026]

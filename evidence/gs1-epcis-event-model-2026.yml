@@ -1,0 +1,13 @@
+id: gs1-epcis-event-model-2026
+subject: event-model
+source_type: standard
+grade: A
+title: EPCIS and CBV Implementation Guideline
+url: https://www.gs1.org/standards/epcis-and-cbv-implementation-guideline/current-standardd
+publisher: GS1
+captured_at: '2026-08-18'
+supports:
+  - EPCIS defines visibility events describing what happened, when, where and in what business context.
+  - EPCIS distinguishes event time from repository record time.
+  - GS1 treats visibility data as a category distinct from master data and business transaction data.
+  - EPCIS supports capture and sharing of supply-chain visibility events across systems and organizations.

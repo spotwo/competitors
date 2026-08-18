@@ -1,0 +1,13 @@
+id: dynamics365-warehouse-transactions-2026
+subject: inventory-ledger
+source_type: official-docs
+grade: A
+title: Warehouse-specific inventory transactions - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/warehouse-transactions
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Warehouse transactions are database records describing how inventory is stored and moved around a warehouse.
+  - Current Dynamics warehouse transaction types include registered issue, registered receipt, physical reservation and removed physical reservation.
+  - The Warehouse transactions inquiry combines relevant warehouse and standard inventory transactions for warehouse operations.
+  - Microsoft documents that warehouse on-hand inventory remains coupled to inventory transaction and warehouse reserve tables.

@@ -1,0 +1,11 @@
+id: oracle-inventory-history-2026
+subject: inventory-ledger
+source_type: official-docs
+grade: A
+title: Inventory History - Oracle Warehouse Management
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owsec/inventory-history.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+  - Oracle WMS Inventory History records WMS transactions occurring in a facility.
+  - Inventory History records can inform ERP and other external systems about warehouse inventory activity.

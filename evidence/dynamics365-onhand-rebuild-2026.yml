@@ -1,0 +1,11 @@
+id: dynamics365-onhand-rebuild-2026
+subject: inventory-position
+source_type: official-docs
+grade: A
+title: Run an on-hand consistency check - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/inventory/on-hand-consistency-check
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics can rebuild on-hand inventory tables from inventory transaction data as a corruption-recovery operation.
+  - Current-balance structures and transaction history are therefore distinct but reconcilable concerns in the documented Dynamics inventory model.

@@ -1,0 +1,11 @@
+id: infor-inventory-transactions-2026
+subject: inventory-ledger
+source_type: official-docs
+grade: A
+title: Viewing inventory transactions - Infor WMS
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/sceinmgtug/oke1612894243266.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS exposes an Inventory Transaction screen for reviewing warehouse inventory records.
+  - Transactions can be filtered by transaction type such as Moves and can retain lot, serial and source-document context.

@@ -1,0 +1,11 @@
+id: sap-ewm-posting-change-2026
+subject: inventory-ledger
+source_type: official-docs
+grade: A
+title: Direct Posting Change or Warehouse Task in EWM
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/b2916053d2ce6655e10000000a423f68.html
+publisher: SAP
+captured_at: '2026-08-18'
+supports:
+  - SAP EWM supports direct posting changes to stock and can optionally create warehouse tasks after the posting change.
+  - A stock posting change and a physical warehouse movement are separable operations even when one process triggers the other.

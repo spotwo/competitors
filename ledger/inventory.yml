@@ -1,0 +1,133 @@
+id: inventory-ledger
+title: Inventory Ledger Posting Model
+status: candidate
+model:
+  position_role: Inventory Position is the low-latency operational read model updated synchronously with accepted postings.
+  ledger_role: Inventory Transaction is the immutable audit and rebuild journal for physical inventory and commitment deltas.
+  event_role: Domain Events describe committed facts for other modules and integrations but are not the authoritative inventory ledger.
+  projection_role: Availability and reporting views are derived projections and may be rebuilt from current positions plus durable history where required.
+transaction_types:
+  - id: receipt
+    label: Receipt
+    category: physical
+    affects_physical: true
+    conserves_physical: false
+    description: Introduce physical inventory into the warehouse boundary from an external or upstream source.
+    posting: [destination physical +Q]
+    evidence_refs: [dynamics365-warehouse-transactions-2026]
+  - id: issue
+    label: Issue
+    category: physical
+    affects_physical: true
+    conserves_physical: false
+    description: Remove physical inventory from the warehouse boundary to an external or downstream destination.
+    posting: [source physical -Q]
+    evidence_refs: [dynamics365-warehouse-transactions-2026]
+  - id: movement
+    label: Movement
+    category: physical
+    affects_physical: true
+    conserves_physical: true
+    description: Relocate inventory between internal inventory keys without creating or destroying quantity.
+    posting: [source physical -Q, destination physical +Q]
+    evidence_refs: [dynamics365-warehouse-transactions-2026, infor-inventory-transactions-2026]
+  - id: posting-change
+    label: Posting Change / Transformation
+    category: transformation
+    affects_physical: true
+    conserves_physical: true
+    description: Change an inventory dimension such as condition or stock type, with or without physical relocation.
+    posting: [old context physical -Q, new context physical +Q]
+    evidence_refs: [sap-ewm-posting-change-2026]
+  - id: adjustment-in
+    label: Adjustment In
+    category: reconciliation
+    affects_physical: true
+    conserves_physical: false
+    description: Increase recorded physical inventory under an explicit adjustment or reconciliation authority.
+    posting: [target physical +Q]
+  - id: adjustment-out
+    label: Adjustment Out
+    category: reconciliation
+    affects_physical: true
+    conserves_physical: false
+    description: Decrease recorded physical inventory under an explicit adjustment or reconciliation authority.
+    posting: [source physical -Q]
+  - id: reservation
+    label: Reservation
+    category: commitment
+    affects_physical: false
+    conserves_physical: true
+    description: Commit quantity to demand without changing physical quantity.
+    posting: [scope reserved +Q]
+    evidence_refs: [dynamics365-warehouse-transactions-2026]
+  - id: reservation-release
+    label: Reservation Release
+    category: commitment
+    affects_physical: false
+    conserves_physical: true
+    description: Release previously reserved quantity without creating physical inventory.
+    posting: [scope reserved -Q]
+    evidence_refs: [dynamics365-warehouse-transactions-2026]
+  - id: allocation
+    label: Allocation
+    category: commitment
+    affects_physical: false
+    conserves_physical: true
+    description: Bind quantity to an execution-relevant inventory source while leaving physical quantity unchanged.
+    posting: [source allocated +Q]
+  - id: allocation-release
+    label: Allocation Release
+    category: commitment
+    affects_physical: false
+    conserves_physical: true
+    description: Remove an execution source commitment without changing physical quantity.
+    posting: [source allocated -Q]
+  - id: count-reconciliation
+    label: Count Reconciliation
+    category: reconciliation
+    affects_physical: true
+    conserves_physical: false
+    description: Post the approved difference between accepted physical-count evidence and system quantity.
+    posting: [position physical +/-Q with accepted count reference]
+  - id: reversal
+    label: Reversal
+    category: reversal
+    affects_physical: true
+    conserves_physical: false
+    description: Compensate a previously posted transaction by posting inverse legs under a new immutable transaction identity.
+    posting: [inverse prior legs]
+invariants:
+  - {id: immutable-posted-history, statement: Posted transactions and legs are immutable; corrections append new transactions., status: adopted}
+  - {id: movement-conservation, statement: Internal movement and pure dimension transformation net to zero physical quantity for the same item and normalized unit of measure., status: candidate}
+  - {id: commitment-does-not-create-stock, statement: Reservation and allocation never increase physical quantity., status: adopted}
+  - {id: available-is-derived, statement: Availability is calculated from position and policy and is never an independently authoritative mutable bucket., status: adopted}
+  - {id: no-double-post, statement: One logical command may post at most one successful transaction set for its idempotency scope., status: adopted}
+  - {id: atomic-position-ledger, statement: Ledger rows and all affected Inventory Positions commit atomically or not at all., status: candidate}
+  - {id: explicit-adjustment-authority, statement: Non-conserving adjustments require an explicit reason and source authority., status: candidate}
+  - {id: nonnegative-default, statement: Physical reserved and allocated quantities do not become negative under the default warehouse policy., status: candidate}
+  - {id: serial-exclusivity, statement: One serialized unit cannot be physically present in two mutually exclusive inventory positions simultaneously., status: candidate}
+posting_rules:
+  - Lock or version every affected inventory position before accepting conflicting deltas.
+  - Normalize quantity into a defined inventory UOM before conservation checks; preserve entered UOM as audit context.
+  - Validate holds condition ownership serial lot and handling-unit constraints before posting.
+  - Persist transaction legs position updates and outbox rows in one database transaction.
+  - Every posted transaction carries source reference reason occurred_at recorded_at actor and idempotency context.
+  - Multi-position postings acquire locks in deterministic inventory-key order to reduce deadlock risk.
+reversal_rules:
+  - Never edit or delete a posted transaction to correct business history.
+  - A reversal references the original transaction and posts compensating legs.
+  - If the original stock has since moved or been consumed, reversal planning must resolve current inventory constraints rather than fabricating a historical location.
+  - Reversal of a commitment must not alter physical quantity.
+concurrency:
+  strategy: Optimistic position versioning with short atomic posting transactions; use row locking or serializable retry for high-contention scopes where required.
+  controls: [unique idempotency key, position version check, deterministic multi-key lock order, bounded retry on serialization conflict, serial identity uniqueness]
+  notes: Exact database isolation policy remains implementation-specific; correctness is defined by invariants rather than by one mandatory SQL isolation level.
+research_gaps:
+  - Benchmark row-locking versus optimistic version retry for high-contention pick-face allocation.
+  - Define archival and checkpoint policy for very high transaction volumes without breaking traceability.
+  - Decide whether reservation and allocation legs live in the same physical journal as quantity legs or separate logical journals sharing one transaction envelope.
+  - Define UOM conversion rounding rules for conservation checks.
+  - Define negative-inventory exceptions for integration latency and backflush scenarios.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-warehouse-transactions-2026, dynamics365-onhand-projection-2026, dynamics365-onhand-rebuild-2026, oracle-inventory-history-2026, infor-inventory-transactions-2026, sap-ewm-posting-change-2026]

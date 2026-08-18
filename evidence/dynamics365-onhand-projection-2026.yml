@@ -1,0 +1,12 @@
+id: dynamics365-onhand-projection-2026
+subject: inventory-position
+source_type: official-docs
+grade: A
+title: Inventory on-hand list - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/inventory/inventory-on-hand-list
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - The Dynamics on-hand list is a summarized view of inventory and warehouse transactions.
+  - On-hand output is aggregated according to selected inventory dimensions and filters.
+  - On-hand information is updated when inventory transactions occur and can be traced back to contributing transactions.

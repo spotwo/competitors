@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/event-registry.schema.json",
+  "title": "Domain Event Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "status", "envelope", "events", "publication", "external_mappings", "last_verified", "evidence_refs"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "title": {"type": "string", "minLength": 1},
+    "status": {"enum": ["adopted", "candidate", "observed", "needs-research"]},
+    "envelope": {"type": "object", "additionalProperties": false, "required": ["fields"], "properties": {"fields": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["name", "required", "description"], "properties": {"name": {"type": "string"}, "required": {"type": "boolean"}, "description": {"type": "string"}}}}}},
+    "events": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["id", "type", "category", "meaning", "trigger", "ledger_relation"], "properties": {"id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}, "type": {"type": "string"}, "category": {"enum": ["inventory", "commitment", "movement", "reconciliation", "integration"]}, "meaning": {"type": "string"}, "trigger": {"type": "string"}, "ledger_relation": {"type": "string"}, "external_visibility": {"type": "boolean"}, "evidence_refs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}}}},
+    "publication": {"type": "object", "additionalProperties": false, "required": ["atomicity", "delivery", "ordering", "deduplication"], "properties": {"atomicity": {"type": "string"}, "delivery": {"type": "string"}, "ordering": {"type": "string"}, "deduplication": {"type": "string"}, "retention": {"type": "string"}}},
+    "external_mappings": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["standard", "scope", "notes"], "properties": {"standard": {"type": "string"}, "scope": {"type": "string"}, "notes": {"type": "string"}, "evidence_refs": {"type": "array", "items": {"type": "string"}}}}},
+    "research_gaps": {"type": "array", "items": {"type": "string"}},
+    "last_verified": {"type": "string", "format": "date"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true}
+  }
+}

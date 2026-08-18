@@ -1,0 +1,11 @@
+id: cloudevents-event-envelope-2026
+subject: event-model
+source_type: standard
+grade: A
+title: CloudEvents specification overview
+url: https://cloudevents.io/
+publisher: Cloud Native Computing Foundation
+captured_at: '2026-08-18'
+supports:
+  - CloudEvents defines a common way to describe event data across services and platforms.
+  - A standard event envelope improves portability and consistent handling without defining warehouse business semantics.

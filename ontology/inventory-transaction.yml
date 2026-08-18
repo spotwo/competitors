@@ -1,0 +1,65 @@
+id: inventory-transaction
+title: Inventory Transaction and Position Ontology
+kind: transaction
+status: candidate
+description: Canonical concepts for durable inventory history and current operational balances. The model separates immutable posted transactions from materialized inventory positions and from asynchronous domain events.
+entities:
+  - id: inventory-position
+    term: Inventory Position
+    definition: Current operational balance for one inventory key, maintained as a materialized view of accepted inventory and commitment transactions.
+    attributes: [physical_quantity, reserved_quantity, allocated_quantity, version, updated_at]
+  - id: inventory-key
+    term: Inventory Key
+    definition: Stable combination of inventory dimensions identifying the scope of an inventory position.
+    attributes: [warehouse, location, item, owner, condition, lot, serial, handling_unit]
+  - id: inventory-transaction
+    term: Inventory Transaction
+    definition: Immutable posted record representing an accepted change to physical inventory, inventory dimensions, commitment quantities, or reconciliation state.
+    attributes: [transaction_id, type, occurred_at, recorded_at, reason, source_reference]
+  - id: transaction-leg
+    term: Transaction Leg
+    definition: One signed delta applied to a physical or commitment dimension for a specific inventory key.
+    attributes: [inventory_key, physical_delta, reserved_delta, allocated_delta, uom]
+  - id: transaction-type
+    term: Inventory Transaction Type
+    definition: Classification that determines posting semantics and invariant checks for an inventory transaction.
+  - id: transaction-reason
+    term: Transaction Reason
+    definition: Business or operational reason authorizing an inventory transaction or adjustment.
+  - id: transaction-source
+    term: Transaction Source
+    definition: Business document, warehouse work, count result, integration command, or other source that caused the transaction.
+  - id: idempotency-key
+    term: Idempotency Key
+    definition: Stable request identity used to prevent retrying the same logical command from posting inventory twice.
+  - id: position-version
+    term: Inventory Position Version
+    definition: Monotonic concurrency token changed whenever a position is updated by a committed posting.
+  - id: reversal-transaction
+    term: Reversal Transaction
+    definition: Compensating transaction that reverses a previously posted transaction without editing historical rows.
+  - id: reconciliation-transaction
+    term: Reconciliation Transaction
+    definition: Transaction derived from accepted count or consistency evidence that aligns system inventory with an approved authoritative observation.
+  - id: ledger-checkpoint
+    term: Ledger Checkpoint
+    definition: Optional verified position snapshot associated with a ledger boundary to accelerate rebuild or consistency verification without deleting detailed history.
+relationships:
+  - {subject: inventory-position, predicate: identified-by, object: inventory-key}
+  - {subject: inventory-transaction, predicate: contains, object: transaction-leg}
+  - {subject: inventory-transaction, predicate: classified-by, object: transaction-type}
+  - {subject: inventory-transaction, predicate: justified-by, object: transaction-reason}
+  - {subject: inventory-transaction, predicate: caused-by, object: transaction-source}
+  - {subject: inventory-transaction, predicate: deduplicated-by, object: idempotency-key}
+  - {subject: transaction-leg, predicate: changes, object: inventory-position}
+  - {subject: inventory-position, predicate: guarded-by, object: position-version}
+  - {subject: reversal-transaction, predicate: reverses, object: inventory-transaction}
+  - {subject: reconciliation-transaction, predicate: is-a, object: inventory-transaction}
+  - {subject: ledger-checkpoint, predicate: summarizes, object: inventory-position}
+research_gaps:
+  - Validate which inventory dimensions belong directly in Inventory Key versus indirect references through handling-unit or stock-dimension objects.
+  - Decide checkpoint and archival strategy that preserves auditability while keeping rebuild time bounded.
+  - Define whether commitment transactions share the same physical ledger table or use a logically separate commitment journal under one posting service.
+  - Validate negative-inventory policy by warehouse and integration scenario.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-warehouse-transactions-2026, dynamics365-onhand-projection-2026, dynamics365-onhand-rebuild-2026, oracle-inventory-history-2026, infor-inventory-transactions-2026, sap-ewm-posting-change-2026]

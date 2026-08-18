@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/ledger-registry.schema.json",
+  "title": "Inventory Ledger Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "status", "model", "transaction_types", "invariants", "posting_rules", "reversal_rules", "concurrency", "last_verified", "evidence_refs"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "title": {"type": "string", "minLength": 1},
+    "status": {"enum": ["adopted", "candidate", "observed", "needs-research"]},
+    "model": {"type": "object", "additionalProperties": false, "required": ["position_role", "ledger_role", "event_role", "projection_role"], "properties": {"position_role": {"type": "string"}, "ledger_role": {"type": "string"}, "event_role": {"type": "string"}, "projection_role": {"type": "string"}}},
+    "transaction_types": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["id", "label", "category", "affects_physical", "conserves_physical", "description", "posting"], "properties": {"id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}, "label": {"type": "string"}, "category": {"enum": ["physical", "commitment", "transformation", "reconciliation", "reversal"]}, "affects_physical": {"type": "boolean"}, "conserves_physical": {"type": "boolean"}, "description": {"type": "string"}, "posting": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "evidence_refs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}}}},
+    "invariants": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["id", "statement", "status"], "properties": {"id": {"type": "string"}, "statement": {"type": "string"}, "status": {"enum": ["adopted", "candidate", "needs-research"]}}}},
+    "posting_rules": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "reversal_rules": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "concurrency": {"type": "object", "additionalProperties": false, "required": ["strategy", "controls"], "properties": {"strategy": {"type": "string"}, "controls": {"type": "array", "items": {"type": "string"}, "minItems": 1}, "notes": {"type": "string"}}},
+    "research_gaps": {"type": "array", "items": {"type": "string"}},
+    "last_verified": {"type": "string", "format": "date"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true}
+  }
+}
