@@ -6,13 +6,13 @@
 |---|---:|
 | Companies | 50 |
 | Products | 88 |
-| Evidence records | 165 |
+| Evidence records | 173 |
 | Claims | 26 |
 | Terminology records | 35 |
 | Authorities | 8 |
 | Taxonomy vocabularies | 9 |
 | Ontologies | 7 |
-| Ontology entities | 81 |
+| Ontology entities | 86 |
 | KPI metrics | 25 |
 | Integration patterns | 9 |
 | Capability records | 27 |
