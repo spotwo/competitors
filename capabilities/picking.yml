@@ -1,0 +1,38 @@
+id: picking
+group: fulfillment
+label: Picking
+status: adopted
+definition: Retrieve required inventory from warehouse locations to satisfy an order, shipment, production, or transfer requirement.
+purpose: Convert allocated inventory into physically collected fulfilment units accurately and efficiently.
+inputs: [released-demand, allocated-inventory, pick-location]
+outputs: [picked-inventory, pick-confirmation, exception]
+entities: [order, order-line, inventory, location, handling-unit, pick-task]
+strategies: [discrete, batch, cluster, zone, wave, goods-to-person, voice, pick-to-light]
+related_capabilities: [allocation, waving, waveless, replenishment, consolidation, packing]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: core
+    terminology: [multi-method order picking]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: blue-yonder
+    level: advanced
+    notes: WES builds picking tours dynamically from location, priorities, and work dependencies.
+    evidence_refs: [blue-yonder-wes-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-wms-capabilities-2026, infios-enterprise-capabilities-2026]
+  - company_id: mecalux
+    level: core
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+  - company_id: odoo
+    level: core
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Picking
+  status: adopted
+  notes: Model picking methods as strategies rather than separate top-level business processes.
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, blue-yonder-wes-2026, infios-wms-capabilities-2026, infios-enterprise-capabilities-2026, mecalux-easy-wms-capabilities-2026, odoo-inventory-routes-2026]
