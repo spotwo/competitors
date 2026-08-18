@@ -1,0 +1,13 @@
+id: dynamics-packing-work-2026
+subject: packing-workflow
+source_type: official-docs
+grade: A
+title: Packing work for packing outbound containers and processing shipments
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/packing-work
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Packing work is a distinct work order type for outbound containers.
+  - Packing work is created when source work puts inventory into a packing location.
+  - Container close and reopen actions maintain packing work state.
+  - Packing work supports partial shipment processing of packed containers.
