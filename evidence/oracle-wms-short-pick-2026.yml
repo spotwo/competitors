@@ -1,0 +1,12 @@
+id: oracle-wms-short-pick-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Cycle Count Task Creation - Short Pick Trigger
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/configuring-cycle-count-triggers.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+  - A short pick can trigger a cycle count task for the affected location or SKU.
+  - Oracle distinguishes short picking as an execution exception with downstream inventory verification work.
+  - Short-pick behavior can be triggered from RF picking modules and MHE Pick Confirmation API.
