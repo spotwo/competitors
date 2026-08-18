@@ -8,17 +8,19 @@ Use this policy as the default for new projects unless a repository explicitly d
 
 ## 1. Change isolation and ownership
 
-### One task, one branch, one PR, one agent
+### One task, one branch, one PR, one owning agent
 
-**1 task = 1 branch = 1 PR = 1 agent.** An agent must never work directly on `main` or another protected default branch.
+**1 task = 1 branch = 1 PR = 1 owning agent.** An owning agent must never work directly on `main` or another protected default branch.
+
+Subagents may be used for research, review, testing, or other delegated work, but one owning agent remains responsible for write scope, branch state, PR coherence, and the final merge outcome.
 
 ### Keep the agent inside the intended diff
 
 The agent owns the requested diff, not the repository. Define or infer the allowed files, paths, or components for the task, and treat unexpected scope expansion as a failure that must be reviewed.
 
-### Prefer small PRs
+### Prefer small coherent PRs
 
-Prefer several small, independently understandable PRs over one large autonomous change. Five PRs of roughly 100 lines are generally easier to verify and recover than one 3,000-line agent-generated PR.
+Prefer several small, independently understandable and independently verifiable PRs over one large autonomous change. Optimize for the smallest coherent change, not an arbitrary line-count target: a short authentication or migration change can carry more risk than a much larger generated or mechanical diff.
 
 ## 2. Agent inner development loop
 
@@ -74,7 +76,9 @@ The more autonomous the agent, the more important executable acceptance tests, i
 
 ### Run full CI before merge, not after merge
 
-Run the complete merge-blocking validation against the exact code that is about to enter `main`, preferably through GitHub Merge Queue / `merge_group` when supported. A full regression suite that runs only after merge is too late to act as a quality gate.
+Run the complete merge-blocking validation against the exact code that is about to enter `main`. Prefer GitHub Merge Queue / `merge_group` when supported. When Merge Queue is not enabled, use required PR checks against an up-to-date merge candidate so the pre-merge gate still verifies what will actually land.
+
+A full regression suite that runs only after merge is too late to act as a quality gate.
 
 ### Prefer Merge Queue over repeated manual branch updates
 
@@ -135,7 +139,7 @@ Use this four-level pipeline as the default mental model:
 ```text
 Agent local loop
     -> Fast PR CI
-    -> Full Merge-Queue CI
+    -> Full pre-merge CI / Merge Queue
     -> Main smoke/deploy verification
 ```
 
@@ -147,9 +151,9 @@ The agent iterates locally and runs formatter, linter, type checker, targeted te
 
 GitHub verifies the pushed checkpoint with a small affected-change gate and immediately rejects obvious correctness, quality, or security problems.
 
-### Level 3 - Full Merge-Queue CI
+### Level 3 - Full pre-merge CI / Merge Queue
 
-Before merge, the exact merge candidate receives the expensive or comprehensive validation required to protect `main`.
+Before merge, the exact merge candidate receives the expensive or comprehensive validation required to protect `main`. Prefer Merge Queue when enabled; otherwise require equivalent pre-merge checks on an up-to-date candidate.
 
 ### Level 4 - Main smoke/deploy verification
 
