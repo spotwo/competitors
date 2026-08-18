@@ -6,6 +6,10 @@ values:
   label: Latin America
 - id: europe
   label: Europe
+- id: caucasus
+  label: Caucasus
+- id: central-asia
+  label: Central Asia
 - id: mena
   label: Middle East and North Africa
 - id: sub-saharan-africa

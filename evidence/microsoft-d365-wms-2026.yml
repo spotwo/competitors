@@ -1,0 +1,13 @@
+id: microsoft-d365-wms-2026
+subject: microsoft
+source_type: official-docs
+grade: A
+title: Dynamics 365 Supply Chain Management - Warehouse management overview
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/warehouse-management-overview
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+- Warehouse management module in Dynamics 365 Supply Chain Management
+- manufacturing, distribution and retail use cases
+- receiving, picking, counting, waves, packing and cross-docking
+- integration with manufacturing and transportation

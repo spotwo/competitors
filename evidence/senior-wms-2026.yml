@@ -1,0 +1,14 @@
+id: senior-wms-2026
+subject: senior-sistemas
+source_type: official-product-page
+grade: B
+title: Senior WMS para Gestão de Armazenagem
+url: https://site.senior.com.br/sistema-de-logistica/wms-gestao-de-armazenagem/
+publisher: Senior Sistemas
+captured_at: '2026-08-18'
+supports:
+- cloud-native microservices WMS
+- multi-client and multi-warehouse operations
+- high-complexity operations and small-to-large distribution centers
+- receiving through shipping, inventory and traceability
+- native 3PL billing

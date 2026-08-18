@@ -1,0 +1,13 @@
+id: snapcontrol-2026
+subject: snapfulfil
+source_type: official-product-page
+grade: B
+title: SnapControl Multiagent Orchestration
+url: https://snapfulfil.com/about-snapcontrol
+publisher: Synergy Logistics
+captured_at: '2026-08-18'
+supports:
+- device-agnostic multiagent orchestration
+- robot and warehouse-device control
+- automatic task allocation and reassignment
+- inbound, outbound and replenishment task prioritization

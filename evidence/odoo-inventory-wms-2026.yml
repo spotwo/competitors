@@ -1,0 +1,13 @@
+id: odoo-inventory-wms-2026
+subject: odoo
+source_type: official-docs
+grade: A
+title: Odoo 19 Inventory - Warehouses and storage
+url: https://www.odoo.com/documentation/19.0/applications/inventory_and_mrp/inventory/warehouses_storage.html
+publisher: Odoo
+captured_at: '2026-08-18'
+supports:
+- warehouses and storage locations
+- inventory adjustments and cycle counts
+- replenishment
+- warehouse reporting

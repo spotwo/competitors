@@ -1,0 +1,13 @@
+id: odoo-putaway-2026
+subject: odoo
+source_type: official-docs
+grade: A
+title: Odoo 19 Putaway rules
+url: https://www.odoo.com/documentation/19.0/applications/inventory_and_mrp/inventory/shipping_receiving/daily_operations/putaway.html
+publisher: Odoo
+captured_at: '2026-08-18'
+supports:
+- putaway terminology
+- storage locations and sublocations
+- package, product and category putaway rules
+- capacity-aware storage categories
