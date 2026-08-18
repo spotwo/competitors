@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from uuid import uuid4
 
 import psycopg
+import pytest
 
 import conftest as lab
 from publisher_runtime import (
+    ClaimedEvent,
     InMemoryTransport,
     PostgresOutboxStore,
     PublishReceipt,
@@ -286,3 +289,46 @@ def test_transport_receives_stable_domain_event_envelope():
     assert envelope["warehouse_id"] == str(lab.WAREHOUSE)
     assert envelope["schema_version"] == 1
     assert envelope["data"] == {"ordinal": 7}
+
+
+def test_ack_storage_failure_after_confirmed_publish_is_not_converted_to_nack():
+    event = ClaimedEvent(
+        event_id=uuid4(),
+        claim_token=uuid4(),
+        event_type="inventory.test.event",
+        aggregate_type="InventoryPosition",
+        aggregate_id="test-ack-failure",
+        aggregate_version=1,
+        envelope={"event_id": "test"},
+    )
+
+    class AckFailsStore:
+        def __init__(self):
+            self.nack_calls = 0
+
+        def claim(self, *, worker_id, limit, lease_seconds):
+            return [event]
+
+        def ack(self, *, event_id, claim_token):
+            raise OSError("database unavailable after broker confirmation")
+
+        def nack(self, *, event_id, claim_token, error, retry_after_seconds):
+            self.nack_calls += 1
+            return True
+
+    store = AckFailsStore()
+    transport = InMemoryTransport()
+    publisher = PublisherRuntime(
+        store=store,
+        transport=transport,
+        worker_id="publisher-a",
+        batch_size=1,
+        lease_seconds=30,
+        retry_after_seconds=5,
+    )
+
+    with pytest.raises(OSError, match="database unavailable"):
+        publisher.run_once()
+
+    assert [message.event_id for message in transport.messages] == [event.event_id]
+    assert store.nack_calls == 0
