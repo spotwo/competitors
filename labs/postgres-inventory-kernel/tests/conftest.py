@@ -91,6 +91,8 @@ def clean_database():
         conn.execute(
             """
             TRUNCATE TABLE
+              kernel_lab.inventory_holds,
+              kernel_lab.inventory_hold_policies,
               kernel_lab.inventory_allocations,
               kernel_lab.inventory_reservations,
               kernel_lab.inventory_transaction_legs,
