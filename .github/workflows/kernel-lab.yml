@@ -3,6 +3,7 @@ name: PostgreSQL inventory kernel lab
 on:
   pull_request:
     paths:
+      - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
@@ -11,6 +12,7 @@ on:
       - 'decisions/domain/0017-warehouse-work-execution-engine.md'
       - 'decisions/domain/0018-golden-warehouse-scenarios.md'
       - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
+      - 'decisions/domain/0020-wms-kernel-v0.1.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -23,6 +25,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
@@ -31,6 +34,7 @@ on:
       - 'decisions/domain/0017-warehouse-work-execution-engine.md'
       - 'decisions/domain/0018-golden-warehouse-scenarios.md'
       - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
+      - 'decisions/domain/0020-wms-kernel-v0.1.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -76,6 +80,7 @@ jobs:
           fi
 
           if git diff --quiet HEAD^1 HEAD -- \
+            kernel \
             labs/postgres-inventory-kernel \
             bin/check-kernel-lab \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
@@ -84,6 +89,7 @@ jobs:
             decisions/domain/0017-warehouse-work-execution-engine.md \
             decisions/domain/0018-golden-warehouse-scenarios.md \
             decisions/domain/0019-postgresql-performance-contention-lab.md \
+            decisions/domain/0020-wms-kernel-v0.1.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
