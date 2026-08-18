@@ -1,0 +1,10 @@
+id: inventory-movement
+preferred_term: Inventory Movement
+definition: Confirmed or confirmable change of inventory from one source inventory context to one destination inventory context.
+domain: [inventory, movement, execution]
+aliases: [stock movement, warehouse movement, internal movement]
+status: candidate
+spotwo_term: Inventory Movement
+notes: Movement records what inventory actually changed context. Capability-specific intent such as Putaway, Replenishment, Relocation, or Cross-docking remains outside the generic movement primitive.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-inventory-movement-2026, sap-inventory-movement-2026, infor-inventory-movement-2026]
