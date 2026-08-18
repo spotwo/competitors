@@ -1,0 +1,12 @@
+id: odoo-cluster-picking-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Cluster Picking - Odoo 18 Documentation
+url: https://www.odoo.com/documentation/18.0/applications/inventory_and_mrp/inventory/shipping_receiving/picking_methods/cluster.html
+publisher: Odoo
+captured_at: '2026-08-18'
+supports:
+  - Odoo cluster picking combines multi-order picking with immediate sorting into order-specific packages during the pick.
+  - Products are grouped by location and operators can confirm source location, product and destination package through Barcode.
+  - Cluster picking removes a separate post-pick sorting step by maintaining order separation in containers during execution.
