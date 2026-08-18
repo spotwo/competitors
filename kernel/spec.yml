@@ -73,9 +73,9 @@ executable_contract:
 required_golden_scenarios:
   registry: scenarios/golden.yml
   ids:
-    - fulfillment-order-ship
+    - order-fulfillment-happy-path
     - whole-hu-relocation
-    - short-pick-retry
+    - short-pick-recovery
     - cycle-count-reconciliation
 
 benchmark_evidence:
