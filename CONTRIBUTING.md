@@ -6,8 +6,10 @@
 2. Add or update the canonical entity (`companies/`, `terminology/`, or `authorities/`).
 3. Use controlled taxonomy values instead of inventing tags.
 4. Set `last_verified` / `captured_at` to the actual research date.
-5. Run `python scripts/validate.py`.
-6. If terminology affects Spotwo product language, create an ADR under `decisions/terminology/`.
+5. Record unknowns in `research_gaps` rather than guessing.
+6. Run `python scripts/generate_matrices.py` after changing companies or terminology.
+7. Run `python scripts/validate.py`.
+8. If terminology affects Spotwo product language, create an ADR under `decisions/terminology/`.
 
 ## Claims
 
@@ -23,8 +25,13 @@ Keep these distinct:
 
 - `hq_country`: legal/operating headquarters country.
 - `markets`: broad regions where the vendor explicitly operates or sells.
-- Country-level presence can be added later as evidence becomes available.
+- `served_countries`: countries with supported evidence of commercial availability or customer/service footprint.
+- `local_presence_countries`: countries with supported evidence of offices, teams, or direct local presence.
 
 ## Segmentation
 
-`segments` describes target customer size. It is not a proxy for warehouse complexity. Use `warehouse_complexity` separately when a vendor provides enough evidence to support it.
+Company-level `segments` describes the vendor portfolio. Product-level `segments` can narrow a specific product or edition. Do not use customer size as a proxy for warehouse complexity.
+
+## Unknowns
+
+Do not add `unknown` to controlled taxonomies merely to satisfy a schema. Omit optional facts that are not verified and add a precise `research_gaps` item instead.

@@ -26,7 +26,7 @@ def terms():
 def vendor_matrix(records):
     lines = ["# Vendor Matrix", "", "> Generated from `companies/*/company.yml`. Do not edit by hand.", "", "| Vendor | Segments | Solution layers | Markets | Deployment | Products | Verified |", "|---|---|---|---|---|---|---|"]
     for c in sorted(records, key=lambda x: x["name"].lower()):
-        lines.append(f"| {c['name']} | {', '.join(c['segments'])} | {', '.join(c['solution_layers'])} | {', '.join(c['markets'])} | {', '.join(c['deployment_models'])} | {', '.join(p['name'] for p in c['products'])} | {c['last_verified']} |")
+        lines.append(f"| {c['name']} | {', '.join(c['segments'])} | {', '.join(c['solution_layers'])} | {', '.join(c['markets'])} | {', '.join(c.get('deployment_models', []))} | {', '.join(p['name'] for p in c['products'])} | {c['last_verified']} |")
     return "\n".join(lines) + "\n"
 
 

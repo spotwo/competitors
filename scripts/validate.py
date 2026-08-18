@@ -43,12 +43,14 @@ def main() -> int:
     allowed = {field: taxonomy_values(rel) for field, rel in TAXONOMY_FIELDS.items()}
     country_codes = taxonomy_values("taxonomy/countries.yml")
     company_ids: set[str] = set()
+    company_records: list[tuple[Path, dict]] = []
     product_ids: set[str] = set()
 
     for path in sorted(ROOT.glob("companies/*/company.yml")):
         data = load_yaml(path)
         if not isinstance(data, dict):
             continue
+        company_records.append((path, data))
         company_id = data.get("id")
         if company_id:
             if company_id in company_ids:
@@ -75,9 +77,20 @@ def main() -> int:
             for category in product.get("categories", []) or []:
                 if category not in allowed["solution_layers"]:
                     errors.append(f"{path.relative_to(ROOT)}: product {pid!r} has unknown category {category!r}")
+            for field in ("segments", "deployment_models"):
+                for value in product.get(field, []) or []:
+                    if value not in allowed[field]:
+                        errors.append(f"{path.relative_to(ROOT)}: product {pid!r} has unknown {field} value {value!r}")
         for ref in data.get("evidence_refs", []) or []:
             if ref not in evidence_ids:
                 errors.append(f"{path.relative_to(ROOT)}: missing evidence ref {ref!r}")
+
+    for path, data in company_records:
+        parent = data.get("parent_company_id")
+        if parent and parent not in company_ids:
+            errors.append(f"{path.relative_to(ROOT)}: missing parent company {parent!r}")
+        if parent and parent == data.get("id"):
+            errors.append(f"{path.relative_to(ROOT)}: company cannot be its own parent")
 
     for pattern in ("terminology/*.yml", "authorities/*.yml"):
         for path in sorted(ROOT.glob(pattern)):
