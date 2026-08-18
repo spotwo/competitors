@@ -1,0 +1,240 @@
+id: replenishment
+capability_id: replenishment
+title: Internal Replenishment Workflow
+status: candidate
+definition: A cross-vendor decomposition of internal warehouse replenishment that moves inventory from reserve, bulk or upstream storage into a pick face or other execution location in response to policy, demand or an operational trigger.
+stages:
+  - id: trigger-evaluation
+    label: Trigger Evaluation
+    purpose: Detect that a warehouse location, zone or demand set requires internal replenishment.
+    inputs: [inventory-position, demand, replenishment-policy]
+    outputs: [replenishment-need]
+  - id: quantity-calculation
+    label: Quantity Calculation
+    purpose: Determine the quantity required by the selected replenishment policy and unit constraints.
+    inputs: [replenishment-need, min-max, demand, capacity]
+    outputs: [replenishment-quantity]
+  - id: destination-selection
+    label: Destination Selection
+    purpose: Identify the pick face, location or zone that should receive stock.
+    inputs: [replenishment-need, destination-policy]
+    outputs: [target-location]
+  - id: source-selection
+    label: Source Selection
+    purpose: Select eligible reserve inventory and a source location using inventory, lot, route and location rules.
+    inputs: [replenishment-quantity, source-policy, inventory]
+    outputs: [source-location, source-inventory]
+  - id: work-creation
+    label: Replenishment Work Creation
+    purpose: Convert the replenishment decision into executable movement work.
+    inputs: [source-location, target-location, replenishment-quantity]
+    outputs: [replenishment-work, replenishment-task]
+  - id: release-assignment
+    label: Release / Assignment
+    purpose: Make replenishment work executable and optionally assign it to a worker, queue or equipment resource.
+    inputs: [replenishment-task, priority]
+    outputs: [assignment]
+  - id: movement
+    label: Pick / Move / Put
+    purpose: Remove inventory from the source and place it at the target location using a worker or automation resource.
+    inputs: [assignment, source-inventory]
+    outputs: [moved-inventory, movement-confirmation]
+  - id: completion-recalculation
+    label: Completion / Recalculation
+    purpose: Confirm inventory and capacity changes, close work and recalculate any remaining replenishment need.
+    inputs: [movement-confirmation]
+    outputs: [updated-inventory-position, residual-replenishment-need]
+objects:
+  - id: replenishment-policy
+    term: Replenishment Policy
+    role: Rules that determine when and how internal replenishment should occur.
+    aliases: [replenishment-template, replenishment-rule]
+  - id: replenishment-need
+    term: Replenishment Need
+    role: Calculated or event-driven requirement to add inventory to a target location or zone.
+  - id: replenishment-quantity
+    term: Replenishment Quantity
+    role: Quantity to move after applying demand, thresholds, units, multiples and capacity constraints.
+  - id: target-location
+    term: Target Location
+    role: Pick face, forward location or execution zone that should receive stock.
+  - id: source-location
+    term: Source Location
+    role: Reserve, bulk or upstream location selected to supply the replenishment.
+  - id: source-inventory
+    term: Source Inventory
+    role: Specific eligible stock selected for the replenishment movement.
+  - id: replenishment-work
+    term: Replenishment Work
+    role: Canonical grouping of one or more executable replenishment movements.
+  - id: replenishment-task
+    term: Replenishment Task
+    role: Smallest independently executable internal replenishment movement instruction.
+  - id: assignment
+    term: Assignment
+    role: Association of replenishment work with a worker, equipment resource, queue or task pool.
+  - id: movement-confirmation
+    term: Movement Confirmation
+    role: Actual confirmed source, destination and quantity moved during execution.
+states:
+  - id: detected
+    label: Detected
+    meaning: A replenishment need exists but executable work has not yet been created.
+  - id: planned
+    label: Planned
+    meaning: Source, destination and quantity have been determined.
+  - id: released
+    label: Released
+    meaning: Replenishment work is available for execution.
+  - id: assigned
+    label: Assigned
+    meaning: Work is associated with an execution resource or directed queue.
+  - id: in-progress
+    label: In Progress
+    meaning: Inventory movement has begun.
+  - id: exception
+    label: Exception
+    meaning: Source, destination, quantity or capacity prevents normal completion.
+  - id: completed
+    label: Completed
+    meaning: The movement is confirmed and warehouse inventory has been updated.
+    terminal: true
+  - id: cancelled
+    label: Cancelled
+    meaning: The replenishment work is no longer valid and must not execute.
+    terminal: true
+strategies:
+  - id: min-max
+    category: trigger
+    label: Min/Max Replenishment
+    definition: Trigger replenishment when stock falls below a configured minimum and move enough stock toward a configured maximum.
+    status: adopted
+    evidence_refs: [dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026]
+  - id: wave-demand
+    category: trigger
+    label: Wave Demand Replenishment
+    definition: Create internal replenishment work when outbound or production demand cannot be satisfied during wave processing.
+    status: adopted
+    evidence_refs: [dynamics365-internal-replenishment-2026]
+  - id: load-demand
+    category: trigger
+    label: Load Demand Replenishment
+    definition: Aggregate demand across loads and create replenishment work needed to stock picking locations for those loads.
+    status: observed
+    evidence_refs: [dynamics365-internal-replenishment-2026]
+  - id: immediate-reactive
+    category: trigger
+    label: Immediate / Reactive Replenishment
+    definition: Trigger replenishment immediately from a failed allocation or an operator action such as scanning an understocked location.
+    status: adopted
+    evidence_refs: [dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026]
+  - id: order-based
+    category: trigger
+    label: Order-Based Replenishment
+    definition: Create replenishment based on quantity required for current orders rather than only a standing inventory threshold.
+    status: adopted
+    evidence_refs: [oracle-internal-replenishment-2026]
+  - id: transaction-dynamic
+    category: trigger
+    label: Transaction-Driven Dynamic Replenishment
+    definition: Reevaluate replenishment needs when inventory-affecting transactions change warehouse stock positions.
+    status: adopted
+    evidence_refs: [infor-internal-replenishment-2026]
+  - id: location-directive-source
+    category: source-selection
+    label: Location-Directive Source Selection
+    definition: Select source inventory using configured warehouse location directives or equivalent source rules.
+    status: adopted
+    evidence_refs: [dynamics365-internal-replenishment-2026]
+  - id: route-sequence-source
+    category: source-selection
+    label: Route / Location Sequence Source Selection
+    definition: Select replenishment source locations according to configured route and location ordering.
+    status: observed
+    evidence_refs: [infor-internal-replenishment-2026]
+  - id: clean-location-source
+    category: source-selection
+    label: Clean Location Source Selection
+    definition: Prefer source locations whose residual stock can be emptied to free storage positions.
+    status: observed
+    evidence_refs: [infor-internal-replenishment-2026]
+  - id: directed-assignment
+    category: assignment
+    label: Directed Replenishment Assignment
+    definition: Present the next replenishment task according to system priority rather than requiring the operator to choose.
+    status: adopted
+    evidence_refs: [infor-internal-replenishment-2026]
+  - id: assisted-selection
+    category: assignment
+    label: Assisted Replenishment Selection
+    definition: Present eligible replenishment work for a zone or warehouse and allow the operator to select a task.
+    status: observed
+    evidence_refs: [infor-internal-replenishment-2026]
+  - id: pick-put-work
+    category: execution
+    label: Pick / Put Work
+    definition: Execute replenishment as an internal inventory movement with an explicit source pick and destination put.
+    status: adopted
+    evidence_refs: [dynamics365-internal-replenishment-2026]
+exceptions:
+  - id: insufficient-source-stock
+    label: Insufficient Source Stock
+    trigger: Eligible reserve inventory cannot cover the required replenishment quantity.
+    outcomes: [reduce-or-split-quantity, choose-alternate-source, preserve-residual-need]
+    status: candidate
+    evidence_refs: [dynamics365-internal-replenishment-2026]
+  - id: target-capacity-conflict
+    label: Target Capacity Conflict
+    trigger: Requested replenishment would exceed target location capacity or stocking constraints.
+    outcomes: [reduce-quantity, choose-alternate-target, hold-work]
+    status: observed
+    evidence_refs: [dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026]
+  - id: no-eligible-source
+    label: No Eligible Source
+    trigger: Source-selection rules cannot identify suitable inventory or a suitable source location.
+    outcomes: [exception, alternate-rule, supervisor-review, preserve-residual-need]
+    status: candidate
+    evidence_refs: [infor-internal-replenishment-2026]
+vendor_models:
+  - company_id: microsoft
+    terminology:
+      policy: Replenishment Template
+      source_rule: Location Directive
+      work_group: Replenishment Work
+      task_detail: Work Line
+    workflow: [trigger-strategy, replenishment-template, destination-location-directive, source-pick-location-directive, work-template, replenishment-work, mobile-execution]
+    strategies: [wave-demand, min-max, load-demand, immediate]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics365-internal-replenishment-2026]
+  - company_id: oracle
+    terminology:
+      policy: Replenishment Rule
+      release_group: Replenishment Wave Template
+      task: Replenishment Task
+    workflow: [trigger-mode, replenishment-wave, rule-evaluation, allocation, task-creation, rf-execution]
+    strategies: [minimum-capacity, percentage-of-max, reactive, order-based]
+    execution_channels: [rf, mobile]
+    evidence_refs: [oracle-internal-replenishment-2026]
+  - company_id: infor
+    terminology:
+      task: Replenishment Task
+      directed_execution: Task Manager
+    workflow: [transaction-change, replenishment-list-regeneration, priority-calculation, source-location-selection, rf-assisted-or-directed-task, confirmation]
+    strategies: [transaction-driven, route-location-sequence, clean-location, descending-location, rf-assisted, rf-directed]
+    execution_channels: [rf-assisted, rf-directed]
+    evidence_refs: [infor-internal-replenishment-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [trigger-evaluation, quantity-calculation, destination-selection, source-selection, work-creation, release-assignment, movement, completion-recalculation]
+  canonical_objects: [replenishment-policy, replenishment-need, replenishment-quantity, target-location, source-location, source-inventory, replenishment-work, replenishment-task, assignment, movement-confirmation]
+  task_states: [detected, planned, released, assigned, in-progress, exception, completed, cancelled]
+  commands: [evaluate-replenishment, plan-replenishment, release-replenishment-work, assign-replenishment-work, start-replenishment-task, confirm-replenishment-move, report-replenishment-exception, cancel-replenishment-work]
+  events: [replenishment-needed, replenishment-planned, replenishment-work-released, replenishment-work-assigned, replenishment-task-started, replenishment-move-confirmed, replenishment-exception-reported, replenishment-work-completed, replenishment-work-cancelled]
+  notes: Internal Replenishment is specifically a warehouse inventory movement between internal locations. Procurement, manufacturing supply creation and inter-warehouse resupply should map to separate supply/procurement capabilities even when a vendor UI labels them Replenishment.
+research_gaps:
+  - Add SAP EWM, Manhattan, Blue Yonder, Mecalux, PSIwms and at least four more WMS models before adopting the Spotwo workflow.
+  - Compare whether source inventory is reserved at planning time, release time or task-start time across vendors.
+  - Determine whether residual replenishment need should persist as an object or be recalculated from current inventory after every confirmation.
+  - Model replenishment priority separately from outbound pick priority and define dependency semantics between replenishment and blocked pick work.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026, infor-internal-replenishment-2026]
