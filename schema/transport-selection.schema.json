@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/transport-selection.schema.json",
+  "title": "WMS Transport Selection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "profile", "candidates", "decision"],
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "portable_contract", "criteria"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "portable_contract": {"type": "object"},
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "weight", "description"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"},
+              "weight": {"type": "integer", "minimum": 1, "maximum": 100},
+              "description": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "disposition", "evidence_refs", "transport_mapping", "notes", "scores"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "name": {"type": "string", "minLength": 1},
+          "disposition": {"type": "string", "minLength": 1},
+          "evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "transport_mapping": {"type": "object", "minProperties": 5},
+          "notes": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "scores": {
+            "type": "object",
+            "additionalProperties": {"type": "integer", "minimum": 1, "maximum": 5}
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_default", "score_method", "required_margin_over_runner_up", "exceptions", "kernel_boundary"],
+      "properties": {
+        "canonical_default": {"type": "string"},
+        "score_method": {"const": "weighted-average-1-to-5"},
+        "required_margin_over_runner_up": {"type": "number", "minimum": 0},
+        "exceptions": {"type": "object"},
+        "kernel_boundary": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    }
+  }
+}
