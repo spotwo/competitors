@@ -1,0 +1,25 @@
+id: yard-management
+group: cross-functional
+label: Yard Management
+status: adopted
+definition: Coordinate appointments, trailers, yard positions, dock doors, moves, and warehouse-dock dependencies around a facility.
+purpose: Synchronize transport assets and dock capacity with inbound and outbound warehouse execution.
+inputs: [appointment, trailer, yard-state, dock-state]
+outputs: [yard-move, dock-assignment, appointment-state]
+entities: [yard, trailer, vehicle, dock-door, appointment, yard-position]
+strategies: [appointment-scheduling, dock-scheduling, trailer-move-management, yard-visibility]
+related_capabilities: [receiving, unloading, staging, loading]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: advanced
+    terminology: [Advanced yard management]
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: infios
+    level: module
+    terminology: [Yard]
+    evidence_refs: [infios-wms-capabilities-2026]
+spotwo:
+  canonical_term: Yard Management
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-wms-capabilities-2026]
