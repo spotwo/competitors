@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0031.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0032.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -214,6 +214,10 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | atomic Inbox effect | consumer receipt and handler SQL commit in one PostgreSQL transaction |
 | consumer ACK uncertainty | JetStream redelivery after ACK loss skips the already-committed handler |
 | consumer failure redelivery | failed handler SQL rolls back its receipt and succeeds on redelivery |
+| durable consumer failure handoff | a valid failed event is fully persisted before broker ACK |
+| bounded consumer retry | retryable failures use leased local retries and quarantine at the attempt budget |
+| terminal consumer quarantine | Position version conflict retains its complete envelope without an Inbox receipt |
+| audited consumer replay | stable operator command returns quarantine to the normal Inbox handler path |
 | explicit consumer provisioning | runtime refuses to create a missing durable with accidental defaults |
 | ordered Position projection | quantity deltas apply once in monotonic aggregate-version order |
 | durable version-gap recovery | out-of-order facts commit to PostgreSQL before ACK and drain when gaps close |
@@ -221,8 +225,8 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | verified projection snapshot | an absent cursor can start from exact quantities and aggregate version without a fake event |
 | snapshot retry safety | stable bootstrap identity is payload-bound and cannot reset a progressed projection |
 | projection gap health | aggregate age/count signals render as bounded JSON or Prometheus alerts |
-| projection rebuild fence | a prepared single-Position repair rolls back Inbox handling before broker ACK |
-| rebuild delivery recovery | a real JetStream message remains unacknowledged under the fence and applies after release |
+| projection rebuild fence | a prepared single-Position repair rolls back Inbox handling and enters durable deferral |
+| rebuild delivery recovery | JetStream with `max_deliver=1` ACKs after handoff and applies locally after fence release |
 | pending rebuild disposition | covered events are audited as superseded while future events remain durable and drain in order |
 | rebuild race | prepare and event handling serialize so only one can mutate the inspected cursor state |
 
@@ -252,7 +256,7 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - HU-cycle prevention beyond the immediate self-parent check;
 - row-level security / tenant policies;
 - physical archive partitioning, cold export, and destructive purge;
-- consumer poison-message quarantine, DLQ review, and Inbox cleanup;
+- malformed-message adapter quarantine, failure-row retention, bulk DLQ review, and Inbox cleanup;
 - bulk projection rebuild coordination, automatic gap repair, and prepared-fence alerting;
 - version-aware projection handlers beyond the concrete Position quantity view;
 - catch-weight dual quantities;
@@ -283,5 +287,6 @@ The conceptual decisions are:
 - `decisions/domain/0029-version-aware-position-projection.md`
 - `decisions/domain/0030-position-projection-snapshot-gap-health.md`
 - `decisions/domain/0031-controlled-position-projection-rebuild.md`
+- `decisions/domain/0032-consumer-failure-deferral-quarantine.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.

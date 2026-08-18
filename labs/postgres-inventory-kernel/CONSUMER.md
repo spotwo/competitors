@@ -1,6 +1,6 @@
 # Inbox Consumer Runtime
 
-Executable companion to ADR 0028.
+Executable companion to ADR 0028 and ADR 0032.
 
 ## Boundary
 
@@ -25,7 +25,16 @@ It does not make arbitrary network side effects exactly-once.
 - `InboxHandler` - local transactional effect protocol;
 - `InboxSource` and `InboxStore` - broker and database-neutral boundaries;
 - `PostgresInboxStore` - Inbox receipt plus handler in one transaction;
-- `InboxConsumerRuntime.run_once()` - one fetch, transaction, and ACK cycle.
+- `InboxFailureLane` - optional valid-event failure handoff boundary;
+- `InboxConsumerRuntime.run_once()` - one fetch, transaction, durable handoff if configured, and ACK cycle.
+
+`consumer_failure.py` provides:
+
+- `ConsumerFailureClassifier` - bounded retryable or terminal failure codes;
+- `DurableConsumerFailureLane` - complete-envelope capture before ACK;
+- `PostgresConsumerFailureStore` - deferral, leased retry, quarantine, and audited replay persistence;
+- `ConsumerFailureRetryRuntime` - broker-independent local retry cycle;
+- `ConsumerRetryPolicy` - bounded exponential delay with deterministic jitter.
 
 `nats_consumer.py` provides `NatsJetStreamPullSource`, which binds to one existing durable pull consumer and confirms ACK with `ack_sync`.
 
@@ -34,6 +43,10 @@ It does not make arbitrary network side effects exactly-once.
 A concrete projection supplies its own handler:
 
 ```python
+from consumer_failure import (
+    DurableConsumerFailureLane,
+    PostgresConsumerFailureStore,
+)
 from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore
 from nats_consumer import NatsJetStreamPullSource
 from psycopg.types.json import Jsonb
@@ -63,6 +76,9 @@ with NatsJetStreamPullSource(
         store=PostgresInboxStore(database_url),
         consumer_name="availability-projector",
         handler=apply_projection,
+        failure_lane=DurableConsumerFailureLane(
+            store=PostgresConsumerFailureStore(database_url),
+        ),
     )
     runtime.run_once()
 ```
@@ -102,7 +118,56 @@ NATS durable identity controls broker cursor state. Inbox consumer identity cont
 
 ### Handler or PostgreSQL failure
 
-The transaction rolls back, including the just-inserted Inbox receipt. The runtime does not ACK. JetStream can redeliver after its configured ACK wait.
+The transaction rolls back, including the just-inserted Inbox receipt.
+
+Without a failure lane, the runtime does not ACK and JetStream can redeliver after its configured ACK wait.
+
+With `DurableConsumerFailureLane`, the runtime classifies the error and commits the complete valid envelope as `deferred` or `quarantined`. It ACKs only after that handoff commits. If capture fails, the broker remains unacknowledged.
+
+### Deferred local retry
+
+A `deferred` event is no longer transport-owned. A leased PostgreSQL worker inserts the normal Inbox receipt, runs the original handler, and marks the failure row `resolved` in one transaction. A retry failure rolls that transaction back, then records another bounded delay or quarantine at the local attempt limit.
+
+For the concrete Position projector:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/run-kernel-position-projection-retries \
+  --consumer-name inventory-position-quantity-projector
+```
+
+Use `--once` for one bounded claim cycle. Multiple workers can share the same consumer identity; `FOR UPDATE SKIP LOCKED` and claim tokens prevent concurrent ownership of one row.
+
+### Quarantine and replay
+
+Terminal contract failures and exhausted retries remain queryable with their full envelope. Replay requires one stable command identity, operator, and reason:
+
+```sql
+SELECT
+  consumer_name,
+  event_id,
+  failure_code,
+  retryable,
+  attempt_count,
+  quarantined_at,
+  quarantine_reason,
+  envelope
+FROM kernel_lab.domain_event_consumer_failures
+WHERE status = 'quarantined'
+ORDER BY quarantined_at, consumer_name, event_id;
+```
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/replay-kernel-consumer-failure \
+  --replay-id 018f0000-0000-7000-8000-000000000010 \
+  --consumer-name inventory-position-quantity-projector \
+  --event-id 018f0000-0000-7000-8000-000000000011 \
+  --operator operator@example.com \
+  --reason "validated event after handler repair"
+```
+
+Replay changes `quarantined` to `deferred` and starts one fresh bounded attempt budget while retaining the prior budget in the action audit. It does not create an Inbox receipt, run the handler, or declare success. The retry worker still uses the normal transaction path.
 
 ### Commit succeeds, ACK fails
 
@@ -110,7 +175,7 @@ The Inbox receipt and effect remain committed. JetStream may redeliver. The next
 
 ### Invalid envelope or NATS header mismatch
 
-No database transaction or ACK occurs. The process surfaces the exception. Configure JetStream maximum delivery and advisory/DLQ handling so malformed messages cannot retry forever without operator visibility.
+No trusted event identity or failure-row capture occurs. The process surfaces the exception and does not ACK. Configure an adapter-level maximum delivery and advisory/DLQ policy so malformed messages cannot retry forever without operator visibility.
 
 ### External effect
 
@@ -144,15 +209,21 @@ Deleting an Inbox receipt explicitly removes its deduplication protection. Treat
 3. receipt and local handler effect commit once;
 4. handler failure rolls both back;
 5. concurrent duplicates serialize to one handler;
-6. canonical envelope validation fails closed.
+6. durable failure handoff commits before ACK;
+7. handoff failure produces no ACK;
+8. an existing handoff cannot bypass its local lane;
+9. canonical envelope validation fails closed.
+
+`tests/test_consumer_failures.py` proves classification, payload binding, deferred retry, terminal quarantine, attempt exhaustion, exclusive claims, and stable audited replay.
 
 `tests/test_nats_consumer.py` proves against the pinned real server:
 
 1. ACK confirmation loss after commit redelivers the same event;
 2. redelivery finds the receipt, skips the handler, and ACKs;
-3. handler failure leaves no receipt and redelivers for a successful retry;
+3. base-runtime handler failure leaves no receipt and redelivers for a successful retry;
 4. the adapter binds only to a pre-provisioned explicit-ACK pull consumer;
 5. transport header and envelope mismatches fail closed;
-6. an out-of-order Position event ACKs after durable buffering and drains when the missing version arrives.
+6. an out-of-order Position event ACKs after durable buffering and drains when the missing version arrives;
+7. a rebuild fence with `max_deliver=1` hands off and ACKs once, then applies through local retry without broker redelivery.
 
 `tests/test_position_projection.py` proves the concrete version policy, quantity invariants, gap inspection, and per-Position concurrency independently of transport timing.

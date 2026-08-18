@@ -71,7 +71,7 @@ The runtime calls `delivery.ack()` only after `PostgresInboxStore` returns from 
 
 The NATS adapter uses `ack_sync`, which waits for the server to process the ACK. A successful runtime result therefore means both the database transaction and JetStream ACK were confirmed.
 
-Failure behavior is asymmetric by design:
+Failure behavior without the optional ADR 0032 durable failure lane is asymmetric by design:
 
 | Failure point | Database state | Broker ACK | Next delivery |
 |---|---|---|---|
@@ -80,7 +80,9 @@ Failure behavior is asymmetric by design:
 | commit succeeds, ACK confirmation fails | receipt and effect committed | uncertain | duplicate receipt skips handler, then ACKs |
 | duplicate receipt | unchanged except prior committed state | confirmed after skip | complete |
 
-The runtime does not NAK after a handler exception. Leaving the message unacknowledged preserves the durable consumer's configured `ack_wait`, backoff, `max_deliver`, and advisory/DLQ policy. Automatic poison-message termination is not hidden in the generic runtime.
+The base runtime does not NAK after a handler exception. Leaving the message unacknowledged preserves the durable consumer's configured `ack_wait`, backoff, `max_deliver`, and advisory/DLQ policy.
+
+ADR 0032 adds an explicit optional path for a valid event: after the handler transaction rolls back, the complete envelope can be committed to a PostgreSQL `deferred` or `quarantined` row before broker ACK. If that handoff fails, no ACK occurs. Malformed envelopes remain outside that path because no trusted event identity exists yet.
 
 ## Canonical envelope validation
 
@@ -125,12 +127,12 @@ Inbox receipt retention is consumer-owned and independent of producer Outbox ret
 The PostgreSQL and pinned NATS lab proves:
 
 1. transport ACK happens only after the store reports commit;
-2. store or handler failure produces no ACK;
+2. base-runtime store or handler failure produces no ACK;
 3. Inbox receipt and handler SQL commit together;
 4. handler failure rolls back both receipt and partial SQL effect;
 5. concurrent duplicate receipts run one handler transaction;
 6. ACK-confirmation failure after commit causes JetStream redelivery without reapplying the handler;
-7. handler failure causes JetStream redelivery and a later successful transaction;
+7. base-runtime handler failure causes JetStream redelivery and a later successful transaction;
 8. canonical NATS headers match the received envelope;
 9. the source refuses to create a missing durable consumer;
 10. invalid timestamps, versions, and delivery counts fail closed.
@@ -151,5 +153,6 @@ The PostgreSQL and pinned NATS lab proves:
 - handler code must stay inside the supplied local transaction boundary;
 - slow handlers hold database transactions and must be optimized or decomposed;
 - external effects require another local Outbox rather than direct calls;
-- poison-message termination, DLQ review, aggregate gap handling, strict ordering lanes, and Inbox cleanup remain later policies;
+- ADR 0032 failure deferral is opt-in and requires a separately operated retry worker;
+- malformed-message termination, aggregate gap handling, strict ordering lanes, and Inbox cleanup remain later policies;
 - the lab provides a runtime library rather than a misleading standalone process with a no-op handler.

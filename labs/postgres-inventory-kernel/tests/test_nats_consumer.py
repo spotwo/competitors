@@ -13,6 +13,12 @@ from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy, StorageType, S
 from nats.js.errors import NotFoundError
 
 import conftest as lab
+from consumer_failure import (
+    ConsumerFailureRetryRuntime,
+    ConsumerRetryPolicy,
+    DurableConsumerFailureLane,
+    PostgresConsumerFailureStore,
+)
 from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore
 from nats_consumer import NatsJetStreamPullSource
 from nats_transport import (
@@ -139,12 +145,14 @@ class ConsumerProbe:
         stream_name: str,
         subject_prefix: str,
         durable_name: str | None,
+        max_deliver: int = 3,
     ) -> None:
         self._runner.run(
             self._provision(
                 stream_name=stream_name,
                 subject_prefix=subject_prefix,
                 durable_name=durable_name,
+                max_deliver=max_deliver,
             )
         )
 
@@ -166,6 +174,7 @@ class ConsumerProbe:
         stream_name: str,
         subject_prefix: str,
         durable_name: str | None,
+        max_deliver: int,
     ) -> None:
         await self._delete_if_present(stream_name)
         await self._jetstream.add_stream(
@@ -184,7 +193,7 @@ class ConsumerProbe:
                     deliver_policy=DeliverPolicy.ALL,
                     ack_policy=AckPolicy.EXPLICIT,
                     ack_wait=0.4,
-                    max_deliver=3,
+                    max_deliver=max_deliver,
                     max_ack_pending=10,
                     filter_subject=f"{subject_prefix}.>",
                 ),
@@ -564,7 +573,7 @@ def test_out_of_order_versions_ack_after_durable_buffer_then_drain():
         probe.close(stream_name)
 
 
-def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
+def test_rebuild_fence_handoffs_before_ack_then_retries_locally_after_cancel():
     suffix = uuid4().hex.upper()
     stream_name = f"WMS_REBUILD_{suffix}"
     durable_name = f"POSITION_REBUILD_{suffix}"
@@ -576,6 +585,7 @@ def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
         stream_name=stream_name,
         subject_prefix=subject_prefix,
         durable_name=durable_name,
+        max_deliver=1,
     )
     source = NatsJetStreamPullSource(
         server_url=NATS_URL,
@@ -584,11 +594,22 @@ def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
         client_name=f"position-rebuild-{suffix}",
         fetch_timeout_seconds=2,
     )
+    failure_store = PostgresConsumerFailureStore(lab.DATABASE_URL)
+    consumer_retry = ConsumerRetryPolicy(
+        base_delay_seconds=1,
+        max_delay_seconds=1,
+        jitter_ratio=0,
+        max_attempts=3,
+    )
     runtime = InboxConsumerRuntime(
         source=source,
         store=PostgresInboxStore(lab.DATABASE_URL),
         consumer_name=consumer_name,
         handler=InventoryPositionQuantityProjector(consumer_name=consumer_name),
+        failure_lane=DurableConsumerFailureLane(
+            store=failure_store,
+            retry_policy=consumer_retry,
+        ),
     )
     rebuild_store = PostgresPositionProjectionRebuildStore(lab.DATABASE_URL)
     rebuild_id = lab.new_id()
@@ -648,11 +669,12 @@ def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
             suffix=f"{suffix}-2",
         )
 
-        with pytest.raises(
-            psycopg.errors.ObjectNotInPrerequisiteState,
-            match="rebuild fence is active",
-        ):
-            runtime.run_once()
+        deferred = runtime.run_once()
+        assert deferred.event_id == second_event_id
+        assert deferred.delivery_count == 1
+        assert deferred.deferred == 1
+        assert deferred.acknowledged == 1
+        assert deferred.failure_code == "projection_rebuild_fence_active"
 
         with lab.connect() as conn:
             assert conn.execute(
@@ -663,23 +685,52 @@ def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
                 """,
                 (consumer_name, second_event_id),
             ).fetchone()[0] == 0
-        assert probe.consumer_info(
+            failure = conn.execute(
+                """
+                SELECT status, attempt_count, envelope ->> 'event_id'
+                FROM kernel_lab.domain_event_consumer_failures
+                WHERE consumer_name = %s AND event_id = %s
+                """,
+                (consumer_name, second_event_id),
+            ).fetchone()
+        assert failure == ("deferred", 1, str(second_event_id))
+        consumer_info = probe.consumer_info(
             stream_name=stream_name,
             durable_name=durable_name,
-        ).num_ack_pending == 1
+        )
+        assert consumer_info.num_ack_pending == 0
+        assert consumer_info.num_redelivered == 0
 
         rebuild_store.cancel(
             rebuild_id=rebuild_id,
             operator="operator@example.com",
             reason="complete delivery recovery proof",
         )
-        time.sleep(0.7)
-        redelivery = runtime.run_once()
+        with lab.connect() as conn:
+            conn.execute(
+                """
+                UPDATE kernel_lab.domain_event_consumer_failures
+                SET available_at = clock_timestamp() - interval '1 second'
+                WHERE consumer_name = %s AND event_id = %s
+                """,
+                (consumer_name, second_event_id),
+            )
+            conn.commit()
+        local_retry = ConsumerFailureRetryRuntime(
+            store=failure_store,
+            consumer_name=consumer_name,
+            handler=InventoryPositionQuantityProjector(consumer_name=consumer_name),
+            worker_id=f"position-retry-{suffix}",
+            batch_size=1,
+            lease_seconds=30,
+            retry_policy=consumer_retry,
+        ).run_once()
 
-        assert redelivery.event_id == second_event_id
-        assert redelivery.delivery_count == 2
-        assert redelivery.applied == 1
-        assert redelivery.acknowledged == 1
+        assert (local_retry.claimed, local_retry.resolved, local_retry.applied) == (
+            1,
+            1,
+            1,
+        )
         with lab.connect() as conn:
             projection = conn.execute(
                 """
@@ -689,7 +740,16 @@ def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
                 """,
                 (consumer_name, position_id),
             ).fetchone()
+            failure_status = conn.execute(
+                """
+                SELECT status, resolution
+                FROM kernel_lab.domain_event_consumer_failures
+                WHERE consumer_name = %s AND event_id = %s
+                """,
+                (consumer_name, second_event_id),
+            ).fetchone()
         assert projection == (2, 10, 3, 0)
+        assert failure_status == ("resolved", "applied")
         assert probe.consumer_info(
             stream_name=stream_name,
             durable_name=durable_name,

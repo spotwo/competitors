@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from uuid import UUID
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from consumer_failure import PostgresConsumerFailureStore  # noqa: E402
+
+
+def parse_uuid(value: str) -> UUID:
+    try:
+        parsed = UUID(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("value must be a UUID") from exc
+    if str(parsed) != value:
+        raise argparse.ArgumentTypeError("value must be a canonical UUID")
+    return parsed
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Audit and replay one quarantined consumer event"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument("--replay-id", required=True, type=parse_uuid)
+    parser.add_argument("--consumer-name", required=True)
+    parser.add_argument("--event-id", required=True, type=parse_uuid)
+    parser.add_argument("--operator", required=True)
+    parser.add_argument("--reason", required=True)
+    parser.add_argument("--pretty", action="store_true")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+
+    result = PostgresConsumerFailureStore(args.database_url).replay(
+        replay_id=args.replay_id,
+        consumer_name=args.consumer_name,
+        event_id=args.event_id,
+        operator_id=args.operator,
+        reason=args.reason,
+    )
+    print(
+        json.dumps(
+            result.to_dict(),
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+            separators=None if args.pretty else (",", ":"),
+        )
+    )
+    return int(result.outcome == "not_quarantined")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
