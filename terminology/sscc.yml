@@ -1,0 +1,9 @@
+id: sscc
+preferred_term: Serial Shipping Container Code
+definition: GS1 identifier used to uniquely identify a logistic unit.
+domain: [identification, barcode, shipping]
+aliases: [SSCC]
+status: adopted
+spotwo_term: SSCC
+last_verified: '2026-08-18'
+evidence_refs: [gs1-logistic-label]

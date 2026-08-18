@@ -1,0 +1,9 @@
+id: sortation
+preferred_term: Sortation
+definition: Process of routing items or handling units into destinations, lanes, orders, routes, or downstream flows.
+domain: [process, fulfillment, automation]
+aliases: [sorting]
+status: adopted
+spotwo_term: Sortation
+last_verified: '2026-08-18'
+evidence_refs: [mhi-industry-groups-2026]

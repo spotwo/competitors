@@ -1,0 +1,10 @@
+id: license-plate-number
+preferred_term: License Plate Number
+definition: Warehouse identifier used to track a material unit or container as a uniquely addressable inventory object.
+domain: [warehouse, identification, inventory]
+aliases: [LPN, license plate]
+status: observed
+spotwo_term: null
+notes: Common WMS terminology, especially in North America. Needs broader competitor and standards sampling before Spotwo adoption.
+last_verified: '2026-08-18'
+evidence_refs: [infor-wms-2026, softeon-wms-2026]

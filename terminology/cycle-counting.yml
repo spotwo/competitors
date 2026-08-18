@@ -1,0 +1,9 @@
+id: cycle-counting
+preferred_term: Cycle Counting
+definition: Ongoing inventory-counting process that verifies selected stock without requiring a full physical inventory shutdown.
+domain: [process, inventory]
+aliases: [cycle count]
+status: adopted
+spotwo_term: Cycle Counting
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wms-2026, made4net-warehouseexpert-2026]

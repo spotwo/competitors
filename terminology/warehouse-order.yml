@@ -1,0 +1,10 @@
+id: warehouse-order
+preferred_term: Warehouse Order
+definition: Grouping or execution container used by a warehouse system to organize one or more warehouse tasks for processing.
+domain: [software, process, execution]
+aliases: [work package]
+status: observed
+spotwo_term: null
+notes: SAP EWM uses this term explicitly. Do not assume the same semantics across all WMS vendors.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-2026]

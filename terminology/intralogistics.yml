@@ -1,0 +1,9 @@
+id: intralogistics
+preferred_term: Intralogistics
+definition: Internal material-flow and warehouse activities within a facility or organization, including production supply and warehouse processes.
+domain: [industry, facility]
+aliases: [internal logistics]
+status: adopted
+spotwo_term: Intralogistics
+last_verified: '2026-08-18'
+evidence_refs: [vdma-intralogistics-2026]

@@ -1,0 +1,9 @@
+id: warehouse-management-system
+preferred_term: Warehouse Management System
+definition: Software that manages inventory and coordinates warehouse processes such as receiving, putaway, storage, picking, packing and shipping.
+domain: [software, warehouse]
+aliases: [WMS, warehouse management software]
+status: adopted
+spotwo_term: Warehouse Management System (WMS)
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wms-2026, mhi-industry-groups-2026]

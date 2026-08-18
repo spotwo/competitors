@@ -1,0 +1,9 @@
+id: material-flow-system
+preferred_term: Material Flow System
+definition: Control layer focused on coordinating material flow and communication among automated warehouse components.
+domain: [software, automation]
+aliases: [MFS, material flow control]
+status: observed
+spotwo_term: Material Flow System (MFS)
+last_verified: '2026-08-18'
+evidence_refs: [ssi-wamas-2026, swisslog-synq-2026]

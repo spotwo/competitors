@@ -1,0 +1,10 @@
+id: warehouse-task
+preferred_term: Warehouse Task
+definition: Executable warehouse work unit representing a specific movement or operational action.
+domain: [software, process, execution]
+aliases: [task]
+status: observed
+spotwo_term: Warehouse Task
+notes: Strongly established in SAP EWM; broader cross-vendor terminology sampling is still useful.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-2026]

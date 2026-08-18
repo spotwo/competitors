@@ -1,0 +1,9 @@
+id: shipping
+preferred_term: Shipping
+definition: Outbound process that finalizes and dispatches goods from the warehouse to the next destination.
+domain: [process, outbound]
+aliases: [dispatch, goods-out]
+status: adopted
+spotwo_term: Shipping
+last_verified: '2026-08-18'
+evidence_refs: [mhi-industry-groups-2026, generix-wms-2026, knapp-kisoft-wms-2026]

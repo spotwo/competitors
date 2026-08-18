@@ -1,0 +1,9 @@
+id: logistic-unit
+preferred_term: Logistic Unit
+definition: An item or grouping established for transport and/or storage that needs to be managed through the supply chain.
+domain: [identification, transport, storage]
+aliases: [logistics unit]
+status: adopted
+spotwo_term: Logistic Unit
+last_verified: '2026-08-18'
+evidence_refs: [gs1-logistic-label]

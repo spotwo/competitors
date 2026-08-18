@@ -1,0 +1,9 @@
+id: warehouse-execution-system
+preferred_term: Warehouse Execution System
+definition: Execution and orchestration software positioned between high-level warehouse management and lower-level equipment control, commonly coordinating work across people and automation.
+domain: [software, automation]
+aliases: [WES]
+status: adopted
+spotwo_term: Warehouse Execution System (WES)
+last_verified: '2026-08-18'
+evidence_refs: [knapp-kisoft-platform-2026, ssi-wamas-2026, swisslog-synq-2026]

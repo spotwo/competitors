@@ -1,0 +1,9 @@
+id: replenishment
+preferred_term: Replenishment
+definition: Movement or planning activity that restores inventory to a picking or operational location from reserve stock or another source.
+domain: [process, storage, fulfillment]
+aliases: [stock replenishment]
+status: adopted
+spotwo_term: Replenishment
+last_verified: '2026-08-18'
+evidence_refs: [infor-wms-2026, knapp-kisoft-wms-2026]

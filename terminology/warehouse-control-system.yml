@@ -1,0 +1,9 @@
+id: warehouse-control-system
+preferred_term: Warehouse Control System
+definition: Software layer used to coordinate and control automated material-handling equipment and flows below the warehouse-management layer.
+domain: [software, automation]
+aliases: [WCS]
+status: adopted
+spotwo_term: Warehouse Control System (WCS)
+last_verified: '2026-08-18'
+evidence_refs: [knapp-kisoft-platform-2026, ssi-wamas-2026]

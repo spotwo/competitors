@@ -1,0 +1,9 @@
+id: storage-bin
+preferred_term: Storage Bin
+definition: A granular warehouse storage location used by a WMS to identify where stock is physically stored.
+domain: [warehouse, location, inventory]
+aliases: [bin, bin location, storage location]
+status: adopted
+spotwo_term: Storage Bin
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-2026, infor-wms-2026]

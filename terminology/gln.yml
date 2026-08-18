@@ -1,0 +1,9 @@
+id: gln
+preferred_term: Global Location Number
+definition: GS1 identifier for parties and locations, including physical locations and sub-locations such as warehouses or dock doors.
+domain: [identification, location]
+aliases: [GLN]
+status: adopted
+spotwo_term: GLN
+last_verified: '2026-08-18'
+evidence_refs: [gs1-gln-standard]

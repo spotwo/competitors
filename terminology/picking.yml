@@ -1,0 +1,9 @@
+id: picking
+preferred_term: Picking
+definition: Fulfillment process of selecting required inventory from warehouse locations for orders, kits, production, or other demand.
+domain: [process, fulfillment]
+aliases: [order picking]
+status: adopted
+spotwo_term: Picking
+last_verified: '2026-08-18'
+evidence_refs: [mhi-industry-groups-2026, knapp-kisoft-wms-2026]

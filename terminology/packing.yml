@@ -1,0 +1,9 @@
+id: packing
+preferred_term: Packing
+definition: Process of preparing picked goods into shipment or handling units for outbound movement.
+domain: [process, fulfillment, outbound]
+aliases: [pack]
+status: adopted
+spotwo_term: Packing
+last_verified: '2026-08-18'
+evidence_refs: [mhi-industry-groups-2026, generix-wms-2026]

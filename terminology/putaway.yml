@@ -1,0 +1,9 @@
+id: putaway
+preferred_term: Putaway
+definition: Process of directing received inventory from inbound handling to an assigned storage location.
+domain: [process, inbound, storage]
+aliases: [put-away, put away]
+status: adopted
+spotwo_term: Putaway
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wms-2026, infor-wms-2026, knapp-kisoft-wms-2026]

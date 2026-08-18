@@ -1,0 +1,9 @@
+id: cross-docking
+preferred_term: Cross-docking
+definition: Flow in which inbound goods are routed toward outbound fulfillment with little or no conventional storage.
+domain: [process, inbound, outbound]
+aliases: [cross docking]
+status: adopted
+spotwo_term: Cross-docking
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wms-2026, generix-wms-2026, knapp-kisoft-wms-2026]

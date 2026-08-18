@@ -1,0 +1,9 @@
+id: slotting
+preferred_term: Slotting
+definition: Decision process for assigning products to warehouse locations to improve space use, travel, throughput, or other operational objectives.
+domain: [process, storage, optimization]
+aliases: [slot optimization, bin assignment optimization]
+status: adopted
+spotwo_term: Slotting
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wms-2026, infios-wm-2026, knapp-kisoft-wms-2026]

@@ -1,0 +1,9 @@
+id: receiving
+preferred_term: Receiving
+definition: Inbound warehouse process that accepts arriving goods into operational control and inventory workflows.
+domain: [process, inbound]
+aliases: [goods receiving, goods-in, inbound receiving]
+status: adopted
+spotwo_term: Receiving
+last_verified: '2026-08-18'
+evidence_refs: [mhi-industry-groups-2026, infor-wms-2026, knapp-kisoft-wms-2026]
