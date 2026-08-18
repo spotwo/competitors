@@ -102,6 +102,7 @@ def clean_database():
               kernel_lab.inventory_position_projection_pending,
               kernel_lab.inventory_position_quantity_projection,
               kernel_lab.nats_jetstream_consumer_poison_deliveries,
+              kernel_lab.nats_jetstream_consumer_poison_delivery_archive,
               kernel_lab.domain_event_consumer_failure_action_archive,
               kernel_lab.domain_event_consumer_failure_archive,
               kernel_lab.domain_event_consumer_failure_actions,
