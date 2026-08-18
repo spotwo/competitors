@@ -2,7 +2,7 @@ id: inventory
 title: Inventory Ontology
 kind: inventory
 status: candidate
-description: Core inventory concepts independent of a specific WMS implementation. Physical quantity, allocation, operational condition and availability are modeled as separate concerns rather than one overloaded inventory-status enum.
+description: Core inventory concepts independent of a specific WMS implementation. Physical quantity, commitments, allocation, operational condition and availability are modeled as separate concerns rather than one overloaded inventory-status enum.
 entities:
   - id: item
     term: Item
@@ -16,13 +16,25 @@ entities:
     term: Physical Quantity
     definition: Quantity physically recorded in the warehouse regardless of whether it is currently allocatable.
     aliases: [on-hand quantity, current quantity]
+  - id: reserved-quantity
+    term: Reserved Quantity
+    definition: Quantity committed to demand through reservation semantics, potentially at a coarser inventory scope than the final execution source.
   - id: allocated-quantity
     term: Allocated Quantity
-    definition: Portion of physical inventory committed to existing outbound or execution demand.
+    definition: Portion of inventory bound to demand at an execution-relevant source specificity.
   - id: available-quantity
     term: Available Quantity
-    definition: Portion of physical inventory currently eligible for new allocation under active inventory rules.
+    definition: Derived quantity currently eligible for a defined action such as reservation, allocation or picking under active inventory rules.
     aliases: [allocatable quantity]
+  - id: availability-view
+    term: Availability View
+    definition: A calculated projection of inventory eligibility for a specific action, scope and set of rules rather than an independently mutable stock record.
+  - id: reservation
+    term: Reservation
+    definition: Candidate Spotwo concept for an inventory commitment to demand that may defer exact location, LPN or other source binding until warehouse execution.
+  - id: allocation
+    term: Allocation
+    definition: Candidate Spotwo concept binding demand to specific inventory or a sufficiently specific source decision for warehouse execution.
   - id: inventory-condition
     term: Inventory Condition
     definition: Business or quality condition attached to stock such as normal damaged quarantine or inspection status.
@@ -55,8 +67,12 @@ entities:
 relationships:
   - {subject: stock, predicate: references, object: item}
   - {subject: stock, predicate: has, object: physical-quantity}
+  - {subject: stock, predicate: may-have, object: reserved-quantity}
   - {subject: stock, predicate: may-have, object: allocated-quantity}
   - {subject: stock, predicate: derives, object: available-quantity}
+  - {subject: availability-view, predicate: derives-from, object: stock}
+  - {subject: reservation, predicate: commits, object: stock}
+  - {subject: allocation, predicate: binds, object: stock}
   - {subject: stock, predicate: has, object: inventory-condition}
   - {subject: stock, predicate: has, object: allocation-eligibility}
   - {subject: stock, predicate: may-have, object: inventory-hold}
@@ -65,8 +81,9 @@ relationships:
   - {subject: stock, predicate: may-have, object: owner}
   - {subject: stock, predicate: measured-in, object: uom}
 research_gaps:
-  - Compare exact available-to-allocate calculations across SAP Oracle Manhattan Blue Yonder Infor and 3PL WMS products.
-  - Determine whether reservation and allocation should be separate canonical concepts or phases of one commitment model.
+  - Compare exact available-to-reserve, available-to-allocate and available-to-pick calculations across SAP Oracle Manhattan Blue Yonder Infor and 3PL WMS products.
+  - Validate whether Reservation and Allocation should be separate persisted Spotwo aggregates or one commitment aggregate with changing specificity.
+  - Define concurrency and idempotency invariants for competing inventory commitments.
   - Define 3PL ownership and hold semantics where owner client facility and regulatory restrictions overlap.
 last_verified: '2026-08-18'
-evidence_refs: [oracle-wms-lpn-uom-2026, oracle-inventory-types-2026, infor-cycle-counting-2026]
+evidence_refs: [oracle-wms-lpn-uom-2026, oracle-inventory-types-2026, infor-cycle-counting-2026, dynamics365-reservations-2026, dynamics365-onhand-availability-2026, oracle-allocation-model-2026]
