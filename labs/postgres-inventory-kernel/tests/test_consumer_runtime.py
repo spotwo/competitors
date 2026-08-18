@@ -9,6 +9,7 @@ import pytest
 import conftest as lab
 from consumer_runtime import (
     ConsumedEvent,
+    ConsumerFailureDisposition,
     InboxConsumerRuntime,
     InboxDeliveryMetadata,
     PostgresInboxStore,
@@ -137,6 +138,175 @@ def test_runtime_does_not_acknowledge_store_failure():
     )
 
     with pytest.raises(RuntimeError, match="transaction failed"):
+        runtime.run_once()
+    assert acknowledgements == []
+
+
+def test_runtime_acknowledges_handler_failure_only_after_durable_handoff():
+    order: list[str] = []
+
+    class Delivery:
+        envelope = event_envelope()
+        metadata = delivery_metadata()
+
+        def ack(self):
+            order.append("transport_ack")
+
+    class Source:
+        def fetch_one(self):
+            order.append("transport_fetch")
+            return Delivery()
+
+    class FailingStore:
+        def process_once(self, **_kwargs):
+            order.append("handler_transaction_rollback")
+            raise RuntimeError("projection temporarily unavailable")
+
+    class FailureLane:
+        def find(self, **_kwargs):
+            order.append("failure_lookup")
+            return None
+
+        def capture(self, *, error, **_kwargs):
+            assert str(error) == "projection temporarily unavailable"
+            order.append("failure_handoff_commit")
+            return ConsumerFailureDisposition(
+                status="deferred",
+                failure_code="handler_failure",
+                attempt_count=1,
+            )
+
+    result = InboxConsumerRuntime(
+        source=Source(),
+        store=FailingStore(),
+        consumer_name="availability-projector",
+        handler=lambda _event, _transaction: None,
+        failure_lane=FailureLane(),
+    ).run_once()
+
+    assert order == [
+        "transport_fetch",
+        "failure_lookup",
+        "handler_transaction_rollback",
+        "failure_handoff_commit",
+        "transport_ack",
+    ]
+    assert (result.deferred, result.quarantined, result.acknowledged) == (1, 0, 1)
+    assert result.failure_code == "handler_failure"
+
+
+def test_runtime_does_not_acknowledge_when_failure_handoff_does_not_commit():
+    acknowledgements: list[str] = []
+
+    class Delivery:
+        envelope = event_envelope()
+        metadata = delivery_metadata()
+
+        def ack(self):
+            acknowledgements.append("ack")
+
+    class Source:
+        def fetch_one(self):
+            return Delivery()
+
+    class FailingStore:
+        def process_once(self, **_kwargs):
+            raise RuntimeError("handler failed")
+
+    class UnavailableFailureLane:
+        def find(self, **_kwargs):
+            return None
+
+        def capture(self, **_kwargs):
+            raise OSError("failure database unavailable")
+
+    runtime = InboxConsumerRuntime(
+        source=Source(),
+        store=FailingStore(),
+        consumer_name="availability-projector",
+        handler=lambda _event, _transaction: None,
+        failure_lane=UnavailableFailureLane(),
+    )
+
+    with pytest.raises(OSError, match="failure database unavailable"):
+        runtime.run_once()
+    assert acknowledgements == []
+
+
+def test_runtime_acknowledges_existing_handoff_without_reinvoking_handler():
+    acknowledgements: list[str] = []
+
+    class Delivery:
+        envelope = event_envelope()
+        metadata = delivery_metadata(delivery_count=2)
+
+        def ack(self):
+            acknowledgements.append("ack")
+
+    class Source:
+        def fetch_one(self):
+            return Delivery()
+
+    class Store:
+        def process_once(self, **_kwargs):
+            raise AssertionError("durably handed-off event must not bypass its lane")
+
+    class FailureLane:
+        def find(self, **_kwargs):
+            return ConsumerFailureDisposition(
+                status="quarantined",
+                failure_code="projection_version_conflict",
+                attempt_count=1,
+            )
+
+        def capture(self, **_kwargs):
+            raise AssertionError("existing handoff must not be captured again")
+
+    result = InboxConsumerRuntime(
+        source=Source(),
+        store=Store(),
+        consumer_name="availability-projector",
+        handler=lambda _event, _transaction: None,
+        failure_lane=FailureLane(),
+    ).run_once()
+
+    assert acknowledgements == ["ack"]
+    assert (result.deferred, result.quarantined, result.acknowledged) == (0, 1, 1)
+    assert result.delivery_count == 2
+
+
+def test_invalid_outer_envelope_never_enters_valid_event_failure_lane():
+    acknowledgements: list[str] = []
+    invalid_envelope = event_envelope()
+    invalid_envelope["event_id"] = "not-a-uuid"
+
+    class Delivery:
+        envelope = invalid_envelope
+        metadata = delivery_metadata()
+
+        def ack(self):
+            acknowledgements.append("ack")
+
+    class Source:
+        def fetch_one(self):
+            return Delivery()
+
+    class FailureLane:
+        def find(self, **_kwargs):
+            raise AssertionError("invalid outer envelope has no trusted event identity")
+
+        def capture(self, **_kwargs):
+            raise AssertionError("invalid outer envelope cannot be handed off")
+
+    runtime = InboxConsumerRuntime(
+        source=Source(),
+        store=None,
+        consumer_name="availability-projector",
+        handler=lambda _event, _transaction: None,
+        failure_lane=FailureLane(),
+    )
+
+    with pytest.raises(ValueError, match="event_id must be a UUID"):
         runtime.run_once()
     assert acknowledgements == []
 

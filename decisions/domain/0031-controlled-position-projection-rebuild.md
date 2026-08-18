@@ -43,7 +43,7 @@ The snapshot version must be greater than or equal to the current cursor. A back
 
 Every Position event transaction and non-destructive bootstrap locks the target's durable control row before changing projection state. A prepared rebuild records its ID on that control row.
 
-While the fence is active, the first handling attempt for a not-yet-received event raises before projection mutation. The surrounding Inbox transaction rolls back, so the broker delivery is not ACKed and remains eligible for redelivery. A delivery whose Inbox receipt already existed remains a normal deduplicated ACK because it cannot run the handler again. Unrelated Positions use different control rows and remain independent at the database layer; broker consumer limits can still introduce transport-level head-of-line effects.
+While the fence is active, the first handling attempt for a not-yet-received event raises before projection mutation. The surrounding Inbox transaction rolls back. With the ADR 0032 durable failure lane, the complete event is then committed as `deferred` before broker ACK and later retried from PostgreSQL. Without that optional lane, the base ADR 0028 runtime leaves the broker delivery unacknowledged. A delivery whose Inbox receipt already existed remains a normal deduplicated ACK because it cannot run the handler again. Unrelated Positions use different control rows and remain independent at the database layer.
 
 Prepare, event handling, bootstrap, execute, and cancel use the same lock order:
 
@@ -124,7 +124,7 @@ The PostgreSQL lab proves:
 8. bootstrap cannot overwrite a fenced target;
 9. unrelated Positions continue while one target is fenced;
 10. an event/prepare race has one serialized winner;
-11. a real JetStream delivery remains unacknowledged under the fence and applies after cancel-triggered redelivery.
+11. a real JetStream consumer with `max_deliver=1` ACKs only after durable fence handoff, then applies the event through local retry after cancel without broker redelivery.
 
 ## Consequences
 
@@ -135,7 +135,7 @@ The PostgreSQL lab proves:
 - a rebuild cannot race an event or bootstrap mutation;
 - crashes fail stopped rather than releasing an unverified target;
 - audit evidence connects the exact snapshot, operators, prior state, and final state;
-- the protocol remains broker-neutral because the ACK boundary stays in the Inbox runtime.
+- the protocol remains broker-neutral because the ACK boundary stays in the Inbox runtime and valid-event handoff uses ADR 0032 PostgreSQL state rather than transport-specific NAK behavior.
 
 ### Costs and limits
 
@@ -143,4 +143,4 @@ The PostgreSQL lab proves:
 - snapshots cannot move the cursor backward;
 - snapshot truth and operator authorization remain operational responsibilities;
 - this is not a generic projection framework or bulk rebuild coordinator;
-- poison-event quarantine, automatic repair, Inbox retention, approval workflow, and prepared-fence alerting remain later slices.
+- automatic repair, Inbox and failure retention, approval workflow, and prepared-fence alerting remain later slices.

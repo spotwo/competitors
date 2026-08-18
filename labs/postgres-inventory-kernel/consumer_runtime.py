@@ -194,14 +194,55 @@ class InboxStore(Protocol):
 
 
 @dataclass(frozen=True)
+class ConsumerFailureDisposition:
+    status: str
+    failure_code: str
+    attempt_count: int
+
+    def __post_init__(self) -> None:
+        if self.status not in {"deferred", "quarantined", "resolved"}:
+            raise ValueError("unexpected consumer failure status")
+        _stable_name(self.failure_code, "failure_code")
+        if (
+            isinstance(self.attempt_count, bool)
+            or not isinstance(self.attempt_count, int)
+            or self.attempt_count < 0
+        ):
+            raise ValueError("attempt_count must be nonnegative")
+
+
+class InboxFailureLane(Protocol):
+    def find(
+        self,
+        *,
+        consumer_name: str,
+        event: ConsumedEvent,
+    ) -> ConsumerFailureDisposition | None:
+        """Return a durable handoff already bound to this exact event, if any."""
+
+    def capture(
+        self,
+        *,
+        consumer_name: str,
+        event: ConsumedEvent,
+        delivery_metadata: Mapping[str, Any],
+        error: Exception,
+    ) -> ConsumerFailureDisposition:
+        """Durably hand off a failed valid event before transport acknowledgement."""
+
+
+@dataclass(frozen=True)
 class ConsumeCycleResult:
     received: int = 0
     applied: int = 0
     duplicate: int = 0
+    deferred: int = 0
+    quarantined: int = 0
     acknowledged: int = 0
     event_id: UUID | None = None
     transport_message_id: str | None = None
     delivery_count: int | None = None
+    failure_code: str | None = None
 
 
 class PostgresInboxStore:
@@ -249,12 +290,33 @@ class InboxConsumerRuntime:
         store: InboxStore,
         consumer_name: str,
         handler: InboxHandler,
+        failure_lane: InboxFailureLane | None = None,
     ):
         _stable_name(consumer_name, "consumer_name")
         self.source = source
         self.store = store
         self.consumer_name = consumer_name
         self.handler = handler
+        self.failure_lane = failure_lane
+
+    @staticmethod
+    def _failure_result(
+        *,
+        event: ConsumedEvent,
+        delivery: InboxDelivery,
+        disposition: ConsumerFailureDisposition,
+    ) -> ConsumeCycleResult:
+        return ConsumeCycleResult(
+            received=1,
+            duplicate=int(disposition.status == "resolved"),
+            deferred=int(disposition.status == "deferred"),
+            quarantined=int(disposition.status == "quarantined"),
+            acknowledged=1,
+            event_id=event.event_id,
+            transport_message_id=delivery.metadata.transport_message_id,
+            delivery_count=delivery.metadata.delivery_count,
+            failure_code=disposition.failure_code,
+        )
 
     def run_once(self) -> ConsumeCycleResult:
         delivery = self.source.fetch_one()
@@ -262,12 +324,43 @@ class InboxConsumerRuntime:
             return ConsumeCycleResult()
 
         event = ConsumedEvent.from_envelope(delivery.envelope)
-        applied = self.store.process_once(
-            consumer_name=self.consumer_name,
-            event=event,
-            delivery_metadata=delivery.metadata.to_dict(),
-            handler=self.handler,
-        )
+        if self.failure_lane is not None:
+            existing = self.failure_lane.find(
+                consumer_name=self.consumer_name,
+                event=event,
+            )
+            if existing is not None:
+                delivery.ack()
+                return self._failure_result(
+                    event=event,
+                    delivery=delivery,
+                    disposition=existing,
+                )
+
+        delivery_metadata = delivery.metadata.to_dict()
+        try:
+            applied = self.store.process_once(
+                consumer_name=self.consumer_name,
+                event=event,
+                delivery_metadata=delivery_metadata,
+                handler=self.handler,
+            )
+        except Exception as exc:
+            if self.failure_lane is None:
+                raise
+            disposition = self.failure_lane.capture(
+                consumer_name=self.consumer_name,
+                event=event,
+                delivery_metadata=delivery_metadata,
+                error=exc,
+            )
+            # Capture returns only after the complete event is durable locally.
+            delivery.ack()
+            return self._failure_result(
+                event=event,
+                delivery=delivery,
+                disposition=disposition,
+            )
 
         # The store method returns only after its transaction commits.
         delivery.ack()
