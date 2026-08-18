@@ -1,0 +1,30 @@
+id: packing
+group: fulfillment
+label: Packing
+status: adopted
+definition: Prepare picked goods into outbound packages or handling units, validate contents, and produce shipment-ready packaging information.
+purpose: Convert picked inventory into protected, identified, and carrier-ready outbound units.
+inputs: [picked-inventory, order, packaging-rule]
+outputs: [package, packed-handling-unit, packing-confirmation]
+entities: [order, package, handling-unit, sku, shipment, label]
+strategies: [manual-pack, cartonization, pack-to-container, multi-package]
+related_capabilities: [picking, consolidation, shipping]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: core
+    terminology: [packaging]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-wms-capabilities-2026, infios-enterprise-capabilities-2026]
+  - company_id: odoo
+    level: core
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Packing
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-wms-capabilities-2026, infios-enterprise-capabilities-2026, odoo-inventory-routes-2026]
