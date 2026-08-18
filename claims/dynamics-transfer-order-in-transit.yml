@@ -1,0 +1,10 @@
+id: dynamics-transfer-order-in-transit
+subject_type: product
+subject: microsoft/dynamics-365-scm-warehouse-management
+predicate: transfer-order-tracks-in-transit-inventory
+value: true
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [dynamics365-inventory-transfer-2026]
+notes: Transfer orders track in-transit inventory and can span picking shipping receiving and putaway rather than representing one atomic inventory movement.
