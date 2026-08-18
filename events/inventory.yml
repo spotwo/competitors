@@ -30,7 +30,7 @@ events:
     category: inventory
     meaning: One or more current inventory positions changed as the result of an accepted posting.
     trigger: A physical or commitment transaction changes a materialized position.
-    ledger_relation: Carries transaction_id plus before and after position version or deltas.
+    ledger_relation: Carries transaction_id and quantity deltas; the envelope aggregate_version is the monotonic post-change Inventory Position version.
   - id: reservation-created
     type: inventory.reservation.created
     category: commitment

@@ -120,11 +120,14 @@ Do not call HTTP, email, devices, or third-party APIs and label the result exact
 
 Deduplication is not ordering. A projection uses `aggregate_version` to define its policy:
 
-- lower/equal version - stale or duplicate semantic fact;
+- lower version - stale semantic fact;
+- equal version - duplicate only for the same event identity, otherwise conflict;
 - next version - apply;
 - version gap - defer, rebuild, or alert according to the projection contract.
 
 The generic runtime does not silently discard gaps or serialize all aggregates globally.
+
+ADR 0029 defines one concrete policy for `inventory.position.changed`: a per-Position PostgreSQL cursor applies the next version, audits lower versions as stale, rejects same-version conflicts, and durably buffers gaps before ACK. See `PROJECTIONS.md` for composition, inspection, bootstrap, and failure behavior.
 
 ## Retention
 
@@ -149,4 +152,7 @@ Deleting an Inbox receipt explicitly removes its deduplication protection. Treat
 2. redelivery finds the receipt, skips the handler, and ACKs;
 3. handler failure leaves no receipt and redelivers for a successful retry;
 4. the adapter binds only to a pre-provisioned explicit-ACK pull consumer;
-5. transport header and envelope mismatches fail closed.
+5. transport header and envelope mismatches fail closed;
+6. an out-of-order Position event ACKs after durable buffering and drains when the missing version arrives.
+
+`tests/test_position_projection.py` proves the concrete version policy, quantity invariants, gap inspection, and per-Position concurrency independently of transport timing.
