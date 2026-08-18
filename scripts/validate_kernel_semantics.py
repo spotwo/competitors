@@ -16,6 +16,18 @@ REQUIRED_LEDGER_INVARIANTS = {
     "available-is-derived",
     "no-double-post",
 }
+REQUIRED_INVENTORY_KEY_ATTRIBUTES = {"warehouse", "anchor", "item", "owner", "condition"}
+FORBIDDEN_INVENTORY_KEY_ATTRIBUTES = {
+    "location",
+    "handling_unit",
+    "serial",
+    "physical_quantity",
+    "reserved_quantity",
+    "allocated_quantity",
+    "available_quantity",
+    "uom",
+}
+REQUIRED_POSITION_ENTITIES = {"inventory-key", "inventory-anchor", "serial-membership"}
 
 
 def load(path: Path):
@@ -23,8 +35,43 @@ def load(path: Path):
         return yaml.safe_load(f)
 
 
+def validate_inventory_key(errors: list[str]) -> None:
+    path = ROOT / "ontology/inventory-transaction.yml"
+    if not path.exists():
+        errors.append("ontology/inventory-transaction.yml: missing inventory transaction ontology")
+        return
+
+    ontology = load(path)
+    entities = {item["id"]: item for item in ontology.get("entities", []) or []}
+
+    for required in sorted(REQUIRED_POSITION_ENTITIES - set(entities)):
+        errors.append(f"{path.relative_to(ROOT)}: missing core position entity {required!r}")
+
+    key = entities.get("inventory-key")
+    if not key:
+        return
+
+    attributes = set(key.get("attributes", []) or [])
+    for required in sorted(REQUIRED_INVENTORY_KEY_ATTRIBUTES - attributes):
+        errors.append(f"{path.relative_to(ROOT)}: Inventory Key missing required semantic dimension {required!r}")
+    for forbidden in sorted(FORBIDDEN_INVENTORY_KEY_ATTRIBUTES & attributes):
+        errors.append(f"{path.relative_to(ROOT)}: Inventory Key must not directly contain {forbidden!r}; use canonical anchor/membership/state semantics")
+
+    anchor = entities.get("inventory-anchor")
+    if anchor:
+        examples = set(anchor.get("examples", []) or [])
+        if not {"location", "handling-unit"}.issubset(examples):
+            errors.append(f"{path.relative_to(ROOT)}: Inventory Anchor must explicitly support location and handling-unit alternatives")
+
+    serial_membership = entities.get("serial-membership")
+    if serial_membership and "inventory-key" in set(serial_membership.get("parents", []) or []):
+        errors.append(f"{path.relative_to(ROOT)}: Serial Membership must not be modeled as an Inventory Key subtype")
+
+
 def main() -> int:
     errors: list[str] = []
+
+    validate_inventory_key(errors)
 
     for path in sorted(ROOT.glob("ledger/*.yml")):
         ledger = load(path)
