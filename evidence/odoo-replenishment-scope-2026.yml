@@ -1,0 +1,13 @@
+id: odoo-replenishment-scope-2026
+subject: replenishment-terminology
+source_type: official-docs
+grade: A
+title: Replenishment - Odoo 18 Documentation
+url: https://www.odoo.com/documentation/18.0/applications/inventory_and_mrp/inventory/warehouses_storage/replenishment.html
+publisher: Odoo
+captured_at: '2026-08-18'
+supports:
+  - Odoo uses Replenishment for procurement and resupply mechanisms such as reordering rules, Make to Order and production planning.
+  - Reordering rules trigger purchase or manufacturing supply when stock falls below a minimum and replenish toward a maximum.
+  - Odoo also documents inter-warehouse replenishment as resupply from a central warehouse using routes and transfers.
+notes: This usage is broader than internal pick-face replenishment used by many WMS products and should not be treated as the same semantic scope without qualification.
