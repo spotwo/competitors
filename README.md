@@ -1,8 +1,8 @@
 # Spotwo Competitors
 
-Spotwo's local source of truth for intralogistics market and domain knowledge.
+Spotwo's local source of truth for intralogistics market, domain and WMS-kernel knowledge.
 
-This repository records competitors, products, capabilities, workflow decompositions, terminology, standards, market conventions, domain ontologies, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
+This repository records competitors, products, capabilities, workflow decompositions, terminology, standards, market conventions, domain ontologies, inventory ledger semantics, domain events, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
 
 > Directory tree represents identity. Metadata represents classification.
 
@@ -17,10 +17,12 @@ This repository records competitors, products, capabilities, workflow decomposit
 7. **Capability is not implementation** - receiving, replenishment, picking, etc. are canonical capabilities; wave, batch, min/max, GTP, voice, and similar choices are strategies or implementation patterns.
 8. **Workflow is deeper than capability** - a workflow decomposes a capability into stages, objects, states, strategies, execution channels, exceptions, and vendor mappings.
 9. **Process state is not inventory state** - packed, loaded, receiving, held, reserved, allocated, available, and physically present are different concerns.
-10. **Planning is not execution** - business need and policy create Warehouse Work; inventory changes only from explicit confirmed transactions.
-11. **Time matters** - every researched fact has a verification or observation date.
-12. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
-13. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
+10. **Planning is not execution** - business need and policy create Warehouse Work; inventory changes only from explicit accepted transactions.
+11. **Transaction is not event** - the inventory ledger is durable internal history; Domain Events communicate committed facts; EPCIS is an external visibility model.
+12. **Current state is not history** - Inventory Position is optimized current state; posted Inventory Transactions are immutable history.
+13. **Time matters** - every researched fact has a verification or observation date.
+14. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
+15. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
 
 ## Knowledge model
 
@@ -43,9 +45,17 @@ Evidence + Claims + Standards
               |
               v
         Spotwo Decision
+
+Inventory-specific kernel
+
+Command
+  -> Inventory Posting Service
+       -> Inventory Transaction Ledger
+       -> Inventory Position
+       -> Domain Event Outbox
 ```
 
-A capability answers **what operational outcome exists**. A workflow answers **how that capability becomes executable work**. Strategies, policies and channels answer **which execution model is used**. Exceptions describe **how normal execution diverges without destroying the underlying business semantics**.
+A capability answers **what operational outcome exists**. A workflow answers **how that capability becomes executable work**. The inventory kernel answers **how confirmed inventory changes are represented, validated, posted, read, audited and published**.
 
 ## Repository map
 
@@ -58,11 +68,13 @@ taxonomy/        Controlled vocabularies
 terminology/     Industry terms, aliases, usage, and Spotwo naming decisions
 authorities/     Standards, regulations, associations, and industry guides
 evidence/        Source records supporting claims and domain models
-ontology/        Facility, location, inventory, handling-unit, process, and movement models
+ontology/        Facility, location, inventory, handling-unit, process, movement and transaction models
+ledger/          Candidate inventory transaction/posting model and invariants
+events/          Candidate domain-event registry, envelope and external mappings
 kpis/            Warehouse/DC KPI registry
 integrations/    Integration and interoperability patterns
-decisions/       Spotwo ADR-style product/domain/UX decisions
-matrices/        Generated comparison, stats, workflow, domain, and research views
+decisions/       Spotwo ADR-style product/domain/UX/architecture decisions
+matrices/        Generated comparison, stats, workflow, domain, ledger, event and research views
 schema/          JSON Schema definitions
 templates/       Research and record templates
 scripts/         Validation, query, and generation tools
@@ -99,7 +111,10 @@ Demand / Supply / Operational Need
         Confirmation
              |
              v
-   Inventory Movement / Adjustment
+    Inventory Posting Service
+      |         |          |
+      v         v          v
+   Ledger    Position    Outbox
 ```
 
 ### Location
@@ -174,6 +189,135 @@ Transfer Order
 
 See `decisions/domain/0010-inventory-movement-model.md`.
 
+## Inventory transaction kernel
+
+### Position + ledger + projection
+
+Spotwo currently proposes a **hybrid synchronous ledger + materialized position** model rather than full event sourcing.
+
+```text
+Command
+  |
+  v
+Inventory Posting Service
+  |
+  +-- validate invariants
+  +-- deduplicate command
+  +-- lock/version affected positions
+  |
+  v
+ONE DATABASE TRANSACTION
+  |
+  +-- append InventoryTransaction + Legs
+  +-- update InventoryPosition rows
+  +-- append Domain Event Outbox rows
+  |
+ COMMIT
+```
+
+Roles are deliberately distinct:
+
+- `InventoryPosition` - low-latency current operational balance.
+- `InventoryTransaction` - immutable audit/rebuild journal.
+- `AvailabilityView` - disposable derived projection for a specific action and scope.
+- `DomainEvent` - committed fact for other modules/integrations.
+- `EPCIS Event` - standards-based supply-chain visibility representation when applicable.
+
+See `decisions/domain/0011-inventory-state-ledger-projection.md`.
+
+### Balanced quantity postings
+
+Every accepted inventory change is represented as a typed transaction containing one or more signed legs. This is **double-entry-inspired quantity accounting**, not financial double-entry bookkeeping.
+
+```text
+Internal movement
+
+Source Position       -10 EA
+Destination Position  +10 EA
+                       -----
+Net physical delta       0 EA
+```
+
+```text
+Condition transformation
+
+Available stock       -10 EA
+Quarantine stock      +10 EA
+                       -----
+Net physical delta       0 EA
+```
+
+Receipts and issues cross the modeled warehouse boundary. Adjustments are explicitly non-conserving and require reason/authority. Reservation and allocation postings change commitments, not physical quantity.
+
+Posted transactions are immutable. Corrections use compensating transactions rather than rewriting history. See `decisions/domain/0012-balanced-inventory-postings.md`.
+
+### Candidate inventory transaction types
+
+```text
+Physical
+  receipt
+  issue
+  movement
+
+Transformation
+  posting-change
+
+Commitment
+  reservation
+  reservation-release
+  allocation
+  allocation-release
+
+Reconciliation
+  adjustment-in
+  adjustment-out
+  count-reconciliation
+
+Correction
+  reversal
+```
+
+Canonical detail lives in `ledger/inventory.yml`; `matrices/ledger.md` is the generated review view.
+
+### Domain events and outbox
+
+The event model intentionally separates three layers:
+
+```text
+InventoryTransaction
+  = internal durable inventory journal
+
+DomainEvent
+  = committed fact for Spotwo modules/integrations
+
+EPCIS Event
+  = standards-based supply-chain visibility representation
+```
+
+Domain Events are persisted to an outbox atomically with ledger/position changes and published at-least-once after commit. Consumers deduplicate by stable `event_id`; ordering is local to aggregates/streams where versioning exists, not global.
+
+The candidate envelope includes:
+
+```text
+event_id
+type
+source
+subject
+occurred_at
+recorded_at
+aggregate_type
+aggregate_id
+aggregate_version
+causation_id?
+correlation_id?
+actor?
+warehouse_id?
+schema_version
+data
+```
+
+CloudEvents may provide a transport envelope. GS1 EPCIS/CBV may represent suitable external visibility facts without becoming Spotwo's internal inventory ledger. See `decisions/domain/0013-inventory-domain-events.md`.
+
 ## Deep workflow coverage
 
 The repository currently contains 12 deep workflow decompositions:
@@ -211,6 +355,12 @@ Reservation != Allocation != Task Assignment
 
 Physical Quantity != Available Quantity
 
+Inventory Position != Inventory Transaction
+
+Inventory Transaction != Domain Event != EPCIS Event
+
+Movement Intent != Inventory Movement Confirmation
+
 Return Reason != Return Disposition != Commercial Outcome
 
 Count Result != Accepted Count != Inventory Difference != Adjustment
@@ -218,97 +368,7 @@ Count Result != Accepted Count != Inventory Difference != Adjustment
 Picked != Packed != Staged != Loaded != Shipped
 
 Relocation != Transfer
-
-Movement Intent != Inventory Movement Confirmation
 ```
-
-### Picking
-
-```text
-Demand Ready
-  -> Release / Orchestration
-  -> Pick Work Creation
-  -> Assignment
-  -> Sequence / Route
-  -> Travel and Pick
-  -> Exception Resolution
-  -> Handoff
-```
-
-The candidate model uses `Pick Work Group -> Pick Task` instead of adopting one vendor vocabulary. See `decisions/domain/0005-picking-work-model.md`.
-
-### Internal replenishment
-
-```text
-Trigger Evaluation
-  -> Quantity Calculation
-  -> Destination Selection
-  -> Source Selection
-  -> Work Creation
-  -> Release / Assignment
-  -> Pick / Move / Put
-  -> Completion / Recalculation
-```
-
-Internal warehouse replenishment is separated from procurement, production supply and inter-warehouse resupply. See `decisions/domain/0006-internal-replenishment-scope.md`.
-
-### Allocation and commitment
-
-```text
-Demand Eligible
-  -> Availability Evaluation
-  -> Reservation? 
-  -> Source Resolution
-  -> Allocation Creation
-  -> Execution Handoff
-  -> Commitment Resolution
-```
-
-Reservation is optional in the candidate model. Exact source identity may be deferred until execution when policy permits. See `decisions/domain/0009-inventory-commitment-model.md`.
-
-### Cross-docking
-
-```text
-Inbound Eligibility
-  -> Demand Match
-  -> Cross-Dock Allocation
-  -> Work Creation
-  -> Move to Outbound Flow
-  -> Outbound Handoff
-  -> Residual / Fallback Putaway
-```
-
-Cross-docking is a demand-linked allocation and routing decision, not merely a special storage location.
-
-### Returns
-
-```text
-Return Arrival
-  -> Identification
-  -> Authorization / Blind Return Resolution
-  -> Return Receipt
-  -> Inspection and Disposition
-  -> Disposition Work
-  -> Execution
-  -> Return Resolution
-```
-
-Receiving a returned item does not automatically make it allocatable.
-
-### Physical inventory
-
-```text
-Scope Definition
-  -> Inventory Document
-  -> Count Release
-  -> Count Execution
-  -> Recount / Review
-  -> Difference Analysis
-  -> Adjustment Posting
-  -> Reconciliation / Close
-```
-
-Physical Inventory is broader audit/reconciliation scope than routine Cycle Counting.
 
 ## Querying the knowledge base
 
@@ -318,46 +378,38 @@ python scripts/kb.py vendors --segment smb --market europe --layer wms
 python scripts/kb.py vendors --country UA
 python scripts/kb.py vendors --capability picking
 
-# Capabilities
-python scripts/kb.py capability
+# Capabilities / workflows
 python scripts/kb.py capability allocation
 python scripts/kb.py capability cross-docking --vendor oracle
-python scripts/kb.py capability --group inventory
-
-# Deep workflows
-python scripts/kb.py workflow
 python scripts/kb.py workflow allocation
 python scripts/kb.py workflow cross-docking
-python scripts/kb.py workflow receiving
-python scripts/kb.py workflow putaway
-python scripts/kb.py workflow replenishment
 python scripts/kb.py workflow relocation --vendor microsoft
 python scripts/kb.py workflow picking --strategy cluster
-python scripts/kb.py workflow packing
-python scripts/kb.py workflow shipping
 python scripts/kb.py workflow returns
-python scripts/kb.py workflow cycle-counting
 python scripts/kb.py workflow physical-inventory --vendor sap
-python scripts/kb.py workflow allocation --json
 
 # Domain ontology
-python scripts/kb.py ontology
 python scripts/kb.py ontology inventory
 python scripts/kb.py ontology reservation
 python scripts/kb.py ontology allocation
-python scripts/kb.py ontology availability
 python scripts/kb.py ontology inventory-movement
-python scripts/kb.py ontology handling-unit --json
+python scripts/kb.py ontology inventory-transaction
 
-# Industry language
-python scripts/kb.py term "clear height"
-python scripts/kb.py term bin
+# Inventory kernel
+python scripts/kernel.py ledger
+python scripts/kernel.py ledger movement
+python scripts/kernel.py ledger adjustment --json
+python scripts/kernel.py invariants
+python scripts/kernel.py events
+python scripts/kernel.py events movement
+python scripts/kernel.py envelope
 
-# KPIs / integrations / evidence
-python scripts/kb.py kpis --category inbound
-python scripts/kb.py integrations --protocol OPC
-python scripts/kb.py evidence --subject inventory-commitment-model
-python scripts/kb.py evidence --subject inventory-movement-model
+# Industry language / evidence
+python scripts/kb.py term reservation
+python scripts/kb.py term "inventory movement"
+python scripts/kb.py evidence --subject inventory-ledger
+python scripts/kb.py evidence --subject inventory-position
+python scripts/kb.py evidence --subject event-model
 python scripts/kb.py evidence --publisher GS1
 
 # Research backlog and live counts
@@ -367,11 +419,9 @@ python scripts/kb.py stats
 
 Add `--json` when an agent, MCP server, CI job or another tool needs machine-readable output.
 
-`workflows/*.yml` is canonical. `matrices/workflows.md` is a generated compact comparison view. Detailed workflow data should be queried from YAML/CLI rather than duplicated into large generated Markdown files.
+## Evidence and standards stance
 
-## Authority order for terminology
-
-Use this as a decision aid, not an automatic ranking:
+Use this as a terminology and architecture decision aid, not an automatic ranking:
 
 1. Applicable regulation or law
 2. Formal standard
@@ -380,9 +430,9 @@ Use this as a decision aid, not an automatic ranking:
 5. Major competitor usage
 6. Internal terminology
 
-When the market term differs from a formal standard, record both and create a decision under `decisions/terminology/`.
+When the market term differs from a formal standard, record both and create a decision under `decisions/terminology/` or `decisions/domain/`.
 
-## Evidence grades
+Evidence grades:
 
 | Grade | Source type |
 |---|---|
@@ -395,15 +445,24 @@ When the market term differs from a formal standard, record both and create a de
 
 ## Validation
 
-Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, company/product relationships, workflow references, nested workflow IDs, ontology parent/relationship references, and generated-view freshness.
+Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, company/product relationships, workflow references, nested workflow IDs, ontology parent/relationship references, ledger/event nested IDs and evidence, duplicate semantic event types, and generated-view freshness.
+
+Direct pushes to `main`, pull requests and manual workflow dispatch all run the knowledge-base check for relevant paths.
 
 ```bash
 python -m pip install -r requirements.txt
+bash bin/check
+```
+
+Equivalent explicit checks:
+
+```bash
 python scripts/validate.py
 python scripts/generate_matrices.py --check
 python scripts/generate_audit.py --check
 python scripts/generate_domain_views.py --check
 python scripts/generate_workflow_views.py --check
+python scripts/generate_kernel_views.py --check
 ```
 
 Refresh generated views after editing canonical records:
@@ -413,4 +472,5 @@ python scripts/generate_matrices.py
 python scripts/generate_audit.py
 python scripts/generate_domain_views.py
 python scripts/generate_workflow_views.py
+python scripts/generate_kernel_views.py
 ```
