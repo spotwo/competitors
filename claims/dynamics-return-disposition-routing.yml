@@ -1,0 +1,10 @@
+id: dynamics-return-disposition-routing
+subject_type: product
+subject: microsoft/dynamics-365-scm-warehouse-management
+predicate: return-disposition-controls-inventory-routing
+value: true
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [dynamics365-returns-2026]
+notes: Return disposition can determine inventory status work template and location directive for returned inventory.
