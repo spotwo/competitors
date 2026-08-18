@@ -1,0 +1,12 @@
+id: dynamics-outbound-loading-2026
+subject: shipping-workflow
+source_type: official-docs
+grade: A
+title: Confirm and transfer
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/confirm-and-transfer
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Outbound warehouse work can move picked license plates through staging and bay-door locations before loading.
+  - Loading closes the related warehouse work after the target license plate is moved to the truck flow.
+  - Staging, bay-door movement and loading are separate execution steps.
