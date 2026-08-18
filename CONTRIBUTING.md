@@ -7,9 +7,31 @@
 3. Use controlled taxonomy values instead of inventing tags.
 4. Set `last_verified` / `captured_at` to the actual research date.
 5. Record unknowns in `research_gaps` rather than guessing.
-6. Run `python scripts/generate_matrices.py` after changing companies or terminology.
-7. Run `python scripts/validate.py`.
+6. Refresh generated views when canonical records change.
+7. Run `bash bin/check` before opening or updating a pull request.
 8. If terminology affects Spotwo product language, create an ADR under `decisions/terminology/`.
+
+## Research batching and CI
+
+Prefer one focused research branch and pull request per research topic instead of pushing each evidence record or claim directly to `main`.
+
+Example:
+
+```text
+research/picking-logiwa
+  evidence updates
+  claim updates
+  canonical record updates
+  generated views
+        |
+        v
+      one PR
+      one CI run
+```
+
+Batch related research changes, regenerate derived views once, and run `bash bin/check` once before pushing. This keeps the knowledge base reviewable and avoids redundant GitHub Actions runs.
+
+Documentation-only changes do not require the knowledge-base validation workflow. Changes to canonical records, schemas, scripts, generated-view logic, dependencies, or `bin/` entrypoints do.
 
 ## Claims
 

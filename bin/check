@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+python scripts/validate.py
+python scripts/generate_matrices.py --check
+python scripts/generate_audit.py --check
+python scripts/generate_domain_views.py --check
+python scripts/generate_workflow_views.py --check
