@@ -101,6 +101,7 @@ def clean_database():
               kernel_lab.inventory_position_projection_rebuilds,
               kernel_lab.inventory_position_projection_pending,
               kernel_lab.inventory_position_quantity_projection,
+              kernel_lab.nats_jetstream_consumer_poison_deliveries,
               kernel_lab.domain_event_consumer_failure_action_archive,
               kernel_lab.domain_event_consumer_failure_archive,
               kernel_lab.domain_event_consumer_failure_actions,
@@ -174,6 +175,6 @@ def clean_database():
         )
         conn.execute(
             "INSERT INTO kernel_lab.inventory_conditions (id, tenant_id, code) VALUES (%s, %s, 'NORMAL')",
-            (CONDITION, TENANT),
+            (CONDITION,),
         )
     yield
