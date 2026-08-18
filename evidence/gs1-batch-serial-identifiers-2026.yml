@@ -1,0 +1,13 @@
+id: gs1-batch-serial-identifiers-2026
+subject: inventory-key
+source_type: standard
+grade: A
+title: GS1 Application Identifiers for batch/lot and serial identity
+url: https://ref.gs1.org/ai/?lang=en
+publisher: GS1
+captured_at: 2026-08-18
+supports:
+  - GS1 distinguishes batch or lot number from serial number as separate data semantics.
+  - Batch/lot identifies a traceability grouping while serial identifies an individual trade-item instance when combined with product identity.
+  - Expiration and other dates are separate attributes rather than synonyms for lot or serial identity.
+notes: Supports keeping lot identity, serial identity and date attributes separate in the Spotwo stock model.
