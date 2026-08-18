@@ -8,7 +8,7 @@ Profile: `spotwo-wms-operational-default`
 
 | Rank | Candidate | Disposition | Weighted score |
 |---:|---|---|---:|
-| 1 | NATS JetStream (`nats-jetstream`) | `canonical-default` | 4.75 / 5 |
+| 1 | NATS JetStream (`nats-jetstream`) | `canonical-default` | 4.80 / 5 |
 | 2 | Redpanda / Kafka API (`redpanda-kafka`) | `secondary-streaming-profile` | 3.95 / 5 |
 | 3 | Amazon SNS FIFO + SQS FIFO (`aws-sns-sqs-fifo`) | `aws-native-profile` | 3.40 / 5 |
 | 4 | Cloudflare Queues (`cloudflare-queues`) | `cloudflare-worker-profile` | 2.75 / 5 |
