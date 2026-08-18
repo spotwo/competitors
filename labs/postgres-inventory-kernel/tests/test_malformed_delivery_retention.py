@@ -9,7 +9,7 @@ from psycopg.types.json import Jsonb
 
 import conftest as lab
 from consumer_runtime import MalformedDeliveryEvidence
-from malformed_delivery_quarantine import PostgresNatsMalformedDeliveryQuarantine
+from malformed_delivery import PostgresNatsMalformedDeliveryQuarantine
 from malformed_delivery_retention import (
     MAX_ARCHIVE_BATCH_SIZE,
     MalformedDeliveryArchiveBatch,
