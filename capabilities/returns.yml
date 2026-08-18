@@ -1,0 +1,23 @@
+id: returns
+group: reverse
+label: Returns
+status: adopted
+definition: Receive, inspect, disposition, restock, quarantine, repair, or dispose of inventory returned from customers or downstream locations.
+purpose: Bring reverse-flow goods back under controlled inventory and determine their next valid state.
+inputs: [return-authorization, returned-goods, reason-code]
+outputs: [return-receipt, disposition, restocked-inventory, quarantine, disposal]
+entities: [return, order, inventory, sku, lot, serial, disposition]
+strategies: [restock, quarantine, refurbish, return-to-vendor, scrap]
+related_capabilities: [receiving, inspection, putaway]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-enterprise-capabilities-2026]
+spotwo:
+  canonical_term: Returns
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-enterprise-capabilities-2026]
