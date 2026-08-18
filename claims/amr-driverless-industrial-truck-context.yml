@@ -1,0 +1,10 @@
+id: amr-driverless-industrial-truck-context
+subject_type: terminology
+subject: autonomous-mobile-robot
+predicate: iso-3691-4-classification-context
+value: driverless-industrial-truck
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [iso-3691-4-2023]
+notes: This is the classification context of ISO 3691-4:2023, not a claim that all uses of AMR in every industry are industrial trucks.

@@ -1,0 +1,9 @@
+id: sscc-identifies-logistic-unit
+subject_type: terminology
+subject: sscc
+predicate: identifies-logistic-unit
+value: true
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [gs1-logistic-label]

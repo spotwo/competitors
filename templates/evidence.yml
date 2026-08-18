@@ -1,0 +1,11 @@
+id: vendor-topic-yyyy
+subject: vendor-slug
+source_type: official-product-page
+grade: B
+title: Source title
+url: https://example.com/source
+publisher: Publisher
+captured_at: 'YYYY-MM-DD'
+supports:
+- Narrow factual claim supported by this source
+notes: Optional capture context.

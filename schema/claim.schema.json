@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/claim.schema.json",
+  "title": "Knowledge Claim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "subject_type", "subject", "predicate", "value", "confidence", "status", "observed_at", "evidence_refs"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "subject_type": {"enum": ["company", "product", "terminology", "authority", "concept"]},
+    "subject": {"type": "string", "minLength": 1},
+    "predicate": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "value": {},
+    "confidence": {"enum": ["confirmed", "high", "medium", "low"]},
+    "status": {"enum": ["current", "disputed", "superseded"]},
+    "valid_from": {"type": "string", "format": "date"},
+    "valid_to": {"type": ["string", "null"], "format": "date"},
+    "observed_at": {"type": "string", "format": "date"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "notes": {"type": "string"}
+  }
+}

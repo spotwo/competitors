@@ -1,0 +1,9 @@
+id: swisslog-synq-software-stack
+subject_type: product
+subject: swisslog/synq
+predicate: integrated-software-stack
+value: [wms, wes, mfs, wcs]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [swisslog-synq-2026]

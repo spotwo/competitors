@@ -1,0 +1,9 @@
+id: totvs-protheus-target-segments
+subject_type: product
+subject: totvs/wms-protheus
+predicate: target-segments
+value: [smb, mid-market]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [totvs-protheus-market-2026]

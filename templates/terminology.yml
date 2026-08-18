@@ -1,0 +1,10 @@
+id: canonical-term-slug
+preferred_term: Preferred Term
+definition: Evidence-backed definition.
+domain: [warehouse]
+aliases: []
+status: needs-research
+spotwo_term: null
+notes: Explain unresolved semantics or regional differences.
+last_verified: 'YYYY-MM-DD'
+evidence_refs: []

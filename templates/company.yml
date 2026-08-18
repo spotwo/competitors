@@ -1,0 +1,19 @@
+id: vendor-slug
+name: Vendor Name
+entity_type: vendor
+website: https://example.com/
+markets: [europe]
+segments: [mid-market]
+solution_layers: [wms]
+deployment_models: [saas]
+industries: [retail]
+operating_environments: [distribution-center]
+capabilities: [receiving, putaway, picking, shipping]
+products:
+- id: product-slug
+  name: Product Name
+  categories: [wms]
+status: active
+research_gaps: []
+last_verified: 'YYYY-MM-DD'
+evidence_refs: [evidence-id]

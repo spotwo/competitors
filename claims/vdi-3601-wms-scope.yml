@@ -1,0 +1,13 @@
+id: vdi-3601-wms-scope
+subject_type: authority
+subject: vdi
+predicate: wms-reference-scope
+value:
+- quantity-and-location-management
+- internal-storage-and-transport-optimization
+- upper-level-it-integration
+- lower-level-it-integration
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [vdi-3601-wms-2015]

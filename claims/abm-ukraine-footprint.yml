@@ -1,0 +1,9 @@
+id: abm-ukraine-footprint
+subject_type: company
+subject: abm-cloud
+predicate: evidenced-country-footprint
+value: [UA]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [abm-footprint-2026]

@@ -1,0 +1,17 @@
+id: clear-height-market-usage
+subject_type: terminology
+subject: clear-height
+predicate: market-usage
+value:
+  term: Clear Height
+  observed_publishers: [Prologis, CBRE, SEGRO, GLP]
+  regions: [north-america, europe]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs:
+- prologis-clear-height-2026
+- cbre-clear-height-2026
+- segro-clear-height-2026
+- glp-clear-height-2026
+notes: Supports product-language adoption, not a normative engineering measurement rule.

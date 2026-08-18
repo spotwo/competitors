@@ -1,0 +1,9 @@
+id: knapp-software-stack
+subject_type: company
+subject: knapp
+predicate: integrated-software-stack
+value: [wms, wes, wcs, machine-control]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [knapp-kisoft-platform-2026]

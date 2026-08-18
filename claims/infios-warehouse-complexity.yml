@@ -1,0 +1,9 @@
+id: infios-warehouse-complexity
+subject_type: company
+subject: infios
+predicate: warehouse-complexity-levels
+value: [2, 3, 4, 5]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [infios-wm-2026]

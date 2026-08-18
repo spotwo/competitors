@@ -1,0 +1,9 @@
+id: manhattan-activewarehouse-editions
+subject_type: product
+subject: manhattan-associates/activewarehouse
+predicate: portfolio-editions
+value: [Essentials, Enterprise, Enterprise Premier]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [manhattan-activewarehouse-2026]

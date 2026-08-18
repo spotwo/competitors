@@ -1,0 +1,10 @@
+id: subject-predicate
+subject_type: company
+subject: vendor-slug
+predicate: factual-predicate
+value: factual-value
+confidence: confirmed
+status: current
+observed_at: 'YYYY-MM-DD'
+evidence_refs: [evidence-id]
+notes: Optional qualification or scope boundary.

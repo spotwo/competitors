@@ -1,0 +1,9 @@
+id: intralogistics-scope
+subject_type: terminology
+subject: intralogistics
+predicate: includes-process-domains
+value: [production-supply, warehouse-processes]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [vdma-intralogistics-2026]

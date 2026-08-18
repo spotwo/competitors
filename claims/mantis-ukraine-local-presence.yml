@@ -1,0 +1,9 @@
+id: mantis-ukraine-local-presence
+subject_type: company
+subject: mantis
+predicate: evidenced-local-presence
+value: [UA]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [mantis-lvs-2026]
