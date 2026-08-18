@@ -23,6 +23,8 @@ def stats_markdown() -> str:
     ontologies = records("ontology/*.yml")
     capability_records = records("capabilities/*.yml")
     workflows = records("workflows/*.yml")
+    ledgers = records("ledger/*.yml")
+    event_registries = records("events/*.yml")
     metrics = [
         ("Companies", len(companies)),
         ("Products", products),
@@ -41,6 +43,11 @@ def stats_markdown() -> str:
         ("Workflow stages", sum(len(w.get("stages", [])) for w in workflows)),
         ("Workflow strategies", sum(len(w.get("strategies", [])) for w in workflows)),
         ("Workflow vendor models", sum(len(w.get("vendor_models", [])) for w in workflows)),
+        ("Ledger registries", len(ledgers)),
+        ("Ledger transaction types", sum(len(r.get("transaction_types", [])) for r in ledgers)),
+        ("Ledger invariants", sum(len(r.get("invariants", [])) for r in ledgers)),
+        ("Event registries", len(event_registries)),
+        ("Domain event types", sum(len(r.get("events", [])) for r in event_registries)),
     ]
     lines = ["# Knowledge Base Stats", "", "> Generated from canonical records. Do not edit by hand.", "", "| Metric | Count |", "|---|---:|"]
     lines.extend(f"| {name} | {count} |" for name, count in metrics)
@@ -68,6 +75,13 @@ def gaps_markdown() -> str:
             workflow_gaps.append((workflow["title"], workflow["status"], len(workflow.get("vendor_models", [])), len(workflow.get("evidence_refs", []))))
         for gap in workflow.get("research_gaps", []) or []:
             workflow_gaps.append((workflow["title"] + " - " + gap, "research", len(workflow.get("vendor_models", [])), len(workflow.get("evidence_refs", []))))
+    kernel_gaps = []
+    for pattern, kind in (("ledger/*.yml", "ledger"), ("events/*.yml", "events")):
+        for record in records(pattern):
+            if record.get("status") in {"candidate", "observed", "needs-research"}:
+                kernel_gaps.append((kind, record["title"], record["status"], len(record.get("evidence_refs", []))))
+            for gap in record.get("research_gaps", []) or []:
+                kernel_gaps.append((kind, record["title"] + " - " + gap, "research", len(record.get("evidence_refs", []))))
     lines = ["# Research Gaps", "", "> Generated from explicit research gaps and non-adopted records. Do not edit by hand.", "", "## Company gaps", "", "| Company | Gap |", "|---|---|"]
     if company_gaps:
         lines.extend(f"| {company} | {gap} |" for company, gap in sorted(company_gaps))
@@ -88,6 +102,11 @@ def gaps_markdown() -> str:
         lines.extend(f"| {label} | {status} | {vendors} | {evidence} |" for label, status, vendors, evidence in sorted(workflow_gaps))
     else:
         lines.append("| - | None | 0 | 0 |")
+    lines.extend(["", "## Kernel research", "", "| Layer | Record / gap | Status | Evidence refs |", "|---|---|---|---:|"])
+    if kernel_gaps:
+        lines.extend(f"| {kind} | {label} | {status} | {evidence} |" for kind, label, status, evidence in sorted(kernel_gaps))
+    else:
+        lines.append("| - | None | - | 0 |")
     return "\n".join(lines) + "\n"
 
 
