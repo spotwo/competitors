@@ -1,0 +1,12 @@
+id: sap-ewm-inbound-process-2026
+subject: receiving-workflow
+source_type: official-docs
+grade: A
+title: Inbound Process
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/e15a4205bb284393add14c9d419fef45.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - The inbound process distinguishes truck arrival, readiness for warehouse processing, unloading, goods receipt and putaway task creation.
+  - Handling units can be unloaded by RF or application workflows.
+  - Goods receipt updates inbound delivery and transportation status before putaway tasks are created.
