@@ -1,0 +1,11 @@
+id: sap-ewm-picking-rf-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Picking - SAP Extended Warehouse Management
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/48d2a6730128581de10000000a42189c.html
+publisher: SAP
+captured_at: '2026-08-18'
+supports:
+  - SAP EWM supports system-guided picking, system-guided picking by queue, picking by warehouse request, picking by warehouse order, and picking by handling unit through RF.
+  - Warehouse Order is the execution grouping presented to the picker, while warehouse tasks represent lower-level executable work.
