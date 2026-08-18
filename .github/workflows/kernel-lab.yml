@@ -10,6 +10,7 @@ on:
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
       - 'decisions/domain/0017-warehouse-work-execution-engine.md'
       - 'decisions/domain/0018-golden-warehouse-scenarios.md'
+      - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -29,6 +30,7 @@ on:
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
       - 'decisions/domain/0017-warehouse-work-execution-engine.md'
       - 'decisions/domain/0018-golden-warehouse-scenarios.md'
+      - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -37,6 +39,16 @@ on:
       - 'ontology/work.yml'
       - '.github/workflows/kernel-lab.yml'
   workflow_dispatch:
+    inputs:
+      perf_profile:
+        description: PostgreSQL performance profile
+        required: true
+        type: choice
+        default: smoke
+        options:
+          - smoke
+          - standard
+          - scale
 
 concurrency:
   group: kernel-lab-${{ github.workflow }}-${{ github.ref }}
@@ -48,7 +60,7 @@ permissions:
 jobs:
   postgres-kernel-lab:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
         with:
@@ -71,6 +83,7 @@ jobs:
             decisions/domain/0016-inventory-holds-eligibility.md \
             decisions/domain/0017-warehouse-work-execution-engine.md \
             decisions/domain/0018-golden-warehouse-scenarios.md \
+            decisions/domain/0019-postgresql-performance-contention-lab.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
@@ -92,4 +105,6 @@ jobs:
 
       - name: Run PostgreSQL inventory kernel lab
         if: steps.scope.outputs.run == 'true'
+        env:
+          KERNEL_LAB_PERF_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.perf_profile || 'smoke' }}
         run: bash bin/check-kernel-lab
