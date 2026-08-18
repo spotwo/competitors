@@ -55,10 +55,10 @@ relationships:
   - {subject: inventory-movement, predicate: may-produce, object: movement-exception}
   - {subject: movement-exception, predicate: may-preserve, object: residual-movement-need}
 research_gaps:
-  - Validate Inventory Transfer boundaries across SAP EWM Dynamics Oracle Infor and ERP-centric systems where inter-warehouse transfer includes shipment and receipt documents.
+  - Validate Inventory Transfer boundaries beyond Dynamics across SAP EWM Oracle Infor and ERP-centric systems where inter-warehouse transfer includes shipment and receipt documents.
   - Decide whether source and destination inventory context are immutable value objects or references to stock-position records.
   - Define atomicity for handling-unit movement where child inventory lines have mixed lot status owner or allocation state.
   - Define partial movement confirmation and residual need behavior shared by putaway replenishment relocation and cross-dock.
   - Determine whether inventory condition or ownership changes without physical relocation should use Inventory Movement or a separate Inventory Transformation concept.
 last_verified: '2026-08-18'
-evidence_refs: [sap-ewm-putaway-tasks-2026, dynamics-location-directives-putaway-2026, dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026, dynamics365-cross-docking-2026]
+evidence_refs: [sap-ewm-putaway-tasks-2026, dynamics-location-directives-putaway-2026, dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026, dynamics365-cross-docking-2026, dynamics365-inventory-movement-2026, sap-inventory-movement-2026, infor-inventory-movement-2026, dynamics365-inventory-transfer-2026]
