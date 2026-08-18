@@ -1,0 +1,24 @@
+id: storage
+group: storage
+label: Storage
+status: adopted
+definition: Maintain inventory in controlled warehouse locations while preserving quantity, identity, status, ownership, and traceability.
+purpose: Provide reliable inventory state between inbound, production, and fulfilment processes.
+inputs: [inventory, location, handling-unit]
+outputs: [inventory-state, availability]
+entities: [inventory, sku, lot, serial, handling-unit, location]
+strategies: [fixed-location, dynamic-location, reserve-storage, active-storage]
+related_capabilities: [putaway, relocation, replenishment, slotting, cycle-counting]
+vendor_observations:
+  - company_id: mecalux
+    level: core
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+  - company_id: odoo
+    level: core
+    terminology: [storage locations]
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Storage
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [mecalux-easy-wms-capabilities-2026, odoo-inventory-routes-2026]
