@@ -1,0 +1,9 @@
+id: driverless-industrial-truck
+preferred_term: Driverless Industrial Truck
+definition: Powered industrial truck designed to operate automatically without a driver controlling its movement during automatic operation.
+domain: [automation, material-handling, safety]
+aliases: [driverless truck]
+status: adopted
+spotwo_term: Driverless Industrial Truck
+last_verified: '2026-08-18'
+evidence_refs: [iso-3691-4-2023, iso-5053-1-2020]

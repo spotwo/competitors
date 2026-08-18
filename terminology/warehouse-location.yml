@@ -1,0 +1,10 @@
+id: warehouse-location
+preferred_term: Warehouse Location
+definition: A physical or logical place within a warehouse used to organize, identify, route, or store inventory and work.
+domain: [warehouse, location, inventory]
+aliases: [location, storage location]
+status: adopted
+spotwo_term: Warehouse Location
+notes: Use as the broad concept. More specific addressable entities such as Storage Bin, Dock Door, Zone, Aisle, Rack and Shelf should remain distinct where the domain model requires them.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-2026, odoo-inventory-wms-2026, gs1-gln-standard]

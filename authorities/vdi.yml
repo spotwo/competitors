@@ -1,0 +1,16 @@
+id: vdi
+name: VDI - Verein Deutscher Ingenieure
+authority_type: standards-body
+scope:
+- warehouse-management
+- intralogistics
+- material-flow
+- software-architecture
+jurisdictions:
+- europe
+- global
+website: https://www.vdi.de/
+notes: VDI 3601 is a strong domain reference for WMS terminology, responsibilities, performance areas, and system-layer integration.
+last_verified: '2026-08-18'
+evidence_refs:
+- vdi-3601-wms-2015

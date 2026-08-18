@@ -1,0 +1,14 @@
+id: iso-3691-4-2023
+subject: iso
+source_type: standard
+grade: A
+title: ISO 3691-4:2023 - Driverless industrial trucks and their systems
+url: https://www.iso.org/standard/83545.html
+publisher: ISO
+captured_at: '2026-08-18'
+supports:
+- safety requirements for driverless industrial trucks and systems
+- automated guided vehicle terminology
+- autonomous mobile robot terminology
+- automated guided cart and related examples
+notes: Current published edition is 2023; ISO is developing a revision in 2026.

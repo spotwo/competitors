@@ -1,0 +1,9 @@
+id: automated-guided-vehicle
+preferred_term: Automated Guided Vehicle
+definition: A recognized class/example of driverless industrial truck used for automated material movement.
+domain: [automation, material-handling]
+aliases: [AGV]
+status: adopted
+spotwo_term: Automated Guided Vehicle (AGV)
+last_verified: '2026-08-18'
+evidence_refs: [iso-3691-4-2023]

@@ -1,0 +1,9 @@
+id: industrial-storage-rack
+preferred_term: Industrial Storage Rack
+definition: Structural storage system used to support stored loads in industrial and warehouse environments.
+domain: [facility, storage, material-handling]
+aliases: [storage rack, rack]
+status: adopted
+spotwo_term: Storage Rack
+last_verified: '2026-08-18'
+evidence_refs: [rmi-ansi-mh16-1-2023]

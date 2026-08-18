@@ -1,0 +1,10 @@
+id: autonomous-mobile-robot
+preferred_term: Autonomous Mobile Robot
+definition: A recognized class/example of driverless industrial truck in warehouse and industrial automation contexts.
+domain: [automation, robotics, material-handling]
+aliases: [AMR]
+status: adopted
+spotwo_term: Autonomous Mobile Robot (AMR)
+notes: ISO 3691-4:2023 explicitly lists autonomous mobile robot among examples of driverless industrial trucks for the scope of that safety standard.
+last_verified: '2026-08-18'
+evidence_refs: [iso-3691-4-2023]

@@ -1,0 +1,16 @@
+id: iso
+name: International Organization for Standardization (ISO)
+authority_type: standards-body
+scope:
+- industrial-trucks
+- automation
+- safety
+- vocabulary
+jurisdictions:
+- global
+website: https://www.iso.org/
+notes: Use current published standards for normative vocabulary and safety. Track drafts separately from current editions.
+last_verified: '2026-08-18'
+evidence_refs:
+- iso-3691-4-2023
+- iso-5053-1-2020

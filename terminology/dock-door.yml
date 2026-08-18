@@ -1,0 +1,9 @@
+id: dock-door
+preferred_term: Dock Door
+definition: A warehouse loading or unloading access point associated with a dock and identifiable as a physical sub-location when operationally required.
+domain: [facility, location, inbound, outbound]
+aliases: [loading dock door, dock high door]
+status: adopted
+spotwo_term: Dock Door
+last_verified: '2026-08-18'
+evidence_refs: [gs1-gln-standard, prologis-clear-height-2026]

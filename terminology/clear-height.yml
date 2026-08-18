@@ -1,10 +1,10 @@
 id: clear-height
 preferred_term: Clear Height
-definition: Candidate term for usable unobstructed vertical clearance within a warehouse or storage area.
+definition: A warehouse building dimension describing unobstructed usable vertical height within the storage or logistics space.
 domain: [facility, warehouse-design]
 aliases: [clear ceiling height, usable height, clear warehouse height]
-status: needs-research
-spotwo_term: null
-notes: Seeded from product discussion. Requires sampling of standards, warehouse developers, racking providers, and WMS competitors before adoption.
+status: candidate
+spotwo_term: Clear Height
+notes: Dominant current market wording observed across major industrial-property operators in North America and Europe. Exact architectural measurement boundaries still require standards mapping before the value is treated as normative in validation or engineering calculations.
 last_verified: '2026-08-18'
-evidence_refs: []
+evidence_refs: [prologis-clear-height-2026, cbre-clear-height-2026, segro-clear-height-2026, glp-clear-height-2026]

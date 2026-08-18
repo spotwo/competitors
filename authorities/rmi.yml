@@ -1,0 +1,16 @@
+id: rmi
+name: Rack Manufacturers Institute (RMI)
+authority_type: industry-association
+scope:
+- industrial-storage-racks
+- rack-design
+- rack-safety
+- asrs-rack-structures
+jurisdictions:
+- US
+- global
+website: https://www.mhi.org/rmi
+notes: Specialist MHI industry group and reference point for ANSI industrial storage rack standards.
+last_verified: '2026-08-18'
+evidence_refs:
+- rmi-ansi-mh16-1-2023

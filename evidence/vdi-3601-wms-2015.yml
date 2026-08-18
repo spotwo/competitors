@@ -1,0 +1,14 @@
+id: vdi-3601-wms-2015
+subject: vdi
+source_type: standard
+grade: A
+title: VDI 3601 - Warehouse management systems
+url: https://www.vdi.de/en/home/vdi-standards/details/vdi-3601-warehouse-management-systems
+publisher: VDI
+captured_at: '2026-08-18'
+supports:
+- warehouse management system terminology
+- WMS task and performance areas
+- quantity and location management
+- internal storage and transportation optimization
+- integration with upper- and lower-level IT systems

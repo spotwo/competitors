@@ -1,0 +1,9 @@
+id: automated-storage-and-retrieval-system
+preferred_term: Automated Storage and Retrieval System
+definition: Automated equipment and controls that place and retrieve loads from defined storage locations.
+domain: [automation, storage, material-handling]
+aliases: [AS/RS, ASRS]
+status: adopted
+spotwo_term: Automated Storage and Retrieval System (AS/RS)
+last_verified: '2026-08-18'
+evidence_refs: [mhi-asrs-2026, rmi-ansi-mh16-1-2023]
