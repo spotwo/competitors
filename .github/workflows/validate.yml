@@ -22,3 +22,4 @@ jobs:
       - run: python scripts/generate_matrices.py --check
       - run: python scripts/generate_audit.py --check
       - run: python scripts/generate_domain_views.py --check
+      - run: python scripts/generate_workflow_views.py --check
