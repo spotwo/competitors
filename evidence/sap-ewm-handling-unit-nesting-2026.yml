@@ -1,0 +1,13 @@
+id: sap-ewm-handling-unit-nesting-2026
+subject: handling-unit
+source_type: official-docs
+grade: A
+title: SAP EWM Handling Unit nesting
+url: https://help.sap.com/docs/SAP_EXTENDED_WAREHOUSE_MANAGEMENT/3d97bec9bf1649099384bb8167df3cf2/a2043fc0-30be-41ec-b485-9a383eb901ac.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - Handling units can contain products and quantities and can be nested inside other handling units.
+  - Product information such as batch identity is retained inside handling units.
+  - Handling units have their own unique scannable identity independent of contained stock identities.
+notes: Supports direct-parent HU containment and deriving outer placement through the HU tree rather than copying every ancestor into each stock key.
