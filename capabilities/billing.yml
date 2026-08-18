@@ -1,0 +1,23 @@
+id: billing
+group: cross-functional
+label: 3PL Billing
+status: adopted
+definition: Accrue and invoice chargeable warehouse activities, storage, handling, and value-added services for logistics customers.
+purpose: Convert operational execution into auditable customer charges for multi-client warehouse operations.
+inputs: [warehouse-activity, customer-contract, rate-rule]
+outputs: [accrual, charge, invoice-data]
+entities: [customer, service, warehouse-activity, rate, charge]
+strategies: [activity-based, storage-based, transaction-based, value-added-service]
+related_capabilities: [receiving, storage, picking, packing]
+vendor_observations:
+  - company_id: infios
+    level: core
+    notes: 3PL WMS documentation describes an integrated billing engine that accrues chargeable activities in real time.
+    evidence_refs: [infios-3pl-capabilities-2026]
+spotwo:
+  canonical_term: 3PL Billing
+  status: adopted
+research_gaps:
+  - Compare activity, storage, recurring, minimum, and VAS billing models across 3PL-first WMS vendors.
+last_verified: 2026-08-18
+evidence_refs: [infios-3pl-capabilities-2026]
