@@ -1,15 +1,26 @@
 # Inbox Consumer Runtime
 
-Executable companion to ADR 0028, ADR 0032, ADR 0033, and ADR 0034.
+Executable companion to ADR 0028, ADR 0032, ADR 0033, ADR 0034, ADR 0035, ADR 0036, and ADR 0037.
 
 ## Boundary
 
-The runtime converts at-least-once broker delivery into an exactly-once local database effect for one stable logical consumer:
+The valid-event runtime converts at-least-once broker delivery into an exactly-once local database effect for one stable logical consumer:
 
 ```text
 JetStream delivery
   -> validate envelope and headers
   -> Inbox receipt + handler SQL in one PostgreSQL transaction
+  -> commit
+  -> JetStream ACK sync
+```
+
+Malformed bytes and invalid envelopes branch before Inbox identity:
+
+```text
+JetStream delivery
+  -> trusted JetStream delivery identity
+  -> decode / validate
+  -> malformed: durable poison quarantine
   -> commit
   -> JetStream ACK sync
 ```
@@ -22,11 +33,13 @@ It does not make arbitrary network side effects exactly-once.
 
 - `ConsumedEvent` - validated canonical event identity and envelope;
 - `InboxDeliveryMetadata` - bounded transport evidence stored with the first receipt;
+- `MalformedDeliveryEvidence` - bounded pre-`event_id` poison evidence;
 - `InboxHandler` - local transactional effect protocol;
 - `InboxSource` and `InboxStore` - broker and database-neutral boundaries;
 - `PostgresInboxStore` - Inbox receipt plus handler in one transaction;
 - `InboxFailureLane` - optional valid-event failure handoff boundary;
-- `InboxConsumerRuntime.run_once()` - one fetch, transaction, durable handoff if configured, and ACK cycle.
+- `InboxMalformedDeliveryLane` - optional pre-`event_id` durable poison boundary;
+- `InboxConsumerRuntime.run_once()` - one fetch, durable handoff or transaction, and ACK cycle.
 
 `consumer_failure.py` provides:
 
@@ -49,11 +62,21 @@ It does not make arbitrary network side effects exactly-once.
 - `PostgresConsumerFailureArchiveStore` - one transactional, consumer-scoped archive batch;
 - `ConsumerFailureArchiveBatch` - archive run identity and reconciled failure/action counts.
 
-`nats_consumer.py` provides `NatsJetStreamPullSource`, which binds to one existing durable pull consumer and confirms ACK with `ack_sync`.
+`malformed_delivery_quarantine.py` provides `PostgresNatsMalformedDeliveryQuarantine`, which persists pre-`event_id` poison evidence by trusted JetStream identity before ACK.
+
+`malformed_delivery_telemetry.py` provides read-only live poison snapshots, bounded failure kinds, recent-activity alerts, JSON output, and Prometheus exposition without transport sequence or payload labels.
+
+`malformed_delivery_retention.py` provides:
+
+- `MalformedDeliveryRetentionPolicy` - bounded inactive-evidence window and batch size;
+- `PostgresMalformedDeliveryArchiveStore` - one transactional, consumer-scoped archive batch;
+- `MalformedDeliveryArchiveBatch` - archive run identity and archived delivery count.
+
+`nats_consumer.py` provides `NatsJetStreamPullSource`, which binds to one existing durable pull consumer, captures trusted transport metadata before decoding application bytes, and confirms ACK with `ack_sync`.
 
 ## Composition
 
-A concrete projection supplies its own handler:
+A concrete projection supplies its own handler plus durable lanes for valid-event failures and malformed transport poison:
 
 ```python
 from consumer_failure import (
@@ -61,6 +84,7 @@ from consumer_failure import (
     PostgresConsumerFailureStore,
 )
 from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore
+from malformed_delivery_quarantine import PostgresNatsMalformedDeliveryQuarantine
 from nats_consumer import NatsJetStreamPullSource
 from psycopg.types.json import Jsonb
 
@@ -92,6 +116,7 @@ with NatsJetStreamPullSource(
         failure_lane=DurableConsumerFailureLane(
             store=PostgresConsumerFailureStore(database_url),
         ),
+        malformed_lane=PostgresNatsMalformedDeliveryQuarantine(database_url),
     )
     runtime.run_once()
 ```
@@ -126,6 +151,15 @@ Treat `consumer_name` as persisted application identity:
 All replicas of one logical projector use the same value. Changing the value intentionally creates a fresh consumer namespace and permits a full replay.
 
 NATS durable identity controls broker cursor state. Inbox consumer identity controls application-effect deduplication. Configure both explicitly even when their strings are similar.
+
+Malformed deliveries have no trusted `event_id`. Their poison identity is instead:
+
+```text
+consumer_name
++ JetStream stream
++ JetStream durable consumer
++ JetStream stream sequence
+```
 
 ## Failure behavior
 
@@ -216,9 +250,23 @@ Exact retries of an archived `replay_id` still return `duplicate`; changed reuse
 
 The Inbox receipt and effect remain committed. JetStream may redeliver. The next transaction sees the duplicate receipt, skips the handler, commits, and retries `ack_sync`.
 
-### Invalid envelope or NATS header mismatch
+### Malformed bytes, invalid envelope, or NATS header mismatch
 
-No trusted event identity or failure-row capture occurs. The process surfaces the exception and does not ACK. Configure an adapter-level maximum delivery and advisory/DLQ policy so malformed messages cannot retry forever without operator visibility.
+The adapter captures trusted JetStream stream, durable consumer, stream sequence, subject, and delivery metadata before application bytes or headers are trusted. Invalid UTF-8, invalid JSON, invalid Domain Event envelopes, and transport-header mismatches enter `PostgresNatsMalformedDeliveryQuarantine`.
+
+```text
+malformed delivery
+  -> trusted JetStream identity
+  -> durable poison record
+  -> commit
+  -> ACK
+```
+
+No synthetic `event_id`, Inbox receipt, or valid-event consumer failure row is created. If poison persistence fails, ACK is forbidden. If ACK confirmation fails after commit, redelivery idempotently updates the same poison identity.
+
+Inspect recent malformed activity with `bin/inspect-kernel-malformed-deliveries`. Archive old inactive evidence with `bin/archive-kernel-malformed-deliveries`. Archive eligibility uses `last_seen_at`, so a recently reobserved record stays live.
+
+An archived transport identity is still identity-bearing. Matching reobservation reactivates the live record with cumulative observation history; conflicting subject, payload evidence, or headers fails closed. See `MALFORMED_DELIVERIES.md` for the full operational contract.
 
 ### External effect
 
@@ -255,7 +303,8 @@ Deleting an Inbox receipt explicitly removes its deduplication protection. Treat
 6. durable failure handoff commits before ACK;
 7. handoff failure produces no ACK;
 8. an existing handoff cannot bypass its local lane;
-9. canonical envelope validation fails closed.
+9. canonical envelope validation fails closed;
+10. malformed durable capture commits before ACK and never enters Inbox identity.
 
 `tests/test_consumer_failures.py` proves classification, payload binding, deferred retry, terminal quarantine, attempt exhaustion, exclusive claims, and stable audited replay.
 
@@ -263,14 +312,19 @@ Deleting an Inbox receipt explicitly removes its deduplication protection. Treat
 
 `tests/test_consumer_failure_retention.py` proves consumer-scoped eligibility, preserved Inbox evidence, complete failure/action archival, payload-bound replay IDs after archival, disjoint concurrent batches, transactional rollback, and bounded inputs.
 
+`tests/test_malformed_delivery_telemetry.py` proves live poison snapshot reconciliation, scoped/global aggregation, recent-activity alerting, bounded failure kinds, and bounded-cardinality export.
+
+`tests/test_malformed_delivery_retention.py` proves last-observation eligibility, complete forensic archival, bounded disjoint concurrent batches, archived-identity reactivation, archived collision failure, and bounded retention inputs.
+
 `tests/test_nats_consumer.py` proves against the pinned real server:
 
 1. ACK confirmation loss after commit redelivers the same event;
 2. redelivery finds the receipt, skips the handler, and ACKs;
 3. base-runtime handler failure leaves no receipt and redelivers for a successful retry;
 4. the adapter binds only to a pre-provisioned explicit-ACK pull consumer;
-5. transport header and envelope mismatches fail closed;
+5. transport header and envelope mismatches fail closed or enter durable malformed quarantine when configured;
 6. an out-of-order Position event ACKs after durable buffering and drains when the missing version arrives;
-7. a rebuild fence with `max_deliver=1` hands off and ACKs once, then applies through local retry without broker redelivery.
+7. a rebuild fence with `max_deliver=1` hands off and ACKs once, then applies through local retry without broker redelivery;
+8. malformed JetStream deliveries are captured by trusted transport identity before ACK.
 
 `tests/test_position_projection.py` proves the concrete version policy, quantity invariants, gap inspection, and per-Position concurrency independently of transport timing.
