@@ -1,0 +1,147 @@
+id: physical-inventory
+capability_id: physical-inventory
+title: Physical Inventory Workflow
+status: candidate
+definition: A cross-vendor decomposition of broad or complete warehouse physical inventory where count scope is established, controlled count evidence is collected, recount or review resolves discrepancies, and approved differences are posted to reconcile system stock.
+stages:
+  - id: scope-definition
+    label: Inventory Scope Definition
+    purpose: Define the warehouse locations items handling units owners or other dimensions included in the physical inventory event.
+    inputs: [warehouse, inventory-scope, inventory-policy]
+    outputs: [physical-inventory-scope]
+  - id: document-creation
+    label: Physical Inventory Document Creation
+    purpose: Create controlled inventory documents tags or count assignments representing what must be counted.
+    inputs: [physical-inventory-scope]
+    outputs: [inventory-document, count-work]
+  - id: count-release
+    label: Count Release / Assignment
+    purpose: Make count work available to counting teams or execution resources while applying blind-count or control rules.
+    inputs: [count-work]
+    outputs: [count-assignment]
+  - id: count-execution
+    label: Physical Count Execution
+    purpose: Record observed quantity and identity evidence for the scoped stock.
+    inputs: [count-assignment, physical-stock]
+    outputs: [count-result]
+  - id: recount-review
+    label: Recount / Count Review
+    purpose: Validate count evidence, perform additional counts where policy or tolerance requires, and determine the accepted count result.
+    inputs: [count-result, tolerance-policy]
+    outputs: [accepted-count-result]
+  - id: difference-analysis
+    label: Difference Analysis
+    purpose: Compare accepted physical count evidence with system inventory and classify discrepancies by reason and responsibility.
+    inputs: [accepted-count-result, system-inventory]
+    outputs: [inventory-difference]
+  - id: adjustment-posting
+    label: Difference Approval and Posting
+    purpose: Approve and post authorized inventory differences to warehouse and upstream inventory records.
+    inputs: [inventory-difference, approval-policy]
+    outputs: [inventory-adjustment, posted-difference]
+  - id: reconciliation-close
+    label: Reconciliation and Close
+    purpose: Confirm that scoped inventory has been counted, required differences are resolved, and the physical inventory event is complete.
+    inputs: [posted-difference, physical-inventory-scope]
+    outputs: [reconciled-inventory, closed-physical-inventory]
+objects:
+  - {id: physical-inventory-scope, term: Physical Inventory Scope, role: Warehouse population that must be physically verified.}
+  - {id: inventory-document, term: Physical Inventory Document, role: Controlled record defining physical inventory count work and audit identity.}
+  - {id: count-work, term: Count Work, role: Executable count instruction or assignment created from physical inventory scope.}
+  - {id: count-result, term: Count Result, role: Recorded physical observation including quantity and inventory identity dimensions.}
+  - {id: accepted-count-result, term: Accepted Count Result, role: Count evidence accepted after review or recount.}
+  - {id: inventory-difference, term: Inventory Difference, role: Difference between accepted physical count and system inventory.}
+  - {id: difference-reason, term: Difference Reason, role: Classification explaining or attributing an inventory discrepancy.}
+  - {id: inventory-adjustment, term: Inventory Adjustment, role: Authorized mutation used to reconcile system inventory with accepted physical count.}
+  - {id: inventory-tag, term: Inventory Tag, role: Optional unique physical or system count evidence identifier.}
+states:
+  - {id: planned, label: Planned, meaning: Physical inventory scope exists but count work is not released.}
+  - {id: released, label: Released, meaning: Count work is available to counting teams.}
+  - {id: counting, label: Counting, meaning: Physical observations are being recorded.}
+  - {id: pending-review, label: Pending Review, meaning: Count results require validation or tolerance review.}
+  - {id: recount-required, label: Recount Required, meaning: Additional physical count is required before accepting the result.}
+  - {id: difference-review, label: Difference Review, meaning: Accepted count differs from system inventory and requires analysis or approval.}
+  - {id: ready-to-post, label: Ready to Post, meaning: Inventory difference is approved for reconciliation posting.}
+  - {id: reconciled, label: Reconciled, meaning: Approved differences are posted and inventory is reconciled.}
+  - {id: closed, label: Closed, meaning: Physical inventory event is complete., terminal: true}
+  - {id: exception, label: Exception, meaning: Count evidence scope or posting cannot complete under normal rules.}
+strategies:
+  - id: document-driven-count
+    category: planning
+    label: Document-Driven Physical Inventory
+    definition: Create formal physical inventory documents before count execution and use them as the audit/control basis for counting and posting.
+    status: adopted
+    evidence_refs: [sap-physical-inventory-2026]
+  - id: recount
+    category: review
+    label: Recount
+    definition: Perform another physical count when required before accepting the inventory result.
+    status: adopted
+    evidence_refs: [sap-physical-inventory-2026, infor-physical-inventory-2026]
+  - id: multi-team-count
+    category: execution
+    label: Multi-Team / Repeated Count
+    definition: Record multiple physical observations for the same inventory and select an accepted or latest count according to control rules.
+    status: observed
+    evidence_refs: [infor-physical-inventory-2026]
+  - id: rf-count
+    category: execution
+    label: RF Physical Count
+    definition: Capture physical count evidence through RF execution rather than only workstation or paper entry.
+    status: observed
+    evidence_refs: [infor-physical-inventory-2026]
+  - id: difference-analyzer
+    category: reconciliation
+    label: Difference Analysis Before Posting
+    definition: Review and classify inventory discrepancies separately before posting them into upstream or financial inventory records.
+    status: adopted
+    evidence_refs: [sap-difference-analysis-2026]
+exceptions:
+  - id: tolerance-exceeded
+    label: Count Tolerance Exceeded
+    trigger: Difference between count observations or between accepted count and system stock exceeds configured tolerance.
+    outcomes: [recount, supervisor-review, difference-analysis]
+    status: candidate
+    evidence_refs: [sap-physical-inventory-2026]
+  - id: unresolved-difference
+    label: Unresolved Inventory Difference
+    trigger: Difference lacks sufficient approval reason or reconciliation context for posting.
+    outcomes: [hold-posting, assign-reason, supervisor-review]
+    status: adopted
+    evidence_refs: [sap-difference-analysis-2026]
+  - id: conflicting-counts
+    label: Conflicting Count Evidence
+    trigger: Multiple count observations for the same scoped inventory disagree and policy does not yet determine an accepted result.
+    outcomes: [recount, accept-latest-authorized-count, escalate]
+    status: observed
+    evidence_refs: [infor-physical-inventory-2026]
+vendor_models:
+  - company_id: sap
+    product_id: sap/ewm
+    terminology: {document: Physical Inventory Document, result: Count Result, discrepancy: Difference, review: Difference Analyzer}
+    workflow: [physical-inventory-document, count-document, count-execution, optional-recount, post-in-ewm, difference-analysis, post-differences-to-erp]
+    strategies: [document-driven-count, recount, difference-analyzer]
+    execution_channels: [rf, workstation, paper]
+    evidence_refs: [sap-physical-inventory-2026, sap-difference-analysis-2026]
+  - company_id: infor
+    product_id: infor/wms
+    terminology: {count_identity: Inventory Tag, result: Quantity Counted, execution: Physical Review}
+    workflow: [physical-count-scope, inventory-tag, team-count, optional-additional-count, select-current-count, inventory-posting]
+    strategies: [multi-team-count, rf-count, workstation-count]
+    execution_channels: [rf, workstation]
+    evidence_refs: [infor-physical-inventory-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [scope-definition, document-creation, count-release, count-execution, recount-review, difference-analysis, adjustment-posting, reconciliation-close]
+  canonical_objects: [physical-inventory-scope, inventory-document, count-work, count-result, accepted-count-result, inventory-difference, difference-reason, inventory-adjustment, inventory-tag]
+  task_states: [planned, released, counting, pending-review, recount-required, difference-review, ready-to-post, reconciled, closed, exception]
+  commands: [plan-physical-inventory, create-inventory-document, release-count-work, submit-physical-count, request-recount, accept-count-result, classify-inventory-difference, approve-inventory-adjustment, post-inventory-adjustment, close-physical-inventory]
+  events: [physical-inventory-planned, count-work-released, physical-count-submitted, recount-requested, count-result-accepted, inventory-difference-detected, inventory-adjustment-approved, inventory-adjustment-posted, physical-inventory-closed]
+  notes: Physical Inventory is an audit/reconciliation process broader than routine Cycle Counting. Count evidence, accepted count, inventory difference, and posted adjustment remain distinct objects so observation does not automatically mutate authoritative stock.
+research_gaps:
+  - Sample Dynamics 365 Oracle WMS Manhattan Blue Yonder and 3PL WMS physical inventory workflows.
+  - Define snapshot versus live-count semantics and whether warehouse operations must freeze scoped inventory during count.
+  - Define tolerance groups approval authority segregation-of-duties and dual-control requirements.
+  - Decide how Physical Inventory and Cycle Counting share Count Work and Count Result infrastructure while retaining different planning semantics.
+last_verified: '2026-08-18'
+evidence_refs: [sap-physical-inventory-2026, sap-difference-analysis-2026, infor-physical-inventory-2026]
