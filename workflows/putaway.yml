@@ -1,0 +1,72 @@
+id: putaway
+capability_id: putaway
+title: Putaway Workflow
+status: candidate
+definition: Cross-vendor decomposition of how received or movable inventory receives a destination decision, becomes executable warehouse work, is moved, and is confirmed into storage.
+stages:
+  - {id: eligibility, label: Putaway Eligibility, purpose: Determine which received inventory is ready for storage movement.}
+  - {id: destination-selection, label: Destination Selection, purpose: Select an eligible storage area location or bin according to storage policy and capacity.}
+  - {id: work-creation, label: Work Creation, purpose: Convert the destination decision into executable putaway work or tasks.}
+  - {id: assignment, label: Assignment, purpose: Make putaway work available to or associated with an execution resource.}
+  - {id: routing, label: Route and Sequence, purpose: Determine movement path and order when multiple tasks or locations exist.}
+  - {id: execution, label: Move and Put, purpose: Physically move inventory from inbound source to the selected destination.}
+  - {id: confirmation, label: Putaway Confirmation, purpose: Validate destination and record inventory at its new location.}
+objects:
+  - {id: putaway-need, term: Putaway Need, role: Inventory that must move from inbound or temporary location into storage.}
+  - {id: putaway-policy, term: Putaway Policy, role: Rules controlling eligible destination selection and priority.}
+  - {id: source-location, term: Source Location, role: Current inbound staging or temporary inventory location.}
+  - {id: destination-location, term: Destination Location, role: Selected addressable storage location.}
+  - {id: handling-unit, term: Handling Unit, role: Pallet case LPN or other moved unit.}
+  - {id: putaway-task, term: Putaway Task, role: Smallest executable instruction to move inventory to storage.}
+  - {id: putaway-work-group, term: Putaway Work Group, role: Optional grouping of putaway tasks for execution.}
+  - {id: putaway-confirmation, term: Putaway Confirmation, role: Actual confirmed destination and moved quantity.}
+states:
+  - {id: planned, label: Planned, meaning: Putaway need exists but work is not yet executable.}
+  - {id: released, label: Released, meaning: Putaway work is available for assignment or execution.}
+  - {id: assigned, label: Assigned, meaning: Work is associated with an execution context.}
+  - {id: in-progress, label: In Progress, meaning: Physical movement has started.}
+  - {id: exception, label: Exception, meaning: Destination or movement cannot complete normally.}
+  - {id: completed, label: Completed, meaning: Inventory is confirmed at the destination., terminal: true}
+  - {id: cancelled, label: Cancelled, meaning: Putaway work is invalidated., terminal: true}
+strategies:
+  - {id: system-directed, category: destination-selection, label: System-Directed Putaway, definition: System selects a destination using configured storage rules and priorities., status: adopted, evidence_refs: [sap-ewm-putaway-tasks-2026, dynamics-location-directives-putaway-2026, oracle-wms-directed-putaway-2026]}
+  - {id: user-directed, category: destination-selection, label: User-Directed Putaway, definition: Worker chooses an eligible destination instead of accepting a system-directed location., status: observed, evidence_refs: [oracle-wms-directed-putaway-2026]}
+  - {id: capacity-aware, category: destination-selection, label: Capacity-Aware Selection, definition: Reject destinations that cannot hold the incoming inventory by configured capacity rules., status: adopted, evidence_refs: [oracle-wms-directed-putaway-2026]}
+  - {id: destination-override, category: execution, label: Directed Location Override, definition: Allow an operator to replace the suggested destination with another eligible location., status: observed, evidence_refs: [oracle-wms-directed-putaway-2026]}
+  - {id: automatic-task-creation, category: work-creation, label: Automatic Work Creation, definition: Create putaway tasks automatically from inbound demand or receipt state., status: adopted, evidence_refs: [sap-ewm-putaway-tasks-2026]}
+exceptions:
+  - {id: no-destination, label: No Eligible Destination, trigger: No location satisfies putaway policy or capacity constraints., outcomes: [hold-work, request-alternate-location], status: adopted, evidence_refs: [oracle-wms-directed-putaway-2026]}
+  - {id: destination-override, label: Destination Override, trigger: Worker chooses a different eligible destination from the directed location., outcomes: [validate-alternate, record-actual-destination], status: observed, evidence_refs: [oracle-wms-directed-putaway-2026]}
+vendor_models:
+  - company_id: sap
+    product_id: sap/ewm
+    terminology: {task: Warehouse Task, grouping: Warehouse Order, destination: Storage Bin}
+    workflow: [inbound-request, destination-determination, warehouse-task, optional-warehouse-order, execution, confirmation]
+    strategies: [system-directed, automatic-task-creation]
+    evidence_refs: [sap-ewm-putaway-tasks-2026]
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {destination_rule: Location Directive, work: Warehouse Work}
+    workflow: [received-inventory, location-directive, work-creation, mobile-execution, put-confirmation]
+    strategies: [system-directed]
+    evidence_refs: [dynamics-location-directives-putaway-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    terminology: {container: IBLPN, transaction: Directed Putaway, destination: Location}
+    workflow: [scan-lpn, select-directed-location, travel, scan-location, confirm]
+    strategies: [system-directed, user-directed, capacity-aware, destination-override]
+    execution_channels: [rf]
+    evidence_refs: [oracle-wms-directed-putaway-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [eligibility, destination-selection, work-creation, assignment, routing, execution, confirmation]
+  canonical_objects: [putaway-need, putaway-policy, source-location, destination-location, handling-unit, putaway-task, putaway-work-group, putaway-confirmation]
+  task_states: [planned, released, assigned, in-progress, exception, completed, cancelled]
+  commands: [plan-putaway, release-putaway-work, assign-putaway-work, start-putaway-task, confirm-putaway, override-putaway-destination, cancel-putaway-work]
+  events: [putaway-planned, putaway-work-released, putaway-work-assigned, putaway-task-started, putaway-confirmed, putaway-destination-overridden, putaway-failed]
+  notes: Destination decision must remain separate from executable movement work.
+research_gaps:
+  - Compare fixed-bin random-storage product-affinity and hazard-class strategies across more vendors.
+  - Decide whether putaway work grouping should reuse a generic Warehouse Work Group abstraction shared with picking.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-putaway-tasks-2026, dynamics-location-directives-putaway-2026, oracle-wms-directed-putaway-2026]
