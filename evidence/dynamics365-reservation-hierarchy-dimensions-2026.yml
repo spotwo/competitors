@@ -1,0 +1,13 @@
+id: dynamics365-reservation-hierarchy-dimensions-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: Reservations in Warehouse management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/reservations-in-warehouse-management
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Dynamics reservation hierarchies allow inventory commitments at different dimension granularities.
+  - Location and dimensions below it can be deferred to warehouse execution instead of being specified by demand.
+  - Available on-hand is calculated across hierarchy levels rather than treated as one independently mutable value.
+notes: Supports separating Inventory Position identity from reservation specificity and avoiding mandatory early binding of every physical dimension.

@@ -1,0 +1,14 @@
+id: sap-ewm-quant-stock-key-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: SAP EWM Quant and stock key
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/4bc49585921f4c88e10000000a42189e.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - SAP EWM identifies a quant through location or handling-unit context plus a stock key.
+  - The stock key includes product, batch where applicable, party entitled to dispose, owner, stock type, stock usage, and special stock references.
+  - Different stock keys or selected stock/document attributes cause separate quants instead of addition to existing stock.
+  - Physical quantity is managed in base UOM while alternative UOMs may be used for display or movement.
+notes: Strong evidence that inventory identity is a fungibility/segregation key rather than every mutable stock attribute.

@@ -1,0 +1,13 @@
+id: dynamics365-inventory-dimensions-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: Dynamics 365 inventory dimensions
+url: https://learn.microsoft.com/en-us/dynamics365/fin-ops-core/dev-itpro/extensibility/inventory-dimensions
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Dynamics separates product, tracking and storage inventory dimensions.
+  - Standard tracking dimensions include serial, batch and owner; storage dimensions include site, warehouse, location, inventory status and license plate.
+  - Inventory dimensions determine how on-hand inventory is segmented and queried.
+notes: Supports keeping WMS stock dimensions explicit and typed instead of storing one opaque status or JSON-only key.

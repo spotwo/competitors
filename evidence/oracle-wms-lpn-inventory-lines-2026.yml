@@ -1,0 +1,13 @@
+id: oracle-wms-lpn-inventory-lines-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: Oracle WMS LPN Inquiry inventory lines
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/25d/owmol/lpn-inquiry.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - One LPN can contain multiple inventory lines and multiple SKUs.
+  - Inventory lines within an LPN retain item quantity, UOM, batch and inventory attributes.
+  - LPN location and LPN/container status are properties of the container while stock details remain line-level.
+notes: Supports keeping HU/container placement separate from the stock dimensions of each contained inventory position.

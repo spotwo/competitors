@@ -1,0 +1,13 @@
+id: postgresql-unique-nulls-not-distinct-2026
+subject: postgresql-inventory-position
+source_type: official-docs
+grade: A
+title: PostgreSQL UNIQUE NULLS NOT DISTINCT constraints
+url: https://www.postgresql.org/docs/current/ddl-constraints.html
+publisher: PostgreSQL Global Development Group
+captured_at: 2026-08-18
+supports:
+  - PostgreSQL supports multicolumn UNIQUE constraints with NULLS NOT DISTINCT semantics.
+  - NULLS NOT DISTINCT makes nullable optional dimensions participate predictably in uniqueness instead of allowing duplicate null-containing keys.
+  - A unique constraint automatically creates the supporting unique B-tree index.
+notes: Supports the candidate semantic Inventory Position unique constraint used in ADR 0014; PostgreSQL 15 and later document this syntax.

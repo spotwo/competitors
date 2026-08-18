@@ -1,0 +1,12 @@
+id: infor-wms-serial-inventory-dimensions-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: Infor WMS inventory balances for serial numbers
+url: https://docs.infor.com/wms/2026.x/en-us/wmsolh/rkq1612893801703-2.html
+publisher: Infor
+captured_at: 2026-08-18
+supports:
+  - Infor serial inventory views associate serial identity with item inventory dimensions including lot, location and LPN.
+  - Serial-level inventory remains individually addressable while quantity and surrounding inventory dimensions are also represented.
+notes: Supports modeling serials as individually tracked membership attached to a physical stock position instead of making raw serial text a generic aggregate dimension.

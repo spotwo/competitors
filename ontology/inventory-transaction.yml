@@ -2,7 +2,7 @@ id: inventory-transaction
 title: Inventory Transaction and Position Ontology
 kind: transaction
 status: candidate
-description: Canonical concepts for durable inventory history and current operational balances. The model separates immutable posted transactions from materialized inventory positions and from asynchronous domain events.
+description: Canonical concepts for durable inventory history and current operational balances. The model separates immutable posted transactions from materialized inventory positions, asynchronous domain events, and the stock dimensions that define position fungibility.
 entities:
   - id: inventory-position
     term: Inventory Position
@@ -10,8 +10,29 @@ entities:
     attributes: [physical_quantity, reserved_quantity, allocated_quantity, version, updated_at]
   - id: inventory-key
     term: Inventory Key
-    definition: Stable combination of inventory dimensions identifying the scope of an inventory position.
-    attributes: [warehouse, location, item, owner, condition, lot, serial, handling_unit]
+    definition: Stable combination of identity-affecting stock dimensions that determines when quantities belong to the same fungible operational position.
+    attributes: [warehouse, anchor, item, owner, condition, lot, stock_scope, attribute_set, stock_segment]
+    notes: Tenant is a persistence namespace rather than a stock dimension. Serial identity, holds, quantities, commitments, UOM and workflow state are deliberately excluded from the aggregate key.
+  - id: inventory-anchor
+    term: Inventory Anchor
+    definition: Immediate physical holder or address of stock. Loose stock is anchored to a Location; contained stock is anchored to its direct Handling Unit.
+    examples: [location, handling-unit]
+    notes: Location and Handling Unit are mutually exclusive anchor alternatives for one position. Outer HU parents and resolved location are derived from containment.
+  - id: stock-scope
+    term: Stock Scope
+    definition: Optional business segregation dimension for otherwise identical stock that has distinct usage or entitlement such as project stock, sales-order stock, consignment or another special-stock purpose.
+  - id: inventory-attribute-set
+    term: Inventory Attribute Set
+    definition: Immutable normalized set of configured identity-affecting stock attributes that must remain distinct for allocation, traceability or merge policy.
+    examples: [expiry-date when not lot-owned, grade, country-of-origin, regulated attribute]
+    notes: Hot-path identity uses an attribute-set identifier or fingerprint rather than arbitrary JSON fields in the position unique key.
+  - id: stock-segment
+    term: Stock Segment
+    definition: Optional immutable segregation identity used when stock with otherwise equal business dimensions must not be merged because provenance, receipt, inspection or configured add-to-stock policy requires separation.
+  - id: serial-membership
+    term: Serial Membership
+    definition: Association placing one individually tracked serialized unit into one live inventory position without making serial number a generic aggregate-key column.
+    notes: Exact serial tracking requires exclusive membership and a quantity/count invariant for serialized items.
   - id: inventory-transaction
     term: Inventory Transaction
     definition: Immutable posted record representing an accepted change to physical inventory, inventory dimensions, commitment quantities, or reconciliation state.
@@ -46,6 +67,18 @@ entities:
     definition: Optional verified position snapshot associated with a ledger boundary to accelerate rebuild or consistency verification without deleting detailed history.
 relationships:
   - {subject: inventory-position, predicate: identified-by, object: inventory-key}
+  - {subject: inventory-key, predicate: anchored-by, object: inventory-anchor}
+  - {subject: inventory-key, predicate: references, object: item}
+  - {subject: inventory-key, predicate: references, object: owner}
+  - {subject: inventory-key, predicate: references, object: inventory-condition}
+  - {subject: inventory-key, predicate: may-reference, object: lot}
+  - {subject: inventory-key, predicate: may-reference, object: stock-scope}
+  - {subject: inventory-key, predicate: may-reference, object: inventory-attribute-set}
+  - {subject: inventory-key, predicate: may-reference, object: stock-segment}
+  - {subject: inventory-anchor, predicate: may-reference, object: location}
+  - {subject: inventory-anchor, predicate: may-reference, object: handling-unit}
+  - {subject: inventory-position, predicate: may-have, object: serial-membership}
+  - {subject: serial-membership, predicate: identifies, object: serial}
   - {subject: inventory-transaction, predicate: contains, object: transaction-leg}
   - {subject: inventory-transaction, predicate: classified-by, object: transaction-type}
   - {subject: inventory-transaction, predicate: justified-by, object: transaction-reason}
@@ -57,9 +90,12 @@ relationships:
   - {subject: reconciliation-transaction, predicate: is-a, object: inventory-transaction}
   - {subject: ledger-checkpoint, predicate: summarizes, object: inventory-position}
 research_gaps:
-  - Validate which inventory dimensions belong directly in Inventory Key versus indirect references through handling-unit or stock-dimension objects.
+  - Sample project, sales-order, consignment and other special-stock models before freezing Stock Scope subtypes.
+  - Define the configured registry of attributes allowed to participate in Inventory Attribute Set identity and its canonical fingerprint algorithm.
+  - Decide whether resolved Location for HU-anchored stock is query-time derived, synchronously cached, or maintained as a separate projection.
+  - Define lifecycle and garbage-collection rules for zero-quantity positions and orphaned stock segments.
   - Decide checkpoint and archival strategy that preserves auditability while keeping rebuild time bounded.
   - Define whether commitment transactions share the same physical ledger table or use a logically separate commitment journal under one posting service.
   - Validate negative-inventory policy by warehouse and integration scenario.
 last_verified: '2026-08-18'
-evidence_refs: [dynamics365-warehouse-transactions-2026, dynamics365-onhand-projection-2026, dynamics365-onhand-rebuild-2026, oracle-inventory-history-2026, infor-inventory-transactions-2026, sap-ewm-posting-change-2026]
+evidence_refs: [dynamics365-warehouse-transactions-2026, dynamics365-onhand-projection-2026, dynamics365-onhand-rebuild-2026, oracle-inventory-history-2026, infor-inventory-transactions-2026, sap-ewm-posting-change-2026, sap-ewm-quant-stock-key-2026, dynamics365-inventory-dimensions-2026, dynamics365-reservation-hierarchy-dimensions-2026, oracle-wms-inventory-record-model-2026, oracle-wms-inventory-attributes-2026, oracle-wms-lpn-inventory-lines-2026, infor-wms-serial-inventory-dimensions-2026, gs1-batch-serial-identifiers-2026, sap-ewm-handling-unit-nesting-2026]

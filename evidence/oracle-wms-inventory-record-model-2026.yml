@@ -1,0 +1,13 @@
+id: oracle-wms-inventory-record-model-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: Oracle WMS Inventory record model
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmwr/inventory.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Oracle WMS models Inventory as an item quantity with inventory attributes.
+  - Inventory is physically addressed either by a container or by an active location.
+  - One container or location can hold multiple inventory records.
+notes: Strong support for an exclusive physical anchor abstraction rather than requiring both location and LPN on every stock row.

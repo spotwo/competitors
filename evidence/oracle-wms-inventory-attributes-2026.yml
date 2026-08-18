@@ -1,0 +1,13 @@
+id: oracle-wms-inventory-attributes-2026
+subject: inventory-key
+source_type: official-docs
+grade: A
+title: Oracle WMS active inventory attributes and serial tracking
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmre/serial-number-tracked-items.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Active inventory adjustments can target item, batch, expiry date and inventory attributes at one location.
+  - Serial-tracked adjustments pass explicit serial numbers associated with the targeted inventory.
+  - Company context may be required in 3PL scenarios when otherwise identical item identifiers exist for different companies.
+notes: Supports an extensible identity-affecting attribute set plus separate serial membership and explicit owner/company namespace.

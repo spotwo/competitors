@@ -2,13 +2,14 @@ id: handling-unit
 title: Handling Unit and Logistic Unit Ontology
 kind: handling-unit
 status: candidate
-description: Separates physical containers, internal WMS handling identities and standardized supply-chain identifiers.
+description: Separates physical containers, internal WMS handling identities and standardized supply-chain identifiers. Handling units form an acyclic direct-parent containment tree so stock can reference its immediate container without copying every outer container into the stock key.
 entities:
   - id: handling-unit
     term: Handling Unit
     definition: A physically handled grouping of goods treated as one unit for warehouse movement.
     aliases: [HU]
-    attributes: [internal_id, type, weight, dimensions]
+    attributes: [internal_id, type, weight, dimensions, parent_handling_unit, direct_location, version]
+    notes: A realized in-warehouse HU may be directly placed at a Location or inside one parent HU. Nested location is derived from the parent chain.
   - id: logistic-unit
     term: Logistic Unit
     definition: A unit established for transport and/or storage that must be managed through the supply chain.
@@ -44,9 +45,12 @@ relationships:
   - {subject: lpn, predicate: identifies, object: handling-unit}
   - {subject: sscc, predicate: identifies, object: logistic-unit}
   - {subject: handling-unit, predicate: may-be, object: logistic-unit}
+  - {subject: handling-unit, predicate: may-contain, object: handling-unit, notes: Parent-child HU containment is direct and must remain acyclic; stock references the immediate containing HU only.}
+  - {subject: handling-unit, predicate: may-contain, object: stock, notes: Stock may be anchored directly to a handling unit rather than redundantly carrying the HU parent chain.}
 research_gaps:
   - Decide whether Spotwo exposes LPN as a first-class term or uses Handling Unit ID in product UI.
   - Define rules for when an internal handling unit receives an SSCC.
-  - Add parent-child nesting semantics for pallet to case to tote or container relationships.
+  - Define whether resolved location for nested HUs is computed on read, cached synchronously, or maintained as a projection at fleet scale.
+  - Define capacity and weight propagation rules for nested HUs and HU positions.
 last_verified: 2026-08-18
-evidence_refs: [gs1-logistic-label-guideline, oracle-wms-lpn-uom-2026, sap-ewm-hu-warehouse-task-2026]
+evidence_refs: [gs1-logistic-label-guideline, oracle-wms-lpn-uom-2026, sap-ewm-hu-warehouse-task-2026, sap-ewm-handling-unit-nesting-2026]
