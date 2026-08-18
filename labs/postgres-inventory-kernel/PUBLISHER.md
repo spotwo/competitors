@@ -113,6 +113,8 @@ event_id dedupe
 + side effect and Inbox receipt in one consumer transaction
 ```
 
+ADR 0028 makes that consumer boundary executable through `InboxConsumerRuntime`, `PostgresInboxStore`, and the real durable `NatsJetStreamPullSource`. See `CONSUMER.md` for commit/ACK ordering, handler constraints, redelivery behavior, and Inbox retention.
+
 ## Ordering
 
 There is no global delivery-order guarantee. Multiple workers can publish claimed rows in different completion order.
@@ -214,6 +216,13 @@ The command runs one bounded batch. Scheduling remains outside the publisher pro
 4. the canonical JSON envelope round-trips unchanged;
 5. a durable pull consumer explicitly ACKs and redelivers an unacknowledged message;
 6. an unavailable broker does not roll back committed Inventory state or Outbox facts.
+
+`tests/test_nats_consumer.py` completes the other side of the transport boundary:
+
+1. Inbox receipt and handler effect commit before JetStream ACK;
+2. ACK uncertainty redelivers but does not repeat the committed handler;
+3. handler failure rolls back the receipt and succeeds on redelivery;
+4. application code cannot silently create a missing durable consumer.
 
 ## Deferred policy
 
