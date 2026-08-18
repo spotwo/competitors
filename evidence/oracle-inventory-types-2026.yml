@@ -1,0 +1,12 @@
+id: oracle-inventory-types-2026
+subject: inventory-state-model
+source_type: official-docs
+grade: A
+title: Inventory Types
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmol/inventory-types.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Oracle distinguishes allocatable available inventory from unallocatable unavailable inventory.
+  - Allocated inventory is unavailable for new allocation even though it remains physically present.
+  - Receipt state VAS drop zones outbound containers and lock codes can make inventory unavailable.
