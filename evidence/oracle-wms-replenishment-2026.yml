@@ -1,0 +1,12 @@
+id: oracle-wms-replenishment-2026
+subject: capability-knowledge-graph
+source_type: official-docs
+grade: A
+title: Replenishment - Oracle Warehouse Management
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/25d/owmol/overview-of-replenishment.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Defines replenishment as movement from reserve storage to picking storage.
+  - Documents minimum-capacity, percentage-of-max, reactive and order-based replenishment modes.
+  - Documents both active-location and reserve-to-reserve replenishment scenarios.
