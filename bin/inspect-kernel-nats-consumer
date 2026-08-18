@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from nats_consumer_telemetry import (  # noqa: E402
+    DEFAULT_CRITICAL_PENDING_MESSAGES,
+    DEFAULT_CRITICAL_REDELIVERED_MESSAGES,
+    DEFAULT_CRITICAL_STALLED_SECONDS,
+    DEFAULT_CRITICAL_ACK_CAPACITY_RATIO,
+    DEFAULT_WARNING_PENDING_MESSAGES,
+    DEFAULT_WARNING_REDELIVERED_MESSAGES,
+    DEFAULT_WARNING_STALLED_SECONDS,
+    DEFAULT_WARNING_ACK_CAPACITY_RATIO,
+    NatsConsumerAlertPolicy,
+    NatsJetStreamConsumerTelemetryStore,
+    render_prometheus,
+)
+
+
+def percent(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("percentage must be numeric") from exc
+    if not 0 < parsed <= 100:
+        raise argparse.ArgumentTypeError("percentage must be within (0, 100]")
+    return parsed / 100.0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Inspect one pre-provisioned NATS JetStream durable consumer"
+    )
+    parser.add_argument(
+        "--server-url",
+        default=os.getenv("KERNEL_LAB_NATS_URL"),
+        help="NATS server URL (or KERNEL_LAB_NATS_URL)",
+    )
+    parser.add_argument("--stream", required=True, help="JetStream stream name")
+    parser.add_argument("--durable", required=True, help="durable consumer name")
+    parser.add_argument(
+        "--format",
+        choices=("json", "prometheus"),
+        default="json",
+        help="output format",
+    )
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 1 for warning and 2 for critical health",
+    )
+    parser.add_argument(
+        "--warning-pending",
+        type=int,
+        default=DEFAULT_WARNING_PENDING_MESSAGES,
+        help="warning threshold for pending first deliveries",
+    )
+    parser.add_argument(
+        "--critical-pending",
+        type=int,
+        default=DEFAULT_CRITICAL_PENDING_MESSAGES,
+        help="critical threshold for pending first deliveries",
+    )
+    parser.add_argument(
+        "--warning-redelivered",
+        type=int,
+        default=DEFAULT_WARNING_REDELIVERED_MESSAGES,
+        help="warning threshold for JetStream redeliveries",
+    )
+    parser.add_argument(
+        "--critical-redelivered",
+        type=int,
+        default=DEFAULT_CRITICAL_REDELIVERED_MESSAGES,
+        help="critical threshold for JetStream redeliveries",
+    )
+    parser.add_argument(
+        "--warning-stalled-seconds",
+        type=int,
+        default=DEFAULT_WARNING_STALLED_SECONDS,
+        help="warning age for pending delivery or ACK backlog without progress",
+    )
+    parser.add_argument(
+        "--critical-stalled-seconds",
+        type=int,
+        default=DEFAULT_CRITICAL_STALLED_SECONDS,
+        help="critical age for pending delivery or ACK backlog without progress",
+    )
+    parser.add_argument(
+        "--warning-ack-capacity-percent",
+        type=percent,
+        default=DEFAULT_WARNING_ACK_CAPACITY_RATIO,
+        help="warning percentage of finite max_ack_pending capacity (default: 80)",
+    )
+    parser.add_argument(
+        "--critical-ack-capacity-percent",
+        type=percent,
+        default=DEFAULT_CRITICAL_ACK_CAPACITY_RATIO,
+        help="critical percentage of finite max_ack_pending capacity (default: 100)",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.server_url:
+        raise SystemExit("--server-url or KERNEL_LAB_NATS_URL is required")
+
+    try:
+        policy = NatsConsumerAlertPolicy(
+            warning_pending_messages=args.warning_pending,
+            critical_pending_messages=args.critical_pending,
+            warning_redelivered_messages=args.warning_redelivered,
+            critical_redelivered_messages=args.critical_redelivered,
+            warning_stalled_seconds=args.warning_stalled_seconds,
+            critical_stalled_seconds=args.critical_stalled_seconds,
+            warning_ack_capacity_ratio=args.warning_ack_capacity_percent,
+            critical_ack_capacity_ratio=args.critical_ack_capacity_percent,
+        )
+        snapshot = NatsJetStreamConsumerTelemetryStore(args.server_url).snapshot(
+            stream_name=args.stream,
+            durable_name=args.durable,
+        )
+        report = policy.evaluate(snapshot)
+    except Exception as exc:
+        print(f"NATS durable consumer health inspection failed: {exc}", file=sys.stderr)
+        return 2
+
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
