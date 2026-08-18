@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from projection_gap_telemetry import (  # noqa: E402
+    PostgresProjectionGapTelemetryStore,
+    ProjectionGapAlertPolicy,
+    render_prometheus,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Inspect WMS kernel Position projection gaps and health"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument("--consumer-name", help="limit telemetry to one logical consumer")
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check", action="store_true", help="exit 1 on warning, 2 on critical"
+    )
+    parser.add_argument("--warning-gap-age-seconds", type=int, default=300)
+    parser.add_argument("--critical-gap-age-seconds", type=int, default=1800)
+    parser.add_argument("--warning-pending-event-count", type=int, default=100)
+    parser.add_argument("--critical-pending-event-count", type=int, default=1000)
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+    if args.pretty and args.format != "json":
+        raise SystemExit("--pretty is available only with --format json")
+
+    try:
+        policy = ProjectionGapAlertPolicy(
+            warning_gap_age_seconds=args.warning_gap_age_seconds,
+            critical_gap_age_seconds=args.critical_gap_age_seconds,
+            warning_pending_event_count=args.warning_pending_event_count,
+            critical_pending_event_count=args.critical_pending_event_count,
+        )
+        snapshot = PostgresProjectionGapTelemetryStore(args.database_url).snapshot(
+            consumer_name=args.consumer_name
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    report = policy.evaluate(snapshot)
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
