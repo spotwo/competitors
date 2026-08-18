@@ -1,0 +1,13 @@
+id: sap-ewm-putaway-tasks-2026
+subject: putaway-workflow
+source_type: official-docs
+grade: A
+title: Creation of Warehouse Tasks for Putaway
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/ffc7cb53ad377114e10000000a174cb4.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - Putaway converts an inbound warehouse request into warehouse tasks.
+  - Putaway warehouse tasks specify destination storage types sections and bins and the path to destination.
+  - Putaway tasks can be created automatically or manually and may be grouped into warehouse orders.
+  - Partial task creation can leave putaway planning partially completed.
