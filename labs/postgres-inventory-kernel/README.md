@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0032.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0033.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -218,6 +218,8 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | bounded consumer retry | retryable failures use leased local retries and quarantine at the attempt budget |
 | terminal consumer quarantine | Position version conflict retains its complete envelope without an Inbox receipt |
 | audited consumer replay | stable operator command returns quarantine to the normal Inbox handler path |
+| consumer failure telemetry | unresolved failures partition into ready, delayed, leased, or quarantined health states |
+| bounded failure health | quarantine kind, attempt buckets, age, and stable alerts export without event or error labels |
 | explicit consumer provisioning | runtime refuses to create a missing durable with accidental defaults |
 | ordered Position projection | quantity deltas apply once in monotonic aggregate-version order |
 | durable version-gap recovery | out-of-order facts commit to PostgreSQL before ACK and drain when gaps close |
@@ -288,5 +290,6 @@ The conceptual decisions are:
 - `decisions/domain/0030-position-projection-snapshot-gap-health.md`
 - `decisions/domain/0031-controlled-position-projection-rebuild.md`
 - `decisions/domain/0032-consumer-failure-deferral-quarantine.md`
+- `decisions/domain/0033-consumer-failure-operational-telemetry.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.

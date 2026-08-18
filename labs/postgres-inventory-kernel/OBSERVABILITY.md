@@ -1,14 +1,16 @@
-# Outbox Operational Telemetry
+# Operational Telemetry
 
-Executable companion to ADR 0026.
+Executable companion to ADR 0026 and ADR 0033.
 
-## Purpose
+## Outbox telemetry
+
+### Purpose
 
 Publisher cycle counters cannot detect a publisher process that is stopped. The Outbox therefore exposes an independent, read-only PostgreSQL snapshot that can be polled without claiming, delaying, ACKing, or replaying any event.
 
 The snapshot is broker-neutral. It reports PostgreSQL publication state whether the active Transport is NATS JetStream, Kafka/Redpanda, SQS/SNS, Cloudflare Queues, or another adapter.
 
-## Backlog classification
+### Backlog classification
 
 Every unpublished event belongs to exactly one state at the snapshot observation time:
 
@@ -27,7 +29,7 @@ backlog = ready + delayed + leased + quarantined
 
 Expired leases become `ready` once `available_at` has passed. Published rows are not backlog and are excluded.
 
-## Snapshot fields
+### Snapshot fields
 
 `read_domain_event_outbox_telemetry()` returns:
 
@@ -41,7 +43,7 @@ Expired leases become `ready` once `available_at` has passed. Published rows are
 
 The state counts and attempt buckets are each required to sum to the backlog count. `OutboxTelemetrySnapshot` rejects malformed results rather than exporting inconsistent telemetry.
 
-## JSON inspection
+### JSON inspection
 
 With the lab database running:
 
@@ -78,7 +80,7 @@ The stable top-level shape is:
 
 The full telemetry object also contains attempt buckets and oldest-age gauges.
 
-## Prometheus exposition
+### Prometheus exposition
 
 Render a scrape-compatible snapshot:
 
@@ -102,7 +104,7 @@ Metric families:
 
 Event IDs, error messages, event types, aggregate IDs, and worker IDs are deliberately absent from labels. Detailed diagnosis remains a bounded database query, not an unbounded metrics-cardinality channel.
 
-## Alert policy
+### Alert policy
 
 Default inspection thresholds are:
 
@@ -132,7 +134,7 @@ Normal inspection exits `0` and carries status in the payload. Monitoring probes
 2  critical
 ```
 
-## Operator response
+### Operator response
 
 | Signal | First response |
 |---|---|
@@ -143,8 +145,81 @@ Normal inspection exits `0` and carries status in the payload. Monitoring probes
 
 Telemetry never automatically replays or deletes events.
 
-## Cost boundary
+### Cost boundary
 
 The snapshot is one statement-level, read-only aggregate over unpublished Outbox rows. It takes no explicit row locks and cannot interfere with lease ownership semantics.
 
 At larger retention volumes, the query plan and scrape interval must be measured. Materialized counters, partition-aware aggregation, and exporter caching are later scale options, not hidden behavior in this lab.
+
+## Consumer failure telemetry
+
+Once ADR 0032 durably captures a valid failed event and ACKs its broker delivery, PostgreSQL owns the retry. `read_domain_event_consumer_failure_telemetry()` makes that local backlog independently observable even when every retry worker is stopped.
+
+Resolved rows are retained history and are excluded. Every unresolved failure belongs to exactly one state at the shared observation time:
+
+| State | Definition | Operator meaning |
+|---|---|---|
+| `ready` | deferred, no live lease, `available_at <= observed_at` | retry worker can claim it now |
+| `delayed` | deferred, no live lease, `available_at > observed_at` | waiting for local backoff |
+| `leased` | deferred, `claimed_until > observed_at` | currently owned by a retry attempt |
+| `quarantined` | status is quarantined | stopped pending operator repair/replay |
+
+```text
+unresolved backlog = ready + delayed + leased + quarantined
+```
+
+Quarantine is independently partitioned into `terminal` and `attempt_limit`. The full backlog is independently partitioned into attempt buckets `0`, `1`, `2_to_4`, and `5_plus`; zero is valid immediately after audited replay resets the local budget. The typed snapshot rejects any partition that does not reconcile.
+
+The age gauges use `first_failed_at` for backlog and ready age, and `quarantined_at` for quarantine age. Expired leases and elapsed delays become ready without any telemetry mutation. An empty state has no age sample.
+
+Inspect all consumers or one stable logical consumer:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/inspect-kernel-consumer-failures \
+  --consumer-name inventory-position-quantity-projector \
+  --pretty
+```
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/inspect-kernel-consumer-failures \
+  --consumer-name inventory-position-quantity-projector \
+  --format prometheus
+```
+
+Metric families are:
+
+| Metric | Bounded labels | Meaning |
+|---|---|---|
+| `spotwo_wms_consumer_failure_backlog_events` | optional `consumer` | total unresolved backlog |
+| `spotwo_wms_consumer_failure_events` | `state`, optional `consumer` | exclusive ready/delayed/leased/quarantined gauges |
+| `spotwo_wms_consumer_failure_quarantined_events` | `kind`, optional `consumer` | terminal versus attempt-limit quarantine |
+| `spotwo_wms_consumer_failure_attempts` | `bucket`, optional `consumer` | unresolved attempt distribution |
+| `spotwo_wms_consumer_failure_attempts_max` | optional `consumer` | highest current attempt count |
+| `spotwo_wms_consumer_failure_oldest_age_seconds` | `state`, optional `consumer` | oldest backlog/ready/quarantined age |
+| `spotwo_wms_consumer_failure_health_status` | optional `consumer` | `0` ok, `1` warning, `2` critical |
+| `spotwo_wms_consumer_failure_alert` | `code`, `severity`, optional `consumer` | active stable alert |
+| `spotwo_wms_consumer_failure_snapshot_timestamp_seconds` | optional `consumer` | observation timestamp |
+
+`consumer` is a deployment-controlled logical identity. Event IDs, aggregate and Position IDs, worker IDs, envelopes, failure codes, delivery metadata, and exception text are excluded from every metric label.
+
+Default policy starting points are:
+
+| Signal | Warning | Critical |
+|---|---:|---:|
+| oldest ready age | 300 seconds | 1,800 seconds |
+| unresolved backlog | 100 | 1,000 |
+| quarantine count | n/a | any value greater than zero |
+
+Override them with `--warning-ready-age-seconds`, `--critical-ready-age-seconds`, `--warning-backlog-count`, and `--critical-backlog-count`. `--check` uses the same process exit contract as Outbox telemetry.
+
+| Signal | First response |
+|---|---|
+| ready age rising | verify retry worker liveness, database availability, and any active projection rebuild fence |
+| delayed count rising | inspect bounded failure rows and confirm the expected local retry window |
+| leased count stuck | verify retry worker liveness and allow the claim lease to expire |
+| terminal quarantine | repair or explicitly reject the handler contract before audited replay |
+| attempt-limit quarantine | repair the repeated transient cause and confirm retry capacity before audited replay |
+
+The consumer snapshot is one statement-level, read-only aggregate. It never claims, delays, resolves, quarantines, replays, ACKs, or deletes an event.

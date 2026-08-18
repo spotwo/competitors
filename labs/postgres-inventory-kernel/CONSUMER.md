@@ -1,6 +1,6 @@
 # Inbox Consumer Runtime
 
-Executable companion to ADR 0028 and ADR 0032.
+Executable companion to ADR 0028, ADR 0032, and ADR 0033.
 
 ## Boundary
 
@@ -35,6 +35,13 @@ It does not make arbitrary network side effects exactly-once.
 - `PostgresConsumerFailureStore` - deferral, leased retry, quarantine, and audited replay persistence;
 - `ConsumerFailureRetryRuntime` - broker-independent local retry cycle;
 - `ConsumerRetryPolicy` - bounded exponential delay with deterministic jitter.
+
+`consumer_failure_telemetry.py` provides:
+
+- `PostgresConsumerFailureTelemetryStore` - read-only global or consumer-scoped backlog snapshots;
+- `ConsumerFailureTelemetrySnapshot` - fail-closed state, quarantine-kind, attempt, and age invariants;
+- `ConsumerFailureAlertPolicy` - stable quarantine, backlog, and ready-age alerts;
+- bounded JSON data and Prometheus exposition without event or error labels.
 
 `nats_consumer.py` provides `NatsJetStreamPullSource`, which binds to one existing durable pull consumer and confirms ACK with `ack_sync`.
 
@@ -169,6 +176,21 @@ KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_la
 
 Replay changes `quarantined` to `deferred` and starts one fresh bounded attempt budget while retaining the prior budget in the action audit. It does not create an Inbox receipt, run the handler, or declare success. The retry worker still uses the normal transaction path.
 
+### Failure telemetry
+
+Inspect all unresolved failure lanes or one stable logical consumer independently of the retry worker:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/inspect-kernel-consumer-failures \
+  --consumer-name inventory-position-quantity-projector \
+  --pretty
+```
+
+Add `--format prometheus` for scraping or `--check` for monitoring exit codes. The snapshot classifies every unresolved row as `ready`, `delayed`, `leased`, or `quarantined`; resolved history is excluded. Quarantine is split into bounded `terminal` and `attempt_limit` counts. Metric labels never contain event IDs, Position IDs, failure codes, exception text, envelopes, or worker identity.
+
+Default alert starting points are any quarantine entry as critical, backlog at 100/1,000 warning/critical, and oldest ready age at 300/1,800 seconds. These are deployment inputs, not kernel SLOs. See `OBSERVABILITY.md` for the full metric contract.
+
 ### Commit succeeds, ACK fails
 
 The Inbox receipt and effect remain committed. JetStream may redeliver. The next transaction sees the duplicate receipt, skips the handler, commits, and retries `ack_sync`.
@@ -215,6 +237,8 @@ Deleting an Inbox receipt explicitly removes its deduplication protection. Treat
 9. canonical envelope validation fails closed.
 
 `tests/test_consumer_failures.py` proves classification, payload binding, deferred retry, terminal quarantine, attempt exhaustion, exclusive claims, and stable audited replay.
+
+`tests/test_consumer_failure_telemetry.py` proves exclusive state classification, resolved-row exclusion, scoped/global aggregation, quarantine and attempt partitions, deterministic alerts, and bounded-cardinality export.
 
 `tests/test_nats_consumer.py` proves against the pinned real server:
 
