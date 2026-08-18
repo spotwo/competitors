@@ -1,0 +1,23 @@
+id: consolidation
+group: fulfillment
+label: Consolidation
+status: candidate
+definition: Combine picked inventory, containers, or partial work streams that belong to a common downstream order, shipment, or handling unit.
+purpose: Reassemble parallel or zone-based fulfilment work before packing, staging, or shipping.
+inputs: [picked-inventory, order, shipment]
+outputs: [consolidated-order, consolidated-handling-unit]
+entities: [order, shipment, handling-unit, consolidation-location]
+strategies: [order-consolidation, zone-consolidation, batch-sort]
+related_capabilities: [picking, sortation, packing, staging]
+vendor_observations:
+  - company_id: odoo
+    level: observed
+    notes: Batch picking groups multiple orders and later sorts picked products into their delivery packages at an output location.
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Consolidation
+  status: candidate
+research_gaps:
+  - Sample explicit consolidation objects and workstations across enterprise WMS products.
+last_verified: 2026-08-18
+evidence_refs: [odoo-inventory-routes-2026]
