@@ -87,6 +87,37 @@ def command_term(args):
     if not matches: print("No terminology matches.")
 
 
+def command_capability(args):
+    needle = normalized(args.query) if args.query else None
+    matches = []
+    for capability in load_records("capabilities/*.yml"):
+        candidates = [capability["id"], capability["label"], capability["spotwo"]["canonical_term"]]
+        if needle and not any(needle in normalized(candidate) for candidate in candidates):
+            continue
+        if args.group and capability["group"] != args.group:
+            continue
+        if args.vendor and not any(obs.get("company_id") == args.vendor for obs in capability.get("vendor_observations", [])):
+            continue
+        matches.append(capability)
+    matches.sort(key=lambda c: (c["group"], c["label"]))
+    if args.json: return dump_json(matches)
+    for capability in matches:
+        print(f"## {capability['label']} [{capability['status']}]\n")
+        print(capability["definition"])
+        print(f"\nSpotwo: **{capability['spotwo']['canonical_term']}** [{capability['spotwo']['status']}]")
+        if capability.get("strategies"):
+            print("Strategies: " + ", ".join(capability["strategies"]))
+        observations = capability.get("vendor_observations", []) or []
+        if observations:
+            print("\n| Vendor | Level | Terminology / note |")
+            print("|---|---|---|")
+            for obs in observations:
+                text = ", ".join(obs.get("terminology", [])) or obs.get("notes", "")
+                print(f"| {obs['company_id']} | {obs['level']} | {text} |")
+        print()
+    if not matches: print("No capability matches.")
+
+
 def command_ontology(args):
     needle = normalized(args.query) if args.query else None
     matches = []
@@ -170,6 +201,10 @@ def command_gaps(args):
     for term in load_records("terminology/*.yml"):
         if term.get("status") in {"candidate", "observed", "needs-research"}:
             gaps.append({"type": "terminology", "subject": term["preferred_term"], "gap": f"status={term['status']}; evidence_refs={len(term.get('evidence_refs', []))}"})
+    for capability in load_records("capabilities/*.yml"):
+        if capability.get("status") in {"candidate", "observed", "needs-research"} or not capability.get("evidence_refs"):
+            gaps.append({"type": "capability", "subject": capability["label"], "gap": f"status={capability['status']}; vendors={len(capability.get('vendor_observations', []))}; evidence_refs={len(capability.get('evidence_refs', []))}"})
+        for gap in capability.get("research_gaps", []) or []: gaps.append({"type": "capability", "subject": capability["label"], "gap": gap})
     for pattern, kind in (("ontology/*.yml", "ontology"), ("kpis/*.yml", "kpi-registry"), ("integrations/*.yml", "integration-registry")):
         for record in load_records(pattern):
             for gap in record.get("research_gaps", []) or []: gaps.append({"type": kind, "subject": record["title"], "gap": gap})
@@ -183,6 +218,7 @@ def command_gaps(args):
 def command_stats(args):
     companies = load_records("companies/*/company.yml")
     ontologies = load_records("ontology/*.yml")
+    capabilities = load_records("capabilities/*.yml")
     stats = {
         "companies": len(companies),
         "products": sum(len(c.get("products", [])) for c in companies),
@@ -195,6 +231,8 @@ def command_stats(args):
         "ontology_entities": sum(len(o.get("entities", [])) for o in ontologies),
         "kpis": sum(len(r.get("metrics", [])) for r in load_records("kpis/*.yml")),
         "integration_patterns": sum(len(r.get("patterns", [])) for r in load_records("integrations/*.yml")),
+        "capabilities": len(capabilities),
+        "vendor_capability_observations": sum(len(c.get("vendor_observations", [])) for c in capabilities),
     }
     if args.json: return dump_json(stats)
     for key, value in stats.items(): print(f"{key}: {value}")
@@ -213,6 +251,7 @@ def build_parser():
         add_repeatable(vendors, flag, dest, f"Require {dest}; repeatable.")
     vendors.add_argument("--json", action="store_true"); vendors.set_defaults(func=command_vendors)
     term = sub.add_parser("term"); term.add_argument("query"); term.add_argument("--json", action="store_true"); term.set_defaults(func=command_term)
+    capability = sub.add_parser("capability"); capability.add_argument("query", nargs="?"); capability.add_argument("--group"); capability.add_argument("--vendor"); capability.add_argument("--json", action="store_true"); capability.set_defaults(func=command_capability)
     ontology = sub.add_parser("ontology"); ontology.add_argument("query", nargs="?"); ontology.add_argument("--json", action="store_true"); ontology.set_defaults(func=command_ontology)
     kpis = sub.add_parser("kpis"); kpis.add_argument("--category"); kpis.add_argument("--name"); kpis.add_argument("--json", action="store_true"); kpis.set_defaults(func=command_kpis)
     integrations = sub.add_parser("integrations"); integrations.add_argument("--category"); integrations.add_argument("--protocol"); integrations.add_argument("--json", action="store_true"); integrations.set_defaults(func=command_integrations)
