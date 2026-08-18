@@ -12,6 +12,10 @@ from nats.js.client import JetStreamContext
 from publisher_runtime import ClaimedEvent, PublishReceipt
 
 NATS_MESSAGE_ID_HEADER = "Nats-Msg-Id"
+EVENT_TYPE_HEADER = "Spotwo-Event-Type"
+AGGREGATE_TYPE_HEADER = "Spotwo-Aggregate-Type"
+AGGREGATE_ID_HEADER = "Spotwo-Aggregate-Id"
+AGGREGATE_VERSION_HEADER = "Spotwo-Aggregate-Version"
 SUBJECT_TOKEN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
@@ -129,10 +133,10 @@ class NatsJetStreamTransport:
         ).encode("utf-8")
         headers = {
             NATS_MESSAGE_ID_HEADER: str(event.event_id),
-            "Spotwo-Event-Type": event.event_type,
-            "Spotwo-Aggregate-Type": event.aggregate_type,
-            "Spotwo-Aggregate-Id": event.aggregate_id,
-            "Spotwo-Aggregate-Version": str(event.aggregate_version),
+            EVENT_TYPE_HEADER: event.event_type,
+            AGGREGATE_TYPE_HEADER: event.aggregate_type,
+            AGGREGATE_ID_HEADER: event.aggregate_id,
+            AGGREGATE_VERSION_HEADER: str(event.aggregate_version),
         }
 
         try:
