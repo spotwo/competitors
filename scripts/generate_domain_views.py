@@ -45,6 +45,18 @@ def integrations_markdown() -> str:
     return "\n".join(lines) + "\n"
 
 
+def capabilities_markdown() -> str:
+    rows = []
+    for path in sorted(ROOT.glob("capabilities/*.yml")):
+        data = load(path)
+        vendors = sorted({item["company_id"] for item in data.get("vendor_observations", []) or []})
+        rows.append((data["group"], data["label"], data["status"], data["spotwo"]["canonical_term"], ", ".join(vendors), len(data.get("evidence_refs", []))))
+    rows.sort(key=lambda row: (row[0], row[1]))
+    lines = ["# Capability Matrix", "", "> Generated from `capabilities/*.yml`. Do not edit by hand.", "", "| Group | Capability | Status | Spotwo term | Observed vendors | Evidence |", "|---|---|---|---|---|---:|"]
+    lines.extend(f"| {group} | {label} | {status} | {term} | {vendors} | {evidence} |" for group, label, status, term, vendors, evidence in rows)
+    return "\n".join(lines) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
@@ -53,6 +65,7 @@ def main():
         ROOT / "matrices/ontology.md": ontology_markdown(),
         ROOT / "matrices/kpis.md": kpis_markdown(),
         ROOT / "matrices/integrations.md": integrations_markdown(),
+        ROOT / "matrices/capabilities.md": capabilities_markdown(),
     }
     stale = []
     for path, content in outputs.items():
