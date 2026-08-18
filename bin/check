@@ -6,3 +6,4 @@ python scripts/generate_matrices.py --check
 python scripts/generate_audit.py --check
 python scripts/generate_domain_views.py --check
 python scripts/generate_workflow_views.py --check
+python scripts/generate_kernel_views.py --check
