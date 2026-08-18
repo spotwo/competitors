@@ -1,0 +1,12 @@
+id: gs1-gln-location-model
+subject: facility-ontology
+source_type: standard
+grade: A
+title: GLN Data Model Solution Standard
+url: https://www.gs1.org/standards/gln-data-model-solution-standard/current-standard
+publisher: GS1
+captured_at: 2026-08-18
+supports:
+  - Defines physical locations as sites or areas within sites.
+  - Provides dock door as an example of a fixed physical location.
+  - Supports using GLN to identify physical locations.

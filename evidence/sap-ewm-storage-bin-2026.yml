@@ -1,0 +1,12 @@
+id: sap-ewm-storage-bin-2026
+subject: storage-location-ontology
+source_type: official-docs
+grade: A
+title: Storage Bin - SAP Extended Warehouse Management
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/55c8cb53ad377114e10000000a174cb4.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - Defines the storage bin as the smallest spatial unit in SAP EWM.
+  - States that a storage-bin coordinate may encode aisle, stack and level.
+  - Documents bin capacity, maximum weight and bin type attributes.

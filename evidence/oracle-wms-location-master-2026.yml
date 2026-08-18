@@ -1,0 +1,11 @@
+id: oracle-wms-location-master-2026
+subject: storage-location-ontology
+source_type: official-docs
+grade: A
+title: Location Master - Oracle Warehouse Management
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/25d/owmol/location-master.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Uses Location as a general warehouse storage-place concept.
+  - Defines typed locations such as Active, Dock, Yard, Packing Station, Drop, QC and Reserve.

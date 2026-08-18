@@ -1,0 +1,11 @@
+id: sap-ewm-warehouse-structure-2026
+subject: storage-location-ontology
+source_type: official-docs
+grade: A
+title: Warehouse Structure - SAP Extended Warehouse Management
+url: https://help.sap.com/saphelp_ewm700_ehp02/helpdata/en/34/c8cb53ad377114e10000000a174cb4/content.htm
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - Documents storage type, storage section, storage bin and activity area as distinct warehouse-structure concepts.
+  - Describes activity area as a logical grouping of storage bins that can cross storage types.

@@ -1,12 +1,12 @@
 id: werc-dc-measures-2026
-subject: werc
+subject: warehouse-kpi-registry
 source_type: association-guide
 grade: A
 title: DC Measures 2026
 url: https://werc.org/page/ASSESS-DC_Measures
-publisher: Warehousing Education and Research Council
-captured_at: '2026-08-18'
+publisher: WERC
+captured_at: 2026-08-18
 supports:
-- 36 operational metrics
-- warehouse and distribution-center benchmarking
-- inbound/outbound/capacity/quality/employee metrics
+  - Tracks 36 operational metrics for warehouse and distribution-center benchmarking.
+  - Covers customer service, quality/capacity, inbound, outbound, financial, employee, perfect-order and cash-to-cash areas.
+  - Lists on-time shipments, dock-to-stock cycle time, average warehouse capacity used, peak warehouse capacity used and backorders among prominent metrics.

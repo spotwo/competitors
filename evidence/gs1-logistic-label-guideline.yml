@@ -1,0 +1,12 @@
+id: gs1-logistic-label-guideline
+subject: handling-unit-ontology
+source_type: standard
+grade: A
+title: GS1 Logistic Label Guideline
+url: https://www.gs1.org/standards/gs1-logistic-label-guideline/1-3
+publisher: GS1
+captured_at: 2026-08-18
+supports:
+  - Defines a logistic unit as an item of any composition established for transport and/or storage that must be managed through the supply chain.
+  - States that SSCC is the mandatory unique identifier on a GS1 Logistic Label.
+  - Distinguishes logistic-unit identification from trade-item identification such as GTIN.

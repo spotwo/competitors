@@ -1,0 +1,12 @@
+id: sap-ewm-hu-warehouse-task-2026
+subject: process-ontology
+source_type: official-docs
+grade: A
+title: Handling Unit Warehouse Task - SAP EWM
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a%20/4fcecb53ad377114e10000000a174cb4.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - Defines an HU warehouse task as the document used to move handling units.
+  - Models movement from a source storage bin to a destination storage bin.
+  - Shows that task execution and physical movement are separate domain concepts.

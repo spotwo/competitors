@@ -1,0 +1,12 @@
+id: oracle-wms-lpn-uom-2026
+subject: handling-unit-ontology
+source_type: official-docs
+grade: A
+title: Unit of Measure in WMS - Oracle Warehouse Management
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmol/setting-up-the-lpn-is-pallet-flag-to-true-for-lpns.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Documents CASE, PACK, UNIT and LPN units of measure in Oracle WMS.
+  - States that an LPN may represent a physical box or an entire pallet.
+  - Separates LPN identity from the physical packaging type it represents.
