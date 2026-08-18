@@ -1,0 +1,47 @@
+id: inventory
+title: Inventory Ontology
+kind: inventory
+status: candidate
+description: Core inventory concepts independent of a specific WMS implementation.
+entities:
+  - id: item
+    term: Item
+    definition: A master-data record for a thing that can be stocked, handled or transacted.
+    aliases: [SKU, product]
+    attributes: [item_code, description, base_uom]
+  - id: stock
+    term: Stock
+    definition: A quantity of an item held under a specific set of inventory dimensions such as location, owner, status, lot or serial.
+  - id: lot
+    term: Lot
+    definition: A batch identity shared by a quantity of otherwise equivalent item units.
+    aliases: [batch]
+    attributes: [lot_number, manufacture_date, expiry_date]
+  - id: serial
+    term: Serial Number
+    definition: An identifier assigned to an individual serialized item unit.
+    attributes: [serial_number]
+  - id: inventory-status
+    term: Inventory Status
+    definition: A state constraining how stock may be allocated or processed.
+    examples: [available, hold, damaged, quarantine]
+  - id: owner
+    term: Inventory Owner
+    definition: The party that owns or is entitled to dispose of stock.
+  - id: uom
+    term: Unit of Measure
+    definition: The unit in which item quantity is expressed or handled.
+    aliases: [UOM]
+    examples: [each, case, pack, pallet]
+relationships:
+  - {subject: stock, predicate: references, object: item}
+  - {subject: stock, predicate: may-reference, object: lot}
+  - {subject: stock, predicate: may-reference, object: serial}
+  - {subject: stock, predicate: has, object: inventory-status}
+  - {subject: stock, predicate: may-have, object: owner}
+  - {subject: stock, predicate: measured-in, object: uom}
+research_gaps:
+  - Compare WMS treatment of stock, quant and inventory-line concepts across SAP, Oracle, Manhattan and SMB systems.
+  - Define Spotwo canonical ownership and stock-status dimensions for multi-client 3PL use.
+last_verified: 2026-08-18
+evidence_refs: [oracle-wms-lpn-uom-2026]

@@ -1,0 +1,53 @@
+id: facility
+title: Facility and Physical Location Ontology
+kind: facility
+status: candidate
+description: A vendor-neutral model for sites, buildings, warehouses and operational locations. Physical facilities are separated from addressable storage locations so that the model works for manufacturing, distribution, 3PL and service-parts environments.
+entities:
+  - id: site
+    term: Site
+    definition: A geographic or organizational place containing one or more buildings, warehouses or operational areas.
+    aliases: [campus, facility site]
+    attributes: [name, address, timezone, gln]
+  - id: building
+    term: Building
+    definition: A physical structure within a site.
+    parents: [site]
+    attributes: [name, code]
+  - id: warehouse
+    term: Warehouse
+    definition: An inventory-handling facility or logical warehouse operation that may occupy one or more physical areas.
+    parents: [site, building]
+    attributes: [code, name, warehouse_type]
+  - id: zone
+    term: Zone
+    definition: A configurable operational or physical subdivision used to group locations by purpose, temperature, security, flow or other policy.
+    parents: [warehouse]
+    attributes: [code, purpose]
+  - id: dock-door
+    term: Dock Door
+    definition: A fixed physical location used for loading or unloading.
+    parents: [warehouse, zone]
+    attributes: [code, direction, equipment]
+  - id: work-area
+    term: Work Area
+    definition: An operational area where a class of warehouse work is executed.
+    parents: [warehouse, zone]
+    aliases: [activity area]
+  - id: station
+    term: Station
+    definition: A specific work point such as packing, quality-control, induction or consolidation station.
+    parents: [work-area, zone]
+    attributes: [code, station_type]
+relationships:
+  - {subject: site, predicate: contains, object: building}
+  - {subject: building, predicate: may-contain, object: warehouse}
+  - {subject: warehouse, predicate: contains, object: zone}
+  - {subject: warehouse, predicate: contains, object: dock-door}
+  - {subject: warehouse, predicate: contains, object: work-area}
+  - {subject: work-area, predicate: contains, object: station}
+research_gaps:
+  - Determine whether Spotwo should distinguish Facility from Site in canonical UI vocabulary.
+  - Map GS1 GLN allocation rules to Site, Building, Warehouse and Dock Door entities.
+last_verified: 2026-08-18
+evidence_refs: [gs1-gln-location-model, oracle-wms-location-master-2026]

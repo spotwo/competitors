@@ -1,0 +1,82 @@
+id: warehouse-integration-patterns
+title: Warehouse Integration Pattern Registry
+status: candidate
+patterns:
+  - id: master-data-api
+    name: Master Data API
+    category: master-data
+    directionality: bidirectional
+    status: internal-proposal
+    description: Synchronous API exchange for relatively stable reference data such as items locations customers carriers and packaging.
+    typical_protocols: [REST/JSON, GraphQL]
+    entities: [item, location, customer, carrier]
+    reliability_controls: [idempotent upsert, version or updated_at, schema validation]
+  - id: transaction-api
+    name: Transactional Command API
+    category: transaction
+    directionality: bidirectional
+    status: internal-proposal
+    description: Request and response commands for creating or changing business transactions such as receipts orders transfers and shipments.
+    typical_protocols: [REST/JSON]
+    entities: [receipt, order, transfer, shipment]
+    reliability_controls: [idempotency key, optimistic concurrency, audit trail]
+  - id: domain-events
+    name: Domain Event Stream
+    category: event
+    directionality: outbound
+    status: internal-proposal
+    description: Asynchronous publication of committed business facts for downstream integrations and automation.
+    typical_protocols: [webhook, Kafka, AMQP, CloudEvents]
+    entities: [inventory, task, shipment, handling-unit]
+    reliability_controls: [transactional outbox, event id, at-least-once delivery, consumer idempotency]
+  - id: edi-documents
+    name: EDI and Business Document Exchange
+    category: batch
+    directionality: bidirectional
+    status: observed
+    description: Document-oriented exchange with trading partners for orders ASNs despatch advice receipts and shipment flows.
+    typical_protocols: [EDI, AS2, SFTP]
+    entities: [purchase-order, asn, shipment]
+    reliability_controls: [document id, acknowledgement, replay archive]
+  - id: barcode-capture
+    name: Barcode and Data Carrier Capture
+    category: identity
+    directionality: inbound
+    status: observed
+    description: Capture of item location and logistic-unit identifiers from barcode or RFID data carriers.
+    typical_protocols: [GS1-128, GS1 DataMatrix, QR, RFID/EPC]
+    entities: [item, location, logistic-unit]
+    reliability_controls: [check digit, symbology validation, duplicate-scan suppression]
+  - id: label-printing
+    name: Operational Label Printing
+    category: labeling
+    directionality: outbound
+    status: internal-proposal
+    description: Generation and delivery of labels for locations handling units logistics units and shipping processes.
+    typical_protocols: [ZPL, PDF, IPP, local print gateway]
+    entities: [location, handling-unit, logistic-unit, shipment]
+    reliability_controls: [print job id, rendered payload hash, retry, printer acknowledgement when available]
+  - id: equipment-control
+    name: Equipment and WCS Integration
+    category: device
+    directionality: bidirectional
+    status: internal-proposal
+    description: Low-latency exchange between warehouse software and conveyors sorters AS/RS robots PLCs or WCS layers.
+    typical_protocols: [OPC UA, TCP, vendor API, REST, WebSocket]
+    entities: [task, mission, equipment, alarm]
+    reliability_controls: [command id, state machine, heartbeat, timeout, safe retry semantics]
+  - id: telemetry-stream
+    name: Operational Telemetry Stream
+    category: telemetry
+    directionality: inbound
+    status: internal-proposal
+    description: Continuous ingestion of machine and software telemetry for observability maintenance and performance analysis.
+    typical_protocols: [MQTT, Sparkplug B, OPC UA PubSub, OTLP]
+    entities: [equipment, sensor, metric, alarm]
+    reliability_controls: [timestamp, sequence, quality flag, retention policy]
+research_gaps:
+  - Map which protocols and reliability controls are actually exposed by the top 20 WMS WES and WCS vendors.
+  - Add GS1 EPCIS as a first-class visibility and event pattern after a dedicated standards review.
+  - Separate machine-control commands from WES missions and WMS tasks in a future interface ontology.
+last_verified: 2026-08-18
+evidence_refs: [gs1-logistic-label-guideline, gs1-gln-location-model]

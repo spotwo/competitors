@@ -1,0 +1,68 @@
+id: storage-location
+title: Storage Location Ontology
+kind: storage-location
+status: candidate
+description: A canonical abstraction for addressable places inside a warehouse. The model intentionally does not force every customer into a fixed Row/Rack/Level/Bin tree.
+entities:
+  - id: storage-area
+    term: Storage Area
+    definition: A physical or logical area characterized by storage technology, purpose or policy.
+    aliases: [storage type, storage zone]
+    parents: [warehouse]
+    attributes: [code, storage_policy]
+  - id: storage-section
+    term: Storage Section
+    definition: An optional subdivision grouping storage locations with similar attributes or putaway behavior.
+    parents: [storage-area]
+    attributes: [code, criteria]
+  - id: aisle
+    term: Aisle
+    definition: A longitudinal access or coordinate dimension commonly used to address rack or floor-storage locations.
+    parents: [storage-area]
+  - id: bay
+    term: Bay
+    definition: A horizontal rack or storage coordinate within an aisle.
+    aliases: [stack]
+    parents: [aisle]
+  - id: level
+    term: Level
+    definition: A vertical coordinate within a rack, bay or storage structure.
+    parents: [bay]
+  - id: rack
+    term: Rack
+    definition: Physical storage equipment that can host one or more addressable storage locations.
+    parents: [storage-area]
+    notes: Treat rack as equipment or structure, not as a mandatory logical parent of every location.
+  - id: location
+    term: Location
+    definition: A generic addressable warehouse place used for storage or process execution.
+    aliases: [warehouse location, storage location]
+    attributes: [barcode, type, capacity, max_weight, status]
+  - id: bin
+    term: Bin
+    definition: A smallest or leaf-level addressable storage location in systems that use bin terminology.
+    aliases: [storage bin, bin location]
+    parents: [location]
+    attributes: [barcode, capacity, max_weight]
+    notes: Bin is modeled as a location subtype rather than a universal physical container.
+  - id: activity-area
+    term: Activity Area
+    definition: A logical grouping of locations for execution of warehouse activities.
+    parents: [warehouse]
+    attributes: [activity_type]
+    notes: May group locations across storage areas.
+relationships:
+  - {subject: warehouse, predicate: contains, object: storage-area}
+  - {subject: storage-area, predicate: may-contain, object: storage-section}
+  - {subject: storage-area, predicate: may-use-coordinate, object: aisle}
+  - {subject: aisle, predicate: may-use-coordinate, object: bay}
+  - {subject: bay, predicate: may-use-coordinate, object: level}
+  - {subject: rack, predicate: hosts, object: location}
+  - {subject: bin, predicate: is-a, object: location}
+  - {subject: activity-area, predicate: groups, object: location}
+research_gaps:
+  - Sample at least 20 WMS products for their canonical location hierarchy before adopting a Spotwo default.
+  - Decide whether ROW should be a first-class coordinate or an installation-specific alias.
+  - Decide whether Rack should live in facility/equipment ontology with relationships to Location rather than in the address hierarchy.
+last_verified: 2026-08-18
+evidence_refs: [sap-ewm-storage-bin-2026, sap-ewm-warehouse-structure-2026, oracle-wms-location-master-2026, gs1-gln-location-model]

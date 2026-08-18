@@ -1,0 +1,52 @@
+id: handling-unit
+title: Handling Unit and Logistic Unit Ontology
+kind: handling-unit
+status: candidate
+description: Separates physical containers, internal WMS handling identities and standardized supply-chain identifiers.
+entities:
+  - id: handling-unit
+    term: Handling Unit
+    definition: A physically handled grouping of goods treated as one unit for warehouse movement.
+    aliases: [HU]
+    attributes: [internal_id, type, weight, dimensions]
+  - id: logistic-unit
+    term: Logistic Unit
+    definition: A unit established for transport and/or storage that must be managed through the supply chain.
+    attributes: [sscc]
+  - id: lpn
+    term: License Plate Number
+    definition: A WMS identifier assigned to a handling unit or container; exact semantics are vendor-specific.
+    aliases: [LPN]
+    attributes: [lpn]
+  - id: sscc
+    term: Serial Shipping Container Code
+    definition: The GS1 identification key for uniquely identifying a logistic unit.
+    aliases: [SSCC]
+    attributes: [18_digit_code]
+  - id: pallet
+    term: Pallet
+    definition: A physical load carrier that may itself be represented by a handling unit or LPN.
+  - id: case
+    term: Case
+    definition: A physical case or carton containing one or more item units.
+    aliases: [carton]
+  - id: tote
+    term: Tote
+    definition: A reusable container commonly used for internal warehouse movement and picking.
+  - id: parcel
+    term: Parcel
+    definition: A packaged shipping unit intended for parcel transport.
+relationships:
+  - {subject: pallet, predicate: is-physical-type-of, object: handling-unit}
+  - {subject: case, predicate: is-physical-type-of, object: handling-unit}
+  - {subject: tote, predicate: is-physical-type-of, object: handling-unit}
+  - {subject: parcel, predicate: may-be, object: logistic-unit}
+  - {subject: lpn, predicate: identifies, object: handling-unit}
+  - {subject: sscc, predicate: identifies, object: logistic-unit}
+  - {subject: handling-unit, predicate: may-be, object: logistic-unit}
+research_gaps:
+  - Decide whether Spotwo exposes LPN as a first-class term or uses Handling Unit ID in product UI.
+  - Define rules for when an internal handling unit receives an SSCC.
+  - Add parent-child nesting semantics for pallet to case to tote or container relationships.
+last_verified: 2026-08-18
+evidence_refs: [gs1-logistic-label-guideline, oracle-wms-lpn-uom-2026, sap-ewm-hu-warehouse-task-2026]

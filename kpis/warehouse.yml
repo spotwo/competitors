@@ -1,0 +1,34 @@
+id: warehouse-kpis
+title: Warehouse and Distribution Center KPI Registry
+status: observed
+metrics:
+  - {id: on-time-shipments, name: On Time Shipments, category: customer, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: total-order-cycle-time, name: Total Order Cycle Time, category: customer, direction: lower-is-better, status: observed, unit: time, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: internal-order-cycle-time, name: Internal Order Cycle Time, category: customer, direction: lower-is-better, status: observed, unit: time, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: backorders-percent-lines, name: Backorders as a Percent of Total Lines, category: customer, direction: lower-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: dock-to-stock-cycle-time, name: Dock to Stock Cycle Time, category: inbound, direction: lower-is-better, status: observed, unit: hours, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: lines-received-put-away-per-hour, name: Lines Received and Put Away per Hour, category: inbound, direction: higher-is-better, status: observed, unit: lines/hour, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: supplier-orders-correct-documents, name: Supplier Orders Received with Correct Documents, category: inbound, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: supplier-orders-damage-free, name: Supplier Orders Received Damage Free, category: inbound, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: on-time-receipts, name: On Time Receipts from Supplier, category: inbound, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: fill-rate-line, name: Fill Rate - Line, category: outbound, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: order-fill-rate, name: Order Fill Rate, category: outbound, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: lines-picked-shipped-per-hour, name: Lines Picked and Shipped per Hour, category: outbound, direction: higher-is-better, status: observed, unit: lines/hour, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: orders-picked-shipped-per-hour, name: Orders Picked and Shipped per Hour, category: outbound, direction: higher-is-better, status: observed, unit: orders/hour, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: on-time-ready-to-ship, name: On Time Ready to Ship, category: outbound, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: average-warehouse-capacity-used, name: Average Warehouse Capacity Used, category: capacity-quality, direction: context-dependent, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: peak-warehouse-capacity-used, name: Peak Warehouse Capacity Used, category: capacity-quality, direction: context-dependent, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: honeycomb-percent, name: Honeycomb Percent, category: capacity-quality, direction: lower-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: inventory-count-accuracy-location, name: Inventory Count Accuracy by Location, category: capacity-quality, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: order-picking-accuracy, name: Order Picking Accuracy, category: capacity-quality, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: annual-workforce-turnover, name: Annual Workforce Turnover, category: employee, direction: lower-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: overtime-hours-to-total-hours, name: Overtime Hours to Total Hours, category: employee, direction: context-dependent, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: orders-on-time-delivery, name: Orders with On Time Delivery, category: perfect-order, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: orders-shipped-complete, name: Orders Shipped Complete, category: perfect-order, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: orders-shipped-damage-free, name: Orders Shipped Damage Free, category: perfect-order, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+  - {id: orders-correct-documentation, name: Orders Sent with Correct Documentation, category: perfect-order, direction: higher-is-better, status: observed, unit: percent, formula: null, evidence_refs: [werc-dc-measures-2026]}
+research_gaps:
+  - Define Spotwo-owned calculation specifications for each KPI rather than copying proprietary report definitions.
+  - Add automation-specific metrics such as utilization availability throughput blocked time and recovery time from authoritative sources.
+last_verified: 2026-08-18
+evidence_refs: [werc-dc-measures-2026]
