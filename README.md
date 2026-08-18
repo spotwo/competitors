@@ -42,9 +42,43 @@ decisions/       Spotwo ADR-style product/domain/UX decisions
 matrices/        Generated comparison, stats, and research-gap views
 schema/          JSON Schema definitions
 templates/       Research and record templates
-scripts/         Validation and generation tools
-.github/         CI workflows
+scripts/         Validation, query, and generation tools
+.github/         CI workflows and contribution templates
 ```
+
+## Querying the knowledge base
+
+Use `scripts/kb.py` for common questions without manually searching the tree.
+
+```bash
+# SMB WMS vendors serving Europe
+python scripts/kb.py vendors --segment smb --market europe --layer wms
+
+# Vendors with evidenced Ukraine presence
+python scripts/kb.py vendors --country UA
+
+# Cloud WES / automation references
+python scripts/kb.py vendors --layer wes --deployment cloud
+
+# Vendors that cover picking
+python scripts/kb.py vendors --capability picking
+
+# Look up industry language
+python scripts/kb.py term "clear height"
+python scripts/kb.py term bin
+
+# Inspect claims and their evidence links
+python scripts/kb.py claims --subject clear-height
+python scripts/kb.py evidence --subject clear-height
+
+# Current open research work
+python scripts/kb.py gaps
+
+# Live record counts
+python scripts/kb.py stats
+```
+
+Repeat filter flags to require multiple values. Add `--json` to commands when an agent or another tool needs machine-readable output.
 
 ## Authority order for terminology
 
