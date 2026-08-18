@@ -20,6 +20,7 @@ SCHEMA_BY_GLOB = {
     "ontology/*.yml": "schema/ontology.schema.json",
     "kpis/*.yml": "schema/kpi-registry.schema.json",
     "integrations/*.yml": "schema/integration-registry.schema.json",
+    "capabilities/*.yml": "schema/capability.schema.json",
 }
 TAXONOMY_FIELDS = {
     "markets": "taxonomy/regions.yml",
@@ -101,6 +102,7 @@ def main() -> int:
     authority_ids = record_ids("authorities/*.yml", errors)
     claim_ids = record_ids("claims/*.yml", errors)
     ontology_ids = record_ids("ontology/*.yml", errors)
+    capability_ids = record_ids("capabilities/*.yml", errors)
     allowed = {field: taxonomy_values(rel) for field, rel in TAXONOMY_FIELDS.items()}
     country_codes = taxonomy_values("taxonomy/countries.yml")
     company_ids: set[str] = set()
@@ -151,11 +153,32 @@ def main() -> int:
         if parent and parent == data.get("id"):
             errors.append(f"{path.relative_to(ROOT)}: company cannot be its own parent")
 
-    for pattern in ("terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml", "integrations/*.yml"):
+    for pattern in ("terminology/*.yml", "authorities/*.yml", "ontology/*.yml", "kpis/*.yml", "integrations/*.yml", "capabilities/*.yml"):
         for path in sorted(ROOT.glob(pattern)):
             data = load_yaml(path)
             if isinstance(data, dict):
                 check_evidence_refs(path, data, evidence_ids, errors)
+
+    expected_capabilities = allowed["capabilities"]
+    for missing in sorted(expected_capabilities - capability_ids):
+        errors.append(f"capabilities/: missing canonical capability record {missing!r}")
+    for unknown in sorted(capability_ids - expected_capabilities):
+        errors.append(f"capabilities/: capability {unknown!r} is not in taxonomy/processes.yml")
+    for path in sorted(ROOT.glob("capabilities/*.yml")):
+        data = load_yaml(path)
+        for related in data.get("related_capabilities", []) or []:
+            if related not in expected_capabilities:
+                errors.append(f"{path.relative_to(ROOT)}: unknown related capability {related!r}")
+        for observation in data.get("vendor_observations", []) or []:
+            company_id = observation.get("company_id")
+            if company_id not in company_ids:
+                errors.append(f"{path.relative_to(ROOT)}: unresolved vendor company {company_id!r}")
+            product_id = observation.get("product_id")
+            if product_id and product_id not in product_ids:
+                errors.append(f"{path.relative_to(ROOT)}: unresolved vendor product {product_id!r}")
+            for ref in observation.get("evidence_refs", []) or []:
+                if ref not in evidence_ids:
+                    errors.append(f"{path.relative_to(ROOT)}: vendor observation missing evidence ref {ref!r}")
 
     ontology_entity_count = 0
     for path in sorted(ROOT.glob("ontology/*.yml")):
@@ -210,7 +233,7 @@ def main() -> int:
         f"Validation OK: {len(company_ids)} companies, {len(product_ids)} products, {len(evidence_ids)} evidence records, "
         f"{len(claim_ids)} claims, {len(term_ids)} terms, {len(authority_ids)} authorities, "
         f"{len(ontology_ids)} ontologies/{ontology_entity_count} entities, {len(kpi_ids)} KPIs, "
-        f"{len(integration_ids)} integration patterns"
+        f"{len(integration_ids)} integration patterns, {len(capability_ids)} capabilities"
     )
     return 0
 
