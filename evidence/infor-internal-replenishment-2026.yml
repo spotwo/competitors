@@ -1,0 +1,13 @@
+id: infor-internal-replenishment-2026
+subject: replenishment-workflow
+source_type: official-docs
+grade: A
+title: Replenishment Details - Infor WMS
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/scereplenug/hup1612893531544.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS dynamically regenerates replenishment tasks when inventory-affecting transactions occur.
+  - Replenishment priority favors locations that cannot satisfy ordered quantity, then uses minimum UOM requirements.
+  - RF-assisted replenishment lets a user choose from eligible tasks while Task Manager replenishment directs one task at a time.
+  - Source-location selection can use route/location sequence, clean-location and descending-location strategies.
