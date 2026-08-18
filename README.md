@@ -338,7 +338,7 @@ EPCIS Event
   = standards-based supply-chain visibility representation
 ```
 
-Domain Events are persisted to an outbox atomically with ledger/position changes and published at-least-once after commit. Consumers deduplicate by stable `event_id`; ordering is local to aggregates/streams where versioning exists, not global.
+Domain Events are persisted to an outbox atomically with ledger/position changes and published at-least-once after commit. Failed publication uses bounded exponential backoff with deterministic jitter; events that exhaust their attempt budget enter PostgreSQL quarantine until an audited operator replay. Consumers deduplicate by stable `event_id`; ordering is local to aggregates/streams where versioning exists, not global.
 
 The candidate envelope includes:
 

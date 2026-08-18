@@ -281,6 +281,10 @@ def test_ack_nack_lease_and_consumer_deduplication():
             (event_id, lab.new_id()),
         ).fetchone()[0] is False
         assert conn.execute(
+            "SELECT kernel_lab.nack_domain_event(%s, %s, 'stale worker', 60)",
+            (event_id, lab.new_id()),
+        ).fetchone()[0] is False
+        assert conn.execute(
             "SELECT kernel_lab.nack_domain_event(%s, %s, 'broker unavailable', 60)",
             (event_id, first_token),
         ).fetchone()[0] is True
@@ -338,3 +342,100 @@ def test_ack_nack_lease_and_consumer_deduplication():
             "SELECT kernel_lab.try_record_domain_event_receipt('audit-projector', %s)",
             (event_id,),
         ).fetchone()[0] is True
+
+
+def test_quarantine_is_lease_fenced_and_operator_replay_is_audited():
+    with lab.connect() as conn:
+        event_id = enqueue_test_event(conn, key="outbox:quarantine")
+        conn.commit()
+
+        claimed = claim(conn, "publisher-a", limit=1, lease=30)[0]
+        claim_token = claimed[1]
+        attempt_count = claimed[2]
+        assert attempt_count == 1
+
+        assert conn.execute(
+            """
+            SELECT kernel_lab.quarantine_domain_event(
+              %s, %s, 'ValueError: invalid envelope', 'attempt budget exhausted'
+            )
+            """,
+            (event_id, lab.new_id()),
+        ).fetchone()[0] is False
+        assert conn.execute(
+            """
+            SELECT kernel_lab.quarantine_domain_event(
+              %s, %s, 'ValueError: invalid envelope', 'attempt budget exhausted'
+            )
+            """,
+            (event_id, claim_token),
+        ).fetchone()[0] is True
+        conn.commit()
+
+        assert claim(conn, "publisher-b", limit=1, lease=30) == []
+
+        with pytest.raises(psycopg.errors.CheckViolation, match="operator id is required"):
+            conn.execute(
+                "SELECT kernel_lab.replay_quarantined_domain_event(%s, '', 'fixed')",
+                (event_id,),
+            )
+        conn.rollback()
+
+        assert conn.execute(
+            """
+            SELECT kernel_lab.replay_quarantined_domain_event(
+              %s, 'on-call@example.com', 'producer schema fixed'
+            )
+            """,
+            (event_id,),
+        ).fetchone()[0] is True
+        assert conn.execute(
+            """
+            SELECT kernel_lab.replay_quarantined_domain_event(
+              %s, 'on-call@example.com', 'duplicate request'
+            )
+            """,
+            (event_id,),
+        ).fetchone()[0] is False
+
+        state = conn.execute(
+            """
+            SELECT
+              attempt_count,
+              last_error,
+              last_failed_at,
+              quarantined_at,
+              quarantine_reason
+            FROM kernel_lab.domain_event_outbox
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        assert state == (0, None, None, None, None)
+
+        audit = conn.execute(
+            """
+            SELECT
+              action,
+              operator_id,
+              reason,
+              previous_attempt_count,
+              previous_last_error,
+              previous_quarantine_reason
+            FROM kernel_lab.domain_event_outbox_operator_actions
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        assert audit == (
+            "replay",
+            "on-call@example.com",
+            "producer schema fixed",
+            1,
+            "ValueError: invalid envelope",
+            "attempt budget exhausted",
+        )
+
+        replayed = claim(conn, "publisher-b", limit=1, lease=30)[0]
+        assert replayed[0] == event_id
+        assert replayed[2] == 1

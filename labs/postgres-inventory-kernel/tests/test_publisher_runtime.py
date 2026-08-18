@@ -13,6 +13,7 @@ from publisher_runtime import (
     PostgresOutboxStore,
     PublishReceipt,
     PublisherRuntime,
+    RetryPolicy,
 )
 
 
@@ -49,15 +50,55 @@ def enqueue_event(conn: psycopg.Connection, *, dedup_key: str, ordinal: int = 1)
     ).fetchone()[0]
 
 
-def runtime(transport, *, worker: str = "publisher-a", batch_size: int = 100, retry: int = 0):
+def runtime(
+    transport,
+    *,
+    worker: str = "publisher-a",
+    batch_size: int = 100,
+    retry_policy: RetryPolicy | None = None,
+):
     return PublisherRuntime(
         store=PostgresOutboxStore(lab.DATABASE_URL),
         transport=transport,
         worker_id=worker,
         batch_size=batch_size,
         lease_seconds=30,
-        retry_after_seconds=retry,
+        retry_policy=retry_policy
+        or RetryPolicy(
+            base_delay_seconds=30,
+            max_delay_seconds=30,
+            jitter_ratio=0,
+            max_attempts=5,
+        ),
     )
+
+
+def test_retry_policy_is_bounded_deterministic_and_quarantines_at_limit():
+    event_id = uuid4()
+    no_jitter = RetryPolicy(
+        base_delay_seconds=10,
+        max_delay_seconds=25,
+        jitter_ratio=0,
+        max_attempts=4,
+    )
+
+    assert no_jitter.decide(event_id=event_id, attempt_count=1).retry_after_seconds == 10
+    assert no_jitter.decide(event_id=event_id, attempt_count=2).retry_after_seconds == 20
+    assert no_jitter.decide(event_id=event_id, attempt_count=3).retry_after_seconds == 25
+    exhausted = no_jitter.decide(event_id=event_id, attempt_count=4)
+    assert exhausted.quarantines is True
+    assert exhausted.quarantine_reason == "publication failed on attempt 4 of 4"
+
+    with_jitter = RetryPolicy(
+        base_delay_seconds=10,
+        max_delay_seconds=100,
+        jitter_ratio=0.2,
+        max_attempts=10,
+    )
+    first = with_jitter.decide(event_id=event_id, attempt_count=3)
+    second = with_jitter.decide(event_id=event_id, attempt_count=3)
+    assert first == second
+    assert 32 <= first.retry_after_seconds <= 48
 
 
 def test_runtime_claims_publishes_and_acks_batch():
@@ -108,7 +149,7 @@ def test_publish_failure_nacks_and_retries_same_event_id():
             return PublishReceipt(str(event.event_id))
 
     transport = FailsOnce()
-    publisher = runtime(transport, retry=0)
+    publisher = runtime(transport)
 
     first = publisher.run_once()
     assert first.claimed == 1
@@ -116,9 +157,13 @@ def test_publish_failure_nacks_and_retries_same_event_id():
     assert first.published == 0
 
     with lab.connect() as conn:
-        published, attempts, error = conn.execute(
+        published, attempts, error, delay_is_future = conn.execute(
             """
-            SELECT published_at IS NOT NULL, attempt_count, last_error
+            SELECT
+              published_at IS NOT NULL,
+              attempt_count,
+              last_error,
+              available_at > clock_timestamp()
             FROM kernel_lab.domain_event_outbox
             WHERE event_id = %s
             """,
@@ -127,6 +172,16 @@ def test_publish_failure_nacks_and_retries_same_event_id():
         assert published is False
         assert attempts == 1
         assert "ConnectionError" in error
+        assert delay_is_future is True
+        conn.execute(
+            """
+            UPDATE kernel_lab.domain_event_outbox
+            SET available_at = clock_timestamp() - interval '1 second'
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        )
+        conn.commit()
 
     second = publisher.run_once()
     assert second.claimed == 1
@@ -146,6 +201,109 @@ def test_publish_failure_nacks_and_retries_same_event_id():
         assert published is True
         assert attempts == 2
         assert error is None
+
+
+def test_poison_event_is_quarantined_then_replayed_with_operator_audit():
+    with lab.connect() as conn:
+        event_id = enqueue_event(conn, dedup_key="publisher:poison", ordinal=1)
+        conn.commit()
+
+    class AlwaysFails:
+        def publish(self, _event):
+            raise ValueError("schema rejected")
+
+    policy = RetryPolicy(
+        base_delay_seconds=1,
+        max_delay_seconds=4,
+        jitter_ratio=0,
+        max_attempts=3,
+    )
+    publisher = runtime(AlwaysFails(), retry_policy=policy)
+
+    for attempt in range(1, 4):
+        result = publisher.run_once()
+        assert result.claimed == 1
+        assert result.failed == 1
+        assert result.quarantined == (1 if attempt == 3 else 0)
+        if attempt < 3:
+            with lab.connect() as conn:
+                conn.execute(
+                    """
+                    UPDATE kernel_lab.domain_event_outbox
+                    SET available_at = clock_timestamp() - interval '1 second'
+                    WHERE event_id = %s
+                    """,
+                    (event_id,),
+                )
+                conn.commit()
+
+    assert publisher.run_once().claimed == 0
+
+    with lab.connect() as conn:
+        attempts, quarantined, reason, error = conn.execute(
+            """
+            SELECT
+              attempt_count,
+              quarantined_at IS NOT NULL,
+              quarantine_reason,
+              last_error
+            FROM kernel_lab.domain_event_outbox
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        assert attempts == 3
+        assert quarantined is True
+        assert reason == "publication failed on attempt 3 of 3"
+        assert "ValueError: schema rejected" in error
+
+    store = PostgresOutboxStore(lab.DATABASE_URL)
+    assert store.replay_quarantined(
+        event_id=event_id,
+        operator_id="operator@example.com",
+        reason="schema registration repaired",
+    ) is True
+    assert store.replay_quarantined(
+        event_id=event_id,
+        operator_id="operator@example.com",
+        reason="duplicate replay",
+    ) is False
+
+    with lab.connect() as conn:
+        state = conn.execute(
+            """
+            SELECT attempt_count, quarantined_at, quarantine_reason, last_error
+            FROM kernel_lab.domain_event_outbox
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        assert state == (0, None, None, None)
+        action = conn.execute(
+            """
+            SELECT
+              action,
+              operator_id,
+              reason,
+              previous_attempt_count,
+              previous_quarantine_reason
+            FROM kernel_lab.domain_event_outbox_operator_actions
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        assert action == (
+            "replay",
+            "operator@example.com",
+            "schema registration repaired",
+            3,
+            "publication failed on attempt 3 of 3",
+        )
+
+    successful_transport = InMemoryTransport()
+    replay_result = runtime(successful_transport).run_once()
+    assert replay_result.published == 1
+    assert [event.event_id for event in successful_transport.messages] == [event_id]
 
 
 def test_claim_transaction_is_committed_before_transport_publish():
@@ -178,7 +336,7 @@ def test_claim_transaction_is_committed_before_transport_publish():
     transport = LockProbeTransport()
     result = runtime(transport).run_once()
 
-    assert result == result.__class__(claimed=1, published=1, failed=0, stale_ack=0, stale_nack=0)
+    assert result == result.__class__(claimed=1, published=1, failed=0)
     assert transport.lock_acquired is True
 
     with lab.connect() as conn:
@@ -295,6 +453,7 @@ def test_ack_storage_failure_after_confirmed_publish_is_not_converted_to_nack():
     event = ClaimedEvent(
         event_id=uuid4(),
         claim_token=uuid4(),
+        attempt_count=1,
         event_type="inventory.test.event",
         aggregate_type="InventoryPosition",
         aggregate_id="test-ack-failure",
@@ -324,7 +483,7 @@ def test_ack_storage_failure_after_confirmed_publish_is_not_converted_to_nack():
         worker_id="publisher-a",
         batch_size=1,
         lease_seconds=30,
-        retry_after_seconds=5,
+        retry_policy=RetryPolicy(),
     )
 
     with pytest.raises(OSError, match="database unavailable"):

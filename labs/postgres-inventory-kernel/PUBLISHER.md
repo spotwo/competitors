@@ -1,6 +1,6 @@
 # Outbox Publisher Runtime
 
-Executable companion to ADR 0021 through ADR 0024.
+Executable companion to ADR 0021 through ADR 0025.
 
 ## Boundary
 
@@ -20,9 +20,11 @@ claim + lease -> COMMIT
                     v
              Transport.publish
                /        \
-            ACK          NACK
-             |            |
-           COMMIT       COMMIT
+            ACK        failure
+             |         /     \
+           COMMIT   retry   quarantine
+                      |         |
+                    COMMIT    COMMIT
 ```
 
 It never intentionally keeps the claim transaction open during network I/O.
@@ -31,9 +33,10 @@ It never intentionally keeps the claim transaction open during network I/O.
 
 `publisher_runtime.py` provides:
 
-- `ClaimedEvent` - typed claimed event plus lease token;
+- `ClaimedEvent` - typed claimed event plus lease token and attempt number;
+- `RetryPolicy` - bounded exponential backoff, deterministic jitter, and attempt budget;
 - `Transport` - broker-neutral publish protocol;
-- `OutboxStore` - claim/ack/nack persistence protocol;
+- `OutboxStore` - claim/ack/nack/quarantine persistence protocol;
 - `PostgresOutboxStore` - PostgreSQL implementation using ADR 0021 functions;
 - `PublisherRuntime.run_once()` - one bounded claim/publish/ack cycle;
 - `InMemoryTransport` - deterministic test adapter;
@@ -70,6 +73,17 @@ KERNEL_LAB_NATS_URL=nats://127.0.0.1:54222 \
 ```
 
 The adapter does not provision streams. Retention, storage, replicas, duplicate window, credentials, and subject ownership are deployment configuration.
+
+The publisher defaults are configurable at process start:
+
+| Option | Default | Meaning |
+|---|---:|---|
+| `--retry-base-seconds` | 5 | delay before retrying the first failed attempt |
+| `--retry-max-seconds` | 300 | hard cap for any retry delay |
+| `--retry-jitter-ratio` | 0.2 | deterministic +/- jitter range |
+| `--max-attempts` | 10 | failed publish attempt that enters quarantine |
+
+Jitter is derived from `event_id + attempt_count`. The same event attempt receives the same delay on every worker, while different events are spread across the retry window.
 
 ## NATS mapping
 
@@ -113,6 +127,32 @@ aggregate_version
 
 to detect stale/out-of-order facts. Future broker adapters may use aggregate identity as a partition or message-group key where the transport supports ordered streams.
 
+## Failure policy and quarantine
+
+For failed attempts below the configured limit, the runtime computes:
+
+```text
+delay = min(max_delay, base_delay * 2^(attempt_count - 1) with jitter)
+```
+
+The result is always between one second and the configured maximum. PostgreSQL persists `available_at`, `last_error`, and `last_failed_at` before releasing the lease. A tight publisher loop therefore cannot immediately reclaim the same failed row.
+
+When `attempt_count >= max_attempts`, the runtime uses the same live claim token to atomically mark the row with `quarantined_at` and `quarantine_reason`. Quarantined rows are excluded from both the ready index and `claim_domain_events()`.
+
+This is an Outbox quarantine, not a broker dead-letter queue. The event may have failed before any broker accepted it, and PostgreSQL remains authoritative for its publication state.
+
+An operator can replay a quarantined event only with an identity and reason:
+
+```sql
+SELECT kernel_lab.replay_quarantined_domain_event(
+  '019c0000-0000-7000-8000-000000000001',
+  'on-call@example.com',
+  'schema registration repaired'
+);
+```
+
+Replay records the prior error, quarantine reason, and attempt count in `domain_event_outbox_operator_actions`, then clears quarantine and resets the attempt budget. Replaying a published, ready, or unknown event returns `false` and creates no audit row.
+
 ## Executable tests
 
 `tests/test_publisher_runtime.py` proves:
@@ -122,7 +162,10 @@ to detect stale/out-of-order facts. Future broker adapters may use aggregate ide
 3. claim transaction commits before external publish;
 4. successful publish plus expired lease produces stale ACK and safe redelivery;
 5. parallel publisher workers receive disjoint batches;
-6. canonical event envelope identity/version metadata reaches the Transport unchanged.
+6. canonical event envelope identity/version metadata reaches the Transport unchanged;
+7. retry delay is bounded and deterministic for one event attempt;
+8. a poison event stops at the attempt limit and cannot be reclaimed;
+9. operator replay is audited and gives the event a fresh attempt budget.
 
 `tests/test_nats_transport.py` additionally proves against a real pinned NATS server:
 
@@ -137,9 +180,8 @@ to detect stale/out-of-order facts. Future broker adapters may use aggregate ide
 
 The runtime intentionally does not yet hide these choices behind defaults:
 
-- exponential backoff and jitter;
-- poison-message threshold / dead-letter state;
 - outbox retention and archival;
+- quarantine alerting and bulk operator tooling;
 - async/bulk broker APIs;
 - OpenTelemetry publisher spans and backlog metrics;
 - NATS authentication, TLS, account isolation, clustering, Leaf Nodes, and production stream provisioning;

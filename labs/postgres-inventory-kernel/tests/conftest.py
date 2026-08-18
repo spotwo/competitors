@@ -98,6 +98,7 @@ def clean_database():
             """
             TRUNCATE TABLE
               kernel_lab.domain_event_inbox,
+              kernel_lab.domain_event_outbox_operator_actions,
               kernel_lab.domain_event_outbox,
               kernel_lab.inventory_count_results,
               kernel_lab.inventory_allocation_consumptions,

@@ -13,9 +13,15 @@ from nats.js.errors import NotFoundError
 
 import conftest as lab
 from nats_transport import NATS_MESSAGE_ID_HEADER, NatsJetStreamTransport
-from publisher_runtime import PostgresOutboxStore, PublisherRuntime
+from publisher_runtime import PostgresOutboxStore, PublisherRuntime, RetryPolicy
 
 NATS_URL = os.getenv("KERNEL_LAB_NATS_URL", "nats://127.0.0.1:54222")
+TEST_RETRY_POLICY = RetryPolicy(
+    base_delay_seconds=1,
+    max_delay_seconds=1,
+    jitter_ratio=0,
+    max_attempts=10,
+)
 
 
 def enqueue_event(conn: psycopg.Connection, *, dedup_key: str, ordinal: int = 1):
@@ -200,7 +206,7 @@ def test_nats_pub_ack_deduplicated_retry_envelope_and_pull_redelivery():
             worker_id="publisher-a",
             batch_size=1,
             lease_seconds=30,
-            retry_after_seconds=0,
+            retry_policy=TEST_RETRY_POLICY,
         )
         with pytest.raises(OSError, match="after JetStream PUB ACK"):
             first_runtime.run_once()
@@ -232,7 +238,7 @@ def test_nats_pub_ack_deduplicated_retry_envelope_and_pull_redelivery():
             worker_id="publisher-b",
             batch_size=1,
             lease_seconds=30,
-            retry_after_seconds=0,
+            retry_policy=TEST_RETRY_POLICY,
         )
         second_result = second_runtime.run_once()
 
@@ -298,7 +304,7 @@ def test_broker_outage_does_not_rollback_committed_inventory_transaction():
         worker_id="publisher-broker-down",
         batch_size=10,
         lease_seconds=30,
-        retry_after_seconds=0,
+        retry_policy=TEST_RETRY_POLICY,
     )
 
     try:
