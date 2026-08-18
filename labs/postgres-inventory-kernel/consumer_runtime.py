@@ -150,6 +150,64 @@ class InboxDeliveryMetadata:
         return {key: value for key, value in values.items() if value is not None}
 
 
+@dataclass(frozen=True)
+class MalformedDeliveryEvidence:
+    """Bounded evidence captured before any event_id can be trusted."""
+
+    failure_code: str
+    error: str
+    payload_sha256: str
+    payload_size: int
+    payload_preview: bytes
+    payload_truncated: bool
+    headers: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        _stable_name(self.failure_code, "failure_code")
+        if not self.failure_code.replace("_", "a").isalnum() or not self.failure_code[0].isalpha():
+            raise ValueError("failure_code must be a stable lowercase identifier")
+        if self.failure_code != self.failure_code.lower():
+            raise ValueError("failure_code must be a stable lowercase identifier")
+        if not isinstance(self.error, str) or not self.error.strip():
+            raise ValueError("error is required")
+        if (
+            not isinstance(self.payload_sha256, str)
+            or len(self.payload_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in self.payload_sha256)
+        ):
+            raise ValueError("payload_sha256 must be lowercase SHA-256 hex")
+        if (
+            isinstance(self.payload_size, bool)
+            or not isinstance(self.payload_size, int)
+            or self.payload_size < 0
+        ):
+            raise ValueError("payload_size must be nonnegative")
+        if not isinstance(self.payload_preview, bytes):
+            raise ValueError("payload_preview must be bytes")
+        if len(self.payload_preview) > self.payload_size:
+            raise ValueError("payload_preview cannot exceed payload_size")
+        if self.payload_truncated != (len(self.payload_preview) < self.payload_size):
+            raise ValueError("payload_truncated must match the bounded preview")
+        if not isinstance(self.headers, Mapping):
+            raise ValueError("headers must be a mapping")
+
+
+@dataclass(frozen=True)
+class MalformedDeliveryDisposition:
+    failure_code: str
+    observation_count: int
+    created: bool
+
+    def __post_init__(self) -> None:
+        _stable_name(self.failure_code, "failure_code")
+        if (
+            isinstance(self.observation_count, bool)
+            or not isinstance(self.observation_count, int)
+            or self.observation_count < 1
+        ):
+            raise ValueError("observation_count must be positive")
+
+
 class InboxTransaction(Protocol):
     def execute(
         self,
@@ -169,8 +227,9 @@ class InboxHandler(Protocol):
 
 
 class InboxDelivery(Protocol):
-    envelope: Mapping[str, Any]
+    envelope: Mapping[str, Any] | None
     metadata: InboxDeliveryMetadata
+    malformed: MalformedDeliveryEvidence | None
 
     def ack(self) -> None:
         """Confirm the transport delivery or raise when confirmation is uncertain."""
@@ -231,6 +290,17 @@ class InboxFailureLane(Protocol):
         """Durably hand off a failed valid event before transport acknowledgement."""
 
 
+class InboxMalformedDeliveryLane(Protocol):
+    def capture(
+        self,
+        *,
+        consumer_name: str,
+        evidence: MalformedDeliveryEvidence,
+        delivery_metadata: Mapping[str, Any],
+    ) -> MalformedDeliveryDisposition:
+        """Persist transport poison evidence before acknowledging the broker delivery."""
+
+
 @dataclass(frozen=True)
 class ConsumeCycleResult:
     received: int = 0
@@ -238,6 +308,7 @@ class ConsumeCycleResult:
     duplicate: int = 0
     deferred: int = 0
     quarantined: int = 0
+    malformed: int = 0
     acknowledged: int = 0
     event_id: UUID | None = None
     transport_message_id: str | None = None
@@ -291,6 +362,7 @@ class InboxConsumerRuntime:
         consumer_name: str,
         handler: InboxHandler,
         failure_lane: InboxFailureLane | None = None,
+        malformed_lane: InboxMalformedDeliveryLane | None = None,
     ):
         _stable_name(consumer_name, "consumer_name")
         self.source = source
@@ -298,6 +370,7 @@ class InboxConsumerRuntime:
         self.consumer_name = consumer_name
         self.handler = handler
         self.failure_lane = failure_lane
+        self.malformed_lane = malformed_lane
 
     @staticmethod
     def _failure_result(
@@ -318,11 +391,45 @@ class InboxConsumerRuntime:
             failure_code=disposition.failure_code,
         )
 
+    @staticmethod
+    def _malformed_result(
+        *,
+        delivery: InboxDelivery,
+        disposition: MalformedDeliveryDisposition,
+    ) -> ConsumeCycleResult:
+        return ConsumeCycleResult(
+            received=1,
+            quarantined=1,
+            malformed=1,
+            acknowledged=1,
+            transport_message_id=delivery.metadata.transport_message_id,
+            delivery_count=delivery.metadata.delivery_count,
+            failure_code=disposition.failure_code,
+        )
+
     def run_once(self) -> ConsumeCycleResult:
         delivery = self.source.fetch_one()
         if delivery is None:
             return ConsumeCycleResult()
 
+        malformed = getattr(delivery, "malformed", None)
+        if malformed is not None:
+            if self.malformed_lane is None:
+                raise ValueError(malformed.error)
+            disposition = self.malformed_lane.capture(
+                consumer_name=self.consumer_name,
+                evidence=malformed,
+                delivery_metadata=delivery.metadata.to_dict(),
+            )
+            # The quarantine lane returns only after the poison record commits.
+            delivery.ack()
+            return self._malformed_result(
+                delivery=delivery,
+                disposition=disposition,
+            )
+
+        if delivery.envelope is None:
+            raise ValueError("delivery envelope is required when delivery is not malformed")
         event = ConsumedEvent.from_envelope(delivery.envelope)
         if self.failure_lane is not None:
             existing = self.failure_lane.find(
