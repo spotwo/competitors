@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import datetime as dt
 import json
 import sys
 from pathlib import Path
@@ -31,9 +32,19 @@ TAXONOMY_FIELDS = {
 }
 
 
+def normalize(value):
+    if isinstance(value, (dt.date, dt.datetime)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: normalize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [normalize(v) for v in value]
+    return value
+
+
 def load_yaml(path: Path):
     with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return normalize(yaml.safe_load(f))
 
 
 def taxonomy_values(rel_path: str) -> set[str]:
@@ -72,7 +83,6 @@ def check_evidence_refs(path: Path, data: dict, evidence_ids: set[str], errors: 
 
 def main() -> int:
     errors: list[str] = []
-
     for pattern, schema_rel in SCHEMA_BY_GLOB.items():
         for path in sorted(ROOT.glob(pattern)):
             errors.extend(validate_schema(path, ROOT / schema_rel))
@@ -91,7 +101,6 @@ def main() -> int:
     authority_ids = record_ids("authorities/*.yml", errors)
     claim_ids = record_ids("claims/*.yml", errors)
     ontology_ids = record_ids("ontology/*.yml", errors)
-
     allowed = {field: taxonomy_values(rel) for field, rel in TAXONOMY_FIELDS.items()}
     country_codes = taxonomy_values("taxonomy/countries.yml")
     company_ids: set[str] = set()
@@ -180,12 +189,7 @@ def main() -> int:
                 errors.append(f"{path.relative_to(ROOT)}: duplicate integration pattern {pattern_id!r}")
             integration_ids.add(pattern_id)
 
-    resolvers = {
-        "company": company_ids,
-        "product": product_ids,
-        "terminology": term_ids,
-        "authority": authority_ids,
-    }
+    resolvers = {"company": company_ids, "product": product_ids, "terminology": term_ids, "authority": authority_ids}
     for path in sorted(ROOT.glob("claims/*.yml")):
         data = load_yaml(path)
         if not isinstance(data, dict):
@@ -203,10 +207,10 @@ def main() -> int:
         return 1
 
     print(
-        f"Validation OK: {len(company_ids)} companies, {len(product_ids)} products, "
-        f"{len(evidence_ids)} evidence records, {len(claim_ids)} claims, {len(term_ids)} terms, "
-        f"{len(authority_ids)} authorities, {len(ontology_ids)} ontologies/{ontology_entity_count} entities, "
-        f"{len(kpi_ids)} KPIs, {len(integration_ids)} integration patterns"
+        f"Validation OK: {len(company_ids)} companies, {len(product_ids)} products, {len(evidence_ids)} evidence records, "
+        f"{len(claim_ids)} claims, {len(term_ids)} terms, {len(authority_ids)} authorities, "
+        f"{len(ontology_ids)} ontologies/{ontology_entity_count} entities, {len(kpi_ids)} KPIs, "
+        f"{len(integration_ids)} integration patterns"
     )
     return 0
 

@@ -1,8 +1,8 @@
 # Spotwo Competitors
 
-Spotwo's local source of truth for intralogistics market knowledge.
+Spotwo's local source of truth for intralogistics market and domain knowledge.
 
-This repository records competitors, products, capabilities, terminology, standards, market conventions, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, and engineering decisions based on established industry practice.
+This repository records competitors, products, capabilities, terminology, standards, market conventions, domain ontologies, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
 
 > Directory tree represents identity. Metadata represents classification.
 
@@ -13,9 +13,10 @@ This repository records competitors, products, capabilities, terminology, standa
 3. **Machine-readable first** - YAML/JSON is canonical; Markdown explains context and decisions.
 4. **One entity, many facets** - geography, segment, industry, solution layer, and deployment model are metadata, not directory nesting.
 5. **Terminology is a product asset** - record standards, dominant market usage, aliases, and Spotwo decisions.
-6. **Time matters** - every researched fact has a verification or observation date.
-7. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
-8. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
+6. **Domain model is evidence-driven** - vendor structures are observations, not automatic Spotwo architecture.
+7. **Time matters** - every researched fact has a verification or observation date.
+8. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
+9. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
 
 ## Knowledge model
 
@@ -27,6 +28,14 @@ Company / Product / Term / Authority
               |
               v
            Evidence
+
+Evidence + Claims + Standards
+              |
+              v
+      Ontology / KPI / Pattern
+              |
+              v
+        Spotwo Decision
 ```
 
 ## Repository map
@@ -37,48 +46,63 @@ claims/          Reusable factual assertions linked to evidence
 taxonomy/        Controlled vocabularies
 terminology/     Industry terms, aliases, usage, and Spotwo naming decisions
 authorities/     Standards, regulations, associations, and industry guides
-evidence/        Source records supporting claims
+evidence/        Source records supporting claims and domain models
+ontology/        Facility, location, inventory, handling-unit and process models
+kpis/            Warehouse/DC KPI registry
+integrations/    Integration and interoperability patterns
 decisions/       Spotwo ADR-style product/domain/UX decisions
-matrices/        Generated comparison, stats, and research-gap views
+matrices/        Generated comparison, stats, domain and research views
 schema/          JSON Schema definitions
 templates/       Research and record templates
 scripts/         Validation, query, and generation tools
 .github/         CI workflows and contribution templates
 ```
 
+## Current domain stance
+
+The repository intentionally does **not** treat `ROW -> RACK -> LEVEL -> BIN` as a universal warehouse standard. Current evidence supports a more flexible model where `Location` is the canonical addressable place, while rack, aisle, bay/stack and level are optional physical or coordinate dimensions. See `decisions/domain/0003-location-model.md`.
+
+Handling-unit identity is also separated from standardized supply-chain identity. An internal Handling Unit may have an LPN and may have an SSCC, but those identifiers are not treated as synonyms. See `decisions/domain/0004-handling-unit-identifiers.md`.
+
 ## Querying the knowledge base
 
-Use `scripts/kb.py` for common questions without manually searching the tree.
-
 ```bash
-# SMB WMS vendors serving Europe
+# Competitor questions
 python scripts/kb.py vendors --segment smb --market europe --layer wms
-
-# Vendors with evidenced Ukraine presence
 python scripts/kb.py vendors --country UA
-
-# Cloud WES / automation references
 python scripts/kb.py vendors --layer wes --deployment cloud
-
-# Vendors that cover picking
 python scripts/kb.py vendors --capability picking
 
-# Look up industry language
+# Industry language
 python scripts/kb.py term "clear height"
 python scripts/kb.py term bin
 
-# Inspect claims and their evidence links
+# Domain ontology
+python scripts/kb.py ontology
+python scripts/kb.py ontology location
+python scripts/kb.py ontology handling-unit --json
+
+# Warehouse KPIs
+python scripts/kb.py kpis
+python scripts/kb.py kpis --category inbound
+python scripts/kb.py kpis --name picking
+
+# Integration patterns
+python scripts/kb.py integrations
+python scripts/kb.py integrations --category event
+python scripts/kb.py integrations --protocol OPC
+
+# Claims and evidence
 python scripts/kb.py claims --subject clear-height
-python scripts/kb.py evidence --subject clear-height
+python scripts/kb.py evidence --subject storage-location-ontology
+python scripts/kb.py evidence --publisher GS1
 
-# Current open research work
+# Research backlog and live counts
 python scripts/kb.py gaps
-
-# Live record counts
 python scripts/kb.py stats
 ```
 
-Repeat filter flags to require multiple values. Add `--json` to commands when an agent or another tool needs machine-readable output.
+Add `--json` when an agent, MCP server, CI job, or another tool needs machine-readable output.
 
 ## Authority order for terminology
 
@@ -106,20 +130,20 @@ When the market term differs from a formal standard, record both and create a de
 
 ## Validation
 
-Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, and generated-view freshness.
-
-Run locally:
+Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, duplicate ontology/KPI/pattern IDs, and generated-view freshness.
 
 ```bash
 python -m pip install -r requirements.txt
 python scripts/validate.py
 python scripts/generate_matrices.py --check
 python scripts/generate_audit.py --check
+python scripts/generate_domain_views.py --check
 ```
 
-To refresh generated views after editing canonical records:
+Refresh generated views after editing canonical records:
 
 ```bash
 python scripts/generate_matrices.py
 python scripts/generate_audit.py
+python scripts/generate_domain_views.py
 ```

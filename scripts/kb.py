@@ -2,18 +2,28 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 from pathlib import Path
 from typing import Any
-
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def normalize(value):
+    if isinstance(value, (dt.date, dt.datetime)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: normalize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [normalize(v) for v in value]
+    return value
+
+
 def load_yaml(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return normalize(yaml.safe_load(f))
 
 
 def load_records(pattern: str) -> list[dict[str, Any]]:
@@ -27,217 +37,194 @@ def contains_all(values: list[str] | None, required: list[str] | None) -> bool:
     return all(value in actual for value in required)
 
 
+def dump_json(value) -> None:
+    print(json.dumps(value, indent=2, ensure_ascii=False))
+
+
 def company_matches(company: dict[str, Any], args: argparse.Namespace) -> bool:
-    if args.name and args.name.lower() not in company["name"].lower():
-        return False
-    if not contains_all(company.get("markets"), args.market):
-        return False
-    if not contains_all(company.get("segments"), args.segment):
-        return False
-    if not contains_all(company.get("solution_layers"), args.layer):
-        return False
-    if not contains_all(company.get("industries"), args.industry):
-        return False
-    if not contains_all(company.get("operating_environments"), args.environment):
-        return False
-    if not contains_all(company.get("capabilities"), args.capability):
-        return False
-    if not contains_all(company.get("deployment_models"), args.deployment):
-        return False
+    if args.name and args.name.lower() not in company["name"].lower(): return False
+    if not contains_all(company.get("markets"), args.market): return False
+    if not contains_all(company.get("segments"), args.segment): return False
+    if not contains_all(company.get("solution_layers"), args.layer): return False
+    if not contains_all(company.get("industries"), args.industry): return False
+    if not contains_all(company.get("operating_environments"), args.environment): return False
+    if not contains_all(company.get("capabilities"), args.capability): return False
+    if not contains_all(company.get("deployment_models"), args.deployment): return False
     if args.country:
-        countries = set()
-        if company.get("hq_country"):
-            countries.add(company["hq_country"])
+        countries = set(filter(None, [company.get("hq_country")]))
         countries.update(company.get("served_countries", []) or [])
         countries.update(company.get("local_presence_countries", []) or [])
-        if not all(country.upper() in countries for country in args.country):
-            return False
+        if not all(country.upper() in countries for country in args.country): return False
     return True
 
 
-def print_vendor_table(companies: list[dict[str, Any]]) -> None:
+def command_vendors(args):
+    companies = [c for c in load_records("companies/*/company.yml") if company_matches(c, args)]
+    companies.sort(key=lambda c: c["name"].lower())
+    if args.json: return dump_json(companies)
     print("| Vendor | Segments | Layers | Markets | Deployment | Products |")
     print("|---|---|---|---|---|---|")
-    for company in companies:
-        products = ", ".join(product["name"] for product in company.get("products", []))
-        print(
-            f"| {company['name']} | {', '.join(company.get('segments', []))} | "
-            f"{', '.join(company.get('solution_layers', []))} | {', '.join(company.get('markets', []))} | "
-            f"{', '.join(company.get('deployment_models', []))} | {products} |"
-        )
-
-
-def command_vendors(args: argparse.Namespace) -> None:
-    companies = [
-        company
-        for company in load_records("companies/*/company.yml")
-        if company_matches(company, args)
-    ]
-    companies.sort(key=lambda company: company["name"].lower())
-    if args.json:
-        print(json.dumps(companies, indent=2, ensure_ascii=False))
-    else:
-        print_vendor_table(companies)
-        print(f"\n{len(companies)} result(s)")
+    for c in companies:
+        products = ", ".join(p["name"] for p in c.get("products", []))
+        print(f"| {c['name']} | {', '.join(c.get('segments', []))} | {', '.join(c.get('solution_layers', []))} | {', '.join(c.get('markets', []))} | {', '.join(c.get('deployment_models', []))} | {products} |")
+    print(f"\n{len(companies)} result(s)")
 
 
 def normalized(value: str) -> str:
     return " ".join(value.strip().lower().replace("_", "-").split())
 
 
-def command_term(args: argparse.Namespace) -> None:
+def command_term(args):
     needle = normalized(args.query)
     matches = []
     for term in load_records("terminology/*.yml"):
         candidates = [term["id"], term["preferred_term"], *(term.get("aliases", []) or [])]
-        if any(needle in normalized(candidate) for candidate in candidates):
-            matches.append(term)
-    if args.json:
-        print(json.dumps(matches, indent=2, ensure_ascii=False))
-    else:
-        for index, term in enumerate(matches):
-            if index:
-                print("---")
-            print(yaml.safe_dump(term, sort_keys=False, allow_unicode=True).rstrip())
-        if not matches:
-            print("No terminology matches.")
+        if any(needle in normalized(candidate) for candidate in candidates): matches.append(term)
+    if args.json: return dump_json(matches)
+    for term in matches:
+        print(yaml.safe_dump(term, sort_keys=False, allow_unicode=True).rstrip())
+        print("---")
+    if not matches: print("No terminology matches.")
 
 
-def command_claims(args: argparse.Namespace) -> None:
+def command_ontology(args):
+    needle = normalized(args.query) if args.query else None
+    matches = []
+    for ontology in load_records("ontology/*.yml"):
+        entity_matches = []
+        for entity in ontology.get("entities", []):
+            candidates = [entity["id"], entity["term"], *(entity.get("aliases", []) or [])]
+            if not needle or any(needle in normalized(candidate) for candidate in candidates): entity_matches.append(entity)
+        if (not needle or needle in normalized(ontology["id"]) or needle in normalized(ontology["title"]) or entity_matches):
+            copy = dict(ontology)
+            if needle: copy["entities"] = entity_matches
+            matches.append(copy)
+    if args.json: return dump_json(matches)
+    for item in matches:
+        print(f"## {item['title']} [{item['status']}]\n")
+        for entity in item.get("entities", []):
+            aliases = f" ({', '.join(entity.get('aliases', []))})" if entity.get("aliases") else ""
+            print(f"- **{entity['term']}**{aliases}: {entity['definition']}")
+        print()
+    if not matches: print("No ontology matches.")
+
+
+def command_kpis(args):
+    metrics = []
+    for registry in load_records("kpis/*.yml"):
+        for metric in registry.get("metrics", []):
+            if args.category and metric["category"] != args.category: continue
+            if args.name and args.name.lower() not in metric["name"].lower(): continue
+            metrics.append(metric)
+    if args.json: return dump_json(metrics)
+    print("| KPI | Category | Direction | Unit | Status |")
+    print("|---|---|---|---|---|")
+    for m in metrics: print(f"| {m['name']} | {m['category']} | {m['direction']} | {m.get('unit', '')} | {m['status']} |")
+    print(f"\n{len(metrics)} result(s)")
+
+
+def command_integrations(args):
+    patterns = []
+    for registry in load_records("integrations/*.yml"):
+        for pattern in registry.get("patterns", []):
+            if args.category and pattern["category"] != args.category: continue
+            if args.protocol and not any(args.protocol.lower() in p.lower() for p in pattern.get("typical_protocols", [])): continue
+            patterns.append(pattern)
+    if args.json: return dump_json(patterns)
+    print("| Pattern | Category | Direction | Protocols | Status |")
+    print("|---|---|---|---|---|")
+    for p in patterns: print(f"| {p['name']} | {p['category']} | {p['directionality']} | {', '.join(p.get('typical_protocols', []))} | {p['status']} |")
+    print(f"\n{len(patterns)} result(s)")
+
+
+def command_claims(args):
     claims = load_records("claims/*.yml")
-    if args.subject:
-        claims = [claim for claim in claims if claim.get("subject") == args.subject]
-    if args.predicate:
-        claims = [claim for claim in claims if claim.get("predicate") == args.predicate]
-    if args.confidence:
-        claims = [claim for claim in claims if claim.get("confidence") == args.confidence]
-    claims.sort(key=lambda claim: claim["id"])
-    if args.json:
-        print(json.dumps(claims, indent=2, ensure_ascii=False))
-    else:
-        for claim in claims:
-            print(yaml.safe_dump(claim, sort_keys=False, allow_unicode=True).rstrip())
-            print("---")
-        if not claims:
-            print("No claims matched.")
+    if args.subject: claims = [c for c in claims if c.get("subject") == args.subject]
+    if args.predicate: claims = [c for c in claims if c.get("predicate") == args.predicate]
+    if args.confidence: claims = [c for c in claims if c.get("confidence") == args.confidence]
+    claims.sort(key=lambda c: c["id"])
+    if args.json: return dump_json(claims)
+    for claim in claims:
+        print(yaml.safe_dump(claim, sort_keys=False, allow_unicode=True).rstrip())
+        print("---")
+    if not claims: print("No claims matched.")
 
 
-def command_evidence(args: argparse.Namespace) -> None:
+def command_evidence(args):
     evidence = load_records("evidence/*.yml")
-    if args.subject:
-        evidence = [item for item in evidence if item.get("subject") == args.subject]
-    if args.grade:
-        evidence = [item for item in evidence if item.get("grade") == args.grade]
-    if args.publisher:
-        evidence = [item for item in evidence if args.publisher.lower() in item.get("publisher", "").lower()]
-    evidence.sort(key=lambda item: item["id"])
-    if args.json:
-        print(json.dumps(evidence, indent=2, ensure_ascii=False))
-    else:
-        print("| ID | Grade | Publisher | Captured | Title |")
-        print("|---|---|---|---|---|")
-        for item in evidence:
-            print(f"| {item['id']} | {item['grade']} | {item['publisher']} | {item['captured_at']} | {item['title']} |")
-        print(f"\n{len(evidence)} result(s)")
+    if args.subject: evidence = [e for e in evidence if e.get("subject") == args.subject]
+    if args.grade: evidence = [e for e in evidence if e.get("grade") == args.grade]
+    if args.publisher: evidence = [e for e in evidence if args.publisher.lower() in e.get("publisher", "").lower()]
+    evidence.sort(key=lambda e: e["id"])
+    if args.json: return dump_json(evidence)
+    print("| ID | Grade | Publisher | Captured | Title |")
+    print("|---|---|---|---|---|")
+    for e in evidence: print(f"| {e['id']} | {e['grade']} | {e['publisher']} | {e['captured_at']} | {e['title']} |")
+    print(f"\n{len(evidence)} result(s)")
 
 
-def command_gaps(args: argparse.Namespace) -> None:
+def command_gaps(args):
     gaps = []
     for company in load_records("companies/*/company.yml"):
-        for gap in company.get("research_gaps", []) or []:
-            gaps.append({"type": "company", "subject": company["name"], "gap": gap})
+        for gap in company.get("research_gaps", []) or []: gaps.append({"type": "company", "subject": company["name"], "gap": gap})
     for term in load_records("terminology/*.yml"):
         if term.get("status") in {"candidate", "observed", "needs-research"}:
-            gaps.append(
-                {
-                    "type": "terminology",
-                    "subject": term["preferred_term"],
-                    "gap": f"status={term['status']}; evidence_refs={len(term.get('evidence_refs', []))}",
-                }
-            )
-    if args.json:
-        print(json.dumps(gaps, indent=2, ensure_ascii=False))
-    else:
-        print("| Type | Subject | Gap |")
-        print("|---|---|---|")
-        for gap in gaps:
-            print(f"| {gap['type']} | {gap['subject']} | {gap['gap']} |")
-        print(f"\n{len(gaps)} open item(s)")
+            gaps.append({"type": "terminology", "subject": term["preferred_term"], "gap": f"status={term['status']}; evidence_refs={len(term.get('evidence_refs', []))}"})
+    for pattern, kind in (("ontology/*.yml", "ontology"), ("kpis/*.yml", "kpi-registry"), ("integrations/*.yml", "integration-registry")):
+        for record in load_records(pattern):
+            for gap in record.get("research_gaps", []) or []: gaps.append({"type": kind, "subject": record["title"], "gap": gap})
+    if args.json: return dump_json(gaps)
+    print("| Type | Subject | Gap |")
+    print("|---|---|---|")
+    for gap in gaps: print(f"| {gap['type']} | {gap['subject']} | {gap['gap']} |")
+    print(f"\n{len(gaps)} open item(s)")
 
 
-def command_stats(args: argparse.Namespace) -> None:
+def command_stats(args):
     companies = load_records("companies/*/company.yml")
+    ontologies = load_records("ontology/*.yml")
     stats = {
         "companies": len(companies),
-        "products": sum(len(company.get("products", [])) for company in companies),
+        "products": sum(len(c.get("products", [])) for c in companies),
         "evidence": len(load_records("evidence/*.yml")),
         "claims": len(load_records("claims/*.yml")),
         "terminology": len(load_records("terminology/*.yml")),
         "authorities": len(load_records("authorities/*.yml")),
         "taxonomy_vocabularies": len(list(ROOT.glob("taxonomy/*.yml"))),
+        "ontologies": len(ontologies),
+        "ontology_entities": sum(len(o.get("entities", [])) for o in ontologies),
+        "kpis": sum(len(r.get("metrics", [])) for r in load_records("kpis/*.yml")),
+        "integration_patterns": sum(len(r.get("patterns", [])) for r in load_records("integrations/*.yml")),
     }
-    if args.json:
-        print(json.dumps(stats, indent=2))
-    else:
-        for key, value in stats.items():
-            print(f"{key}: {value}")
+    if args.json: return dump_json(stats)
+    for key, value in stats.items(): print(f"{key}: {value}")
 
 
-def add_repeatable(parser: argparse.ArgumentParser, flag: str, dest: str, help_text: str) -> None:
+def add_repeatable(parser, flag, dest, help_text):
     parser.add_argument(flag, dest=dest, action="append", help=help_text)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser():
     parser = argparse.ArgumentParser(description="Query the Spotwo intralogistics knowledge base.")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    vendors = subparsers.add_parser("vendors", help="Filter vendor/company records.")
+    sub = parser.add_subparsers(dest="command", required=True)
+    vendors = sub.add_parser("vendors")
     vendors.add_argument("--name")
-    add_repeatable(vendors, "--market", "market", "Require a market taxonomy value. Repeatable.")
-    add_repeatable(vendors, "--segment", "segment", "Require a segment taxonomy value. Repeatable.")
-    add_repeatable(vendors, "--layer", "layer", "Require a solution-layer taxonomy value. Repeatable.")
-    add_repeatable(vendors, "--industry", "industry", "Require an industry taxonomy value. Repeatable.")
-    add_repeatable(vendors, "--environment", "environment", "Require an operating-environment value. Repeatable.")
-    add_repeatable(vendors, "--capability", "capability", "Require a process capability. Repeatable.")
-    add_repeatable(vendors, "--deployment", "deployment", "Require a deployment model. Repeatable.")
-    add_repeatable(vendors, "--country", "country", "Require an ISO alpha-2 HQ/served/local-presence country. Repeatable.")
-    vendors.add_argument("--json", action="store_true")
-    vendors.set_defaults(func=command_vendors)
-
-    term = subparsers.add_parser("term", help="Find terminology by id, preferred term, or alias.")
-    term.add_argument("query")
-    term.add_argument("--json", action="store_true")
-    term.set_defaults(func=command_term)
-
-    claims = subparsers.add_parser("claims", help="Query reusable claims.")
-    claims.add_argument("--subject")
-    claims.add_argument("--predicate")
-    claims.add_argument("--confidence", choices=["confirmed", "high", "medium", "low"])
-    claims.add_argument("--json", action="store_true")
-    claims.set_defaults(func=command_claims)
-
-    evidence = subparsers.add_parser("evidence", help="Query evidence records.")
-    evidence.add_argument("--subject")
-    evidence.add_argument("--grade", choices=list("ABCDEF"))
-    evidence.add_argument("--publisher")
-    evidence.add_argument("--json", action="store_true")
-    evidence.set_defaults(func=command_evidence)
-
-    gaps = subparsers.add_parser("gaps", help="Show explicit research gaps and unresolved terminology.")
-    gaps.add_argument("--json", action="store_true")
-    gaps.set_defaults(func=command_gaps)
-
-    stats = subparsers.add_parser("stats", help="Show live repository counts.")
-    stats.add_argument("--json", action="store_true")
-    stats.set_defaults(func=command_stats)
-
+    for flag, dest in (("--market","market"),("--segment","segment"),("--layer","layer"),("--industry","industry"),("--environment","environment"),("--capability","capability"),("--deployment","deployment"),("--country","country")):
+        add_repeatable(vendors, flag, dest, f"Require {dest}; repeatable.")
+    vendors.add_argument("--json", action="store_true"); vendors.set_defaults(func=command_vendors)
+    term = sub.add_parser("term"); term.add_argument("query"); term.add_argument("--json", action="store_true"); term.set_defaults(func=command_term)
+    ontology = sub.add_parser("ontology"); ontology.add_argument("query", nargs="?"); ontology.add_argument("--json", action="store_true"); ontology.set_defaults(func=command_ontology)
+    kpis = sub.add_parser("kpis"); kpis.add_argument("--category"); kpis.add_argument("--name"); kpis.add_argument("--json", action="store_true"); kpis.set_defaults(func=command_kpis)
+    integrations = sub.add_parser("integrations"); integrations.add_argument("--category"); integrations.add_argument("--protocol"); integrations.add_argument("--json", action="store_true"); integrations.set_defaults(func=command_integrations)
+    claims = sub.add_parser("claims"); claims.add_argument("--subject"); claims.add_argument("--predicate"); claims.add_argument("--confidence", choices=["confirmed","high","medium","low"]); claims.add_argument("--json", action="store_true"); claims.set_defaults(func=command_claims)
+    evidence = sub.add_parser("evidence"); evidence.add_argument("--subject"); evidence.add_argument("--grade", choices=list("ABCDEF")); evidence.add_argument("--publisher"); evidence.add_argument("--json", action="store_true"); evidence.set_defaults(func=command_evidence)
+    gaps = sub.add_parser("gaps"); gaps.add_argument("--json", action="store_true"); gaps.set_defaults(func=command_gaps)
+    stats = sub.add_parser("stats"); stats.add_argument("--json", action="store_true"); stats.set_defaults(func=command_stats)
     return parser
 
 
-def main() -> None:
-    parser = build_parser()
-    args = parser.parse_args()
-    args.func(args)
+def main():
+    parser = build_parser(); args = parser.parse_args(); args.func(args)
 
 
 if __name__ == "__main__":
