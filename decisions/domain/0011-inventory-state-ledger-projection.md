@@ -46,6 +46,8 @@ This is **not full event sourcing**. Inventory transactions are the durable jour
 
 Optimized current operational state keyed by inventory dimensions. It is the primary read model for WMS decisions such as availability, allocation, task execution and mobile UI.
 
+Exact key dimensions, physical anchor semantics, serial membership, merge/split rules and the candidate PostgreSQL layout are defined in `decisions/domain/0014-inventory-key-stock-dimensions.md`.
+
 ### Inventory Transaction Ledger
 
 Immutable journal of accepted physical, commitment and reconciliation deltas. It provides audit, traceability, consistency verification and rebuild input.
@@ -70,6 +72,7 @@ Committed business fact published after the same transaction through an outbox. 
 8. Full event sourcing is not required for work, orders, shipments or other aggregates solely because inventory has a durable journal.
 9. Transaction history archival may summarize old detail only under explicit traceability and reconciliation rules.
 10. Current position version is a concurrency control and audit aid, not a replacement for ledger identity.
+11. Inventory Position identity follows ADR 0014 and must not be expanded ad hoc by application features.
 
 ## Consequences
 
@@ -83,9 +86,9 @@ Committed business fact published after the same transaction through an outbox. 
 
 - Exact checkpoint interval and archival policy.
 - Whether commitment journal rows share the same physical table as physical quantity rows.
-- Which inventory dimensions form the physical key versus references to separate dimension sets.
 - Whether high-contention positions require pessimistic row locks, optimistic retries, or configurable policies.
+- The remaining stock-dimension questions explicitly listed in ADR 0014.
 
 ## Evidence
 
-See `ledger/inventory.yml`, `ontology/inventory-transaction.yml`, and evidence records with subjects `inventory-ledger` and `inventory-position`.
+See `ledger/inventory.yml`, `ontology/inventory-transaction.yml`, `decisions/domain/0014-inventory-key-stock-dimensions.md`, and evidence records with subjects `inventory-ledger`, `inventory-position` and `inventory-key`.
