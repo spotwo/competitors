@@ -1,0 +1,14 @@
+id: cloudflare-queues-semantics-2026
+subject: transport-selection
+source_type: official-docs
+grade: A
+title: Cloudflare Queues delivery, retry, and consumer semantics
+url: https://developers.cloudflare.com/queues/reference/delivery-guarantees/
+publisher: Cloudflare
+captured_at: '2026-08-18'
+supports:
+  - Cloudflare Queues provides at-least-once delivery and explicitly recommends application-level idempotency for duplicate-safe effects.
+  - Queues supports batching, explicit acknowledgement, per-message retry, retry delays, and dead-letter queues.
+  - Cloudflare Queues does not guarantee delivery in publication order.
+  - A queue is primarily bound to one active push consumer, while pull-based consumers can be used by external HTTP-speaking infrastructure and can scale with concurrent pull clients.
+  - The service is operationally simple for Cloudflare Workers workloads but is a managed cloud service rather than an on-premises warehouse broker.
