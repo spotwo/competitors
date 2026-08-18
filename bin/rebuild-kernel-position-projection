@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from uuid import UUID
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from position_projection_rebuild import (  # noqa: E402
+    PENDING_DISPOSITIONS,
+    PostgresPositionProjectionRebuildStore,
+)
+from position_projection_snapshot import load_snapshot_artifact  # noqa: E402
+
+
+def parse_uuid(value: str) -> UUID:
+    try:
+        parsed = UUID(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("value must be a UUID") from exc
+    if str(parsed) != value:
+        raise argparse.ArgumentTypeError("value must be a canonical UUID")
+    return parsed
+
+
+def nonnegative_integer(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("value must be an integer") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("value must be nonnegative")
+    return parsed
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Prepare, execute, or cancel one fenced Position projection rebuild"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    prepare = commands.add_parser(
+        "prepare",
+        help="validate an exact rebuild plan and activate its consumer fence",
+    )
+    prepare.add_argument("snapshot", type=Path, help="verified snapshot JSON artifact")
+    prepare.add_argument("--rebuild-id", required=True, type=parse_uuid)
+    prepare.add_argument("--consumer-name", required=True)
+    prepare.add_argument(
+        "--expected-projection-version",
+        required=True,
+        type=nonnegative_integer,
+    )
+    prepare.add_argument(
+        "--expected-pending-count",
+        required=True,
+        type=nonnegative_integer,
+    )
+    prepare.add_argument(
+        "--pending-disposition",
+        required=True,
+        choices=sorted(PENDING_DISPOSITIONS),
+    )
+    prepare.add_argument("--operator", required=True)
+    prepare.add_argument("--reason", required=True)
+
+    execute = commands.add_parser(
+        "execute",
+        help="atomically apply the exact prepared snapshot and release its fence",
+    )
+    execute.add_argument("--rebuild-id", required=True, type=parse_uuid)
+    execute.add_argument("--operator", required=True)
+
+    cancel = commands.add_parser(
+        "cancel",
+        help=(
+            "cancel a prepared rebuild and release its fence without changing "
+            "projection state"
+        ),
+    )
+    cancel.add_argument("--rebuild-id", required=True, type=parse_uuid)
+    cancel.add_argument("--operator", required=True)
+    cancel.add_argument("--reason", required=True)
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+
+    store = PostgresPositionProjectionRebuildStore(args.database_url)
+    try:
+        if args.command == "prepare":
+            snapshot = load_snapshot_artifact(args.snapshot)
+            result = store.prepare(
+                rebuild_id=args.rebuild_id,
+                consumer_name=args.consumer_name,
+                snapshot=snapshot,
+                expected_projection_version=args.expected_projection_version,
+                expected_pending_count=args.expected_pending_count,
+                pending_disposition=args.pending_disposition,
+                operator=args.operator,
+                reason=args.reason,
+            )
+        elif args.command == "execute":
+            result = store.execute(
+                rebuild_id=args.rebuild_id,
+                operator=args.operator,
+            )
+        else:
+            result = store.cancel(
+                rebuild_id=args.rebuild_id,
+                operator=args.operator,
+                reason=args.reason,
+            )
+    except (OSError, ValueError) as exc:
+        raise SystemExit(str(exc)) from exc
+
+    print(
+        json.dumps(
+            result.to_dict(),
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+            separators=None if args.pretty else (",", ":"),
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

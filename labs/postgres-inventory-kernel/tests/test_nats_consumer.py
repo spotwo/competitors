@@ -24,6 +24,11 @@ from nats_transport import (
     NatsJetStreamTransport,
 )
 from position_projection import InventoryPositionQuantityProjector
+from position_projection_rebuild import (
+    REQUIRE_EMPTY,
+    PostgresPositionProjectionRebuildStore,
+)
+from position_projection_snapshot import InventoryPositionQuantitySnapshot
 from publisher_runtime import PostgresOutboxStore, PublisherRuntime, RetryPolicy
 
 NATS_URL = os.getenv("KERNEL_LAB_NATS_URL", "nats://127.0.0.1:54222")
@@ -554,6 +559,141 @@ def test_out_of_order_versions_ack_after_durable_buffer_then_drain():
         assert projection == (2, 10, 3, 0, second_event_id)
         assert pending_count == 0
         assert second_status == "applied"
+    finally:
+        source.close()
+        probe.close(stream_name)
+
+
+def test_rebuild_fence_redelivers_before_ack_then_recovers_after_cancel():
+    suffix = uuid4().hex.upper()
+    stream_name = f"WMS_REBUILD_{suffix}"
+    durable_name = f"POSITION_REBUILD_{suffix}"
+    consumer_name = f"position-rebuild-{suffix.lower()}"
+    subject_prefix = f"spotwo.wms.rebuild.{suffix.lower()}"
+    position_id = lab.new_id()
+    probe = ConsumerProbe(NATS_URL)
+    probe.provision(
+        stream_name=stream_name,
+        subject_prefix=subject_prefix,
+        durable_name=durable_name,
+    )
+    source = NatsJetStreamPullSource(
+        server_url=NATS_URL,
+        stream_name=stream_name,
+        durable_name=durable_name,
+        client_name=f"position-rebuild-{suffix}",
+        fetch_timeout_seconds=2,
+    )
+    runtime = InboxConsumerRuntime(
+        source=source,
+        store=PostgresInboxStore(lab.DATABASE_URL),
+        consumer_name=consumer_name,
+        handler=InventoryPositionQuantityProjector(consumer_name=consumer_name),
+    )
+    rebuild_store = PostgresPositionProjectionRebuildStore(lab.DATABASE_URL)
+    rebuild_id = lab.new_id()
+
+    try:
+        with lab.connect() as conn:
+            first_event_id = enqueue_projection_event(
+                conn,
+                dedup_key=f"rebuild:{suffix}:1",
+                position_id=position_id,
+                version=1,
+                physical_delta=10,
+            )
+            conn.commit()
+        publish_queued(
+            stream_name=stream_name,
+            subject_prefix=subject_prefix,
+            suffix=f"{suffix}-1",
+        )
+        assert runtime.run_once().event_id == first_event_id
+
+        rebuild_store.prepare(
+            rebuild_id=rebuild_id,
+            consumer_name=consumer_name,
+            snapshot=InventoryPositionQuantitySnapshot.from_document(
+                {
+                    "position_id": str(position_id),
+                    "aggregate_version": 1,
+                    "physical_qty": "10",
+                    "reserved_qty": "0",
+                    "allocated_qty": "0",
+                    "source": "authoritative-rebuild-export",
+                    "reference": f"jetstream-rebuild-{suffix}",
+                    "recorded_at": "2026-08-18T22:00:00+00:00",
+                },
+                artifact_checksum="sha256:" + ("c" * 64),
+            ),
+            expected_projection_version=1,
+            expected_pending_count=0,
+            pending_disposition=REQUIRE_EMPTY,
+            operator="planner@example.com",
+            reason="prove JetStream delivery recovery under rebuild fence",
+        )
+
+        with lab.connect() as conn:
+            second_event_id = enqueue_projection_event(
+                conn,
+                dedup_key=f"rebuild:{suffix}:2",
+                position_id=position_id,
+                version=2,
+                reserved_delta=3,
+            )
+            conn.commit()
+        publish_queued(
+            stream_name=stream_name,
+            subject_prefix=subject_prefix,
+            suffix=f"{suffix}-2",
+        )
+
+        with pytest.raises(
+            psycopg.errors.ObjectNotInPrerequisiteState,
+            match="rebuild fence is active",
+        ):
+            runtime.run_once()
+
+        with lab.connect() as conn:
+            assert conn.execute(
+                """
+                SELECT count(*)
+                FROM kernel_lab.domain_event_inbox
+                WHERE consumer_name = %s AND event_id = %s
+                """,
+                (consumer_name, second_event_id),
+            ).fetchone()[0] == 0
+        assert probe.consumer_info(
+            stream_name=stream_name,
+            durable_name=durable_name,
+        ).num_ack_pending == 1
+
+        rebuild_store.cancel(
+            rebuild_id=rebuild_id,
+            operator="operator@example.com",
+            reason="complete delivery recovery proof",
+        )
+        time.sleep(0.7)
+        redelivery = runtime.run_once()
+
+        assert redelivery.event_id == second_event_id
+        assert redelivery.delivery_count == 2
+        assert redelivery.applied == 1
+        assert redelivery.acknowledged == 1
+        with lab.connect() as conn:
+            projection = conn.execute(
+                """
+                SELECT aggregate_version, physical_qty, reserved_qty, allocated_qty
+                FROM kernel_lab.inventory_position_quantity_projection
+                WHERE consumer_name = %s AND position_id = %s
+                """,
+                (consumer_name, position_id),
+            ).fetchone()
+        assert projection == (2, 10, 3, 0)
+        assert probe.consumer_info(
+            stream_name=stream_name,
+            durable_name=durable_name,
+        ).num_ack_pending == 0
     finally:
         source.close()
         probe.close(stream_name)

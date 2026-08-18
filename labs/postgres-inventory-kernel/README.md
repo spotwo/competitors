@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0030.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0031.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -221,6 +221,10 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | verified projection snapshot | an absent cursor can start from exact quantities and aggregate version without a fake event |
 | snapshot retry safety | stable bootstrap identity is payload-bound and cannot reset a progressed projection |
 | projection gap health | aggregate age/count signals render as bounded JSON or Prometheus alerts |
+| projection rebuild fence | a prepared single-Position repair rolls back Inbox handling before broker ACK |
+| rebuild delivery recovery | a real JetStream message remains unacknowledged under the fence and applies after release |
+| pending rebuild disposition | covered events are audited as superseded while future events remain durable and drain in order |
+| rebuild race | prepare and event handling serialize so only one can mutate the inspected cursor state |
 
 ## Deliberate simplifications
 
@@ -249,7 +253,7 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - row-level security / tenant policies;
 - physical archive partitioning, cold export, and destructive purge;
 - consumer poison-message quarantine, DLQ review, and Inbox cleanup;
-- destructive projection rebuild tooling, consumer fencing, and gap-repair automation;
+- bulk projection rebuild coordination, automatic gap repair, and prepared-fence alerting;
 - version-aware projection handlers beyond the concrete Position quantity view;
 - catch-weight dual quantities;
 - production UUIDv7 generation policy;
@@ -278,5 +282,6 @@ The conceptual decisions are:
 - `decisions/domain/0028-inbox-consumer-runtime.md`
 - `decisions/domain/0029-version-aware-position-projection.md`
 - `decisions/domain/0030-position-projection-snapshot-gap-health.md`
+- `decisions/domain/0031-controlled-position-projection-rebuild.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.

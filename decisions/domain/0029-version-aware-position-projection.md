@@ -99,7 +99,7 @@ Delta projection bootstrap must start from version 1 and replay every version, o
 
 This slice does not invent a snapshot from the first event it sees. If the first retained event is version 40, it remains buffered with expected version 1. Silently assuming versions 1 through 39 were zero would create a plausible but false quantity view.
 
-Inbox receipts, pending events, and the projection cursor form one rebuild boundary. A restrictive foreign key blocks deletion of an Inbox receipt while its event is pending. Deleting only one part is unsafe. ADR 0030 adds non-destructive snapshot import for an absent cursor; destructive rebuild remains a separate operational slice.
+Inbox receipts, pending events, and the projection cursor form one rebuild boundary. A restrictive foreign key blocks deletion of an Inbox receipt while its event is pending. Deleting only one part is unsafe. ADR 0030 adds non-destructive snapshot import for an absent cursor; ADR 0031 defines fenced replacement of one existing cursor without deleting Inbox evidence.
 
 ## Gap observability
 
@@ -148,4 +148,4 @@ The PostgreSQL and pinned NATS lab proves:
 - a permanently missing version leaves later events buffered;
 - delta replay requires complete history or a verified snapshot cursor;
 - the projection covers Position quantities, not inventory identity dimensions, holds, eligibility, availability, or other read models;
-- conflict quarantine, destructive rebuild automation, automatic gap repair, and pending-event retention remain later operational slices.
+- conflict quarantine, bulk rebuild orchestration, automatic gap repair, and pending-event retention remain later operational slices.

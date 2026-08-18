@@ -1,6 +1,6 @@
 # Version-Aware Projections
 
-Executable companion to ADR 0029 and ADR 0030.
+Executable companion to ADR 0029, ADR 0030, and ADR 0031.
 
 ## Concrete projection
 
@@ -52,6 +52,8 @@ A different runtime and handler `consumer_name` fails the transaction because th
 | `inventory_position_quantity_projection` | current quantities and version cursor per consumer and Position |
 | `inventory_position_projection_pending` | complete out-of-order delta events waiting for missing versions |
 | `inventory_position_projection_gaps` | queryable unresolved-gap summary |
+| `inventory_position_projection_control` | per-target serialization row and active rebuild fence |
+| `inventory_position_projection_rebuilds` | immutable rebuild plan, before/final evidence, disposition, and operator audit |
 | `domain_event_inbox.metadata.projection` | per-delivery applied, buffered, or stale decision evidence |
 
 Snapshot-seeded rows additionally preserve the bootstrap identity, exact seed quantities, artifact checksum, source/reference, operator, reason, and timestamps. PostgreSQL derives `cursor_source` as `empty`, `snapshot`, or `event`; a snapshot never receives a fake `last_event_id`.
@@ -150,6 +152,70 @@ The importer stores the SHA-256 of the exact file bytes. An exact retry returns 
 
 After a version-40 snapshot, event version 40 is audited as stale, version 41 applies, and a higher version remains durably buffered until version 41 arrives.
 
+## Controlled rebuild
+
+Use ADR 0031 only when an existing cursor needs authoritative replacement. It is not the initial bootstrap path.
+
+First inspect the exact target state:
+
+```sql
+SELECT
+  p.consumer_name,
+  p.position_id,
+  p.aggregate_version,
+  count(pending.aggregate_version) AS pending_event_count
+FROM kernel_lab.inventory_position_quantity_projection AS p
+LEFT JOIN kernel_lab.inventory_position_projection_pending AS pending
+  USING (consumer_name, position_id)
+WHERE p.consumer_name = 'inventory-position-quantity-projector'
+  AND p.position_id = '018f0000-0000-7000-8000-000000000001'
+GROUP BY p.consumer_name, p.position_id, p.aggregate_version;
+```
+
+Prepare an exact plan. The snapshot, compare-and-set inputs, disposition, operator, and reason become immutable audit evidence:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/rebuild-kernel-position-projection prepare position-snapshot.json \
+  --rebuild-id 018f0000-0000-7000-8000-000000000003 \
+  --consumer-name inventory-position-quantity-projector \
+  --expected-projection-version 37 \
+  --expected-pending-count 3 \
+  --pending-disposition supersede-covered-retain-future \
+  --operator planner@example.com \
+  --reason "repair verified Position projection"
+```
+
+`prepare` activates a fence for only that consumer and Position. While it is active, the first handler transaction for a new event rolls back before Inbox commit, so JetStream is not ACKed. An already-recorded duplicate remains safe to ACK without running the handler. Other Positions remain independent in PostgreSQL, although broker consumer limits may still create head-of-line delivery effects.
+
+After reviewing the prepared audit row, execute the exact plan:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/rebuild-kernel-position-projection execute \
+  --rebuild-id 018f0000-0000-7000-8000-000000000003 \
+  --operator executor@example.com
+```
+
+Or cancel without changing projection, pending, or Inbox data:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/rebuild-kernel-position-projection cancel \
+  --rebuild-id 018f0000-0000-7000-8000-000000000003 \
+  --operator operator@example.com \
+  --reason "snapshot approval withdrawn"
+```
+
+Pending disposition is mandatory:
+
+| Policy | Contract |
+|---|---|
+| `require-empty` | fail unless no pending events exist |
+| `supersede-covered-retain-future` | mark pending versions covered by the snapshot as superseded, retain higher versions, then drain any contiguous tail |
+
+Rebuild never deletes Inbox receipts and never moves the cursor backward. A crash after prepare leaves the fence active until an explicit execute or cancel.
+
 ## Failure behavior
 
 ### Invalid event contract
@@ -166,7 +232,11 @@ A different event claiming the current or an already-buffered version raises a u
 
 ### Permanent gap
 
-Later versions remain in the pending table. Monitor `oldest_buffered_at` or the aggregate health command; do not delete them to make a dashboard green. Repair requires the missing event or a separately fenced and audited rebuild. Non-destructive bootstrap cannot overwrite the existing gap cursor.
+Later versions remain in the pending table. Monitor `oldest_buffered_at` or the aggregate health command; do not delete them to make a dashboard green. Repair requires the missing event or the ADR 0031 fenced rebuild. Non-destructive bootstrap cannot overwrite the existing gap cursor.
+
+### Prepared rebuild fence
+
+A prepared rebuild deliberately stops only its exact Position target. Event receipt and projection mutation roll back together, so the message remains unacknowledged. Inspect `inventory_position_projection_rebuilds`, then execute or cancel the named operation. There is no automatic fence expiry.
 
 ## Retention boundary
 
@@ -184,6 +254,8 @@ Producer Outbox retention does not define when these consumer records are safe t
 
 `tests/test_position_projection.py` proves producer versions, sequential application, buffering, draining, stale audit, conflict rejection, invariant rollback, and concurrent adjacent versions.
 
-`tests/test_nats_consumer.py` additionally proves the out-of-order flow through a real pinned JetStream server and server-confirmed ACKs.
+`tests/test_nats_consumer.py` additionally proves the out-of-order flow and rebuild-fence redelivery through a real pinned JetStream server with server-confirmed ACKs.
 
 `tests/test_projection_operations.py` proves verified snapshot import, payload-bound retry, post-snapshot ordering, bootstrap/event races, gap telemetry, and stable health alerts.
+
+`tests/test_projection_rebuild.py` proves compare-and-set prepare, durable fencing before ACK, atomic execute/cancel, pending supersede/retain/drain behavior, forward-only cursors, audit evidence, retry identity, and per-Position concurrency.
