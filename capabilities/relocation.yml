@@ -1,0 +1,18 @@
+id: relocation
+group: storage
+label: Relocation
+status: candidate
+definition: Move inventory or handling units between internal warehouse locations without satisfying a customer or production demand.
+purpose: Reorganize stock, free capacity, correct placement, or support operational balancing.
+inputs: [inventory, source-location, destination-location]
+outputs: [warehouse-work, updated-inventory-location]
+entities: [inventory, handling-unit, location, warehouse-task]
+strategies: [manual-relocation, directed-relocation, capacity-balancing]
+related_capabilities: [storage, slotting, replenishment]
+spotwo:
+  canonical_term: Relocation
+  status: candidate
+research_gaps:
+  - Compare vendor terms such as relocate, transfer, move, internal transfer, and bin-to-bin transfer.
+last_verified: 2026-08-18
+evidence_refs: []
