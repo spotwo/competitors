@@ -1,0 +1,18 @@
+id: identification
+group: inbound
+label: Identification / Labeling
+status: candidate
+definition: Capture, assign, validate, or print identifiers used to track products, lots, serials, packages, handling units, and locations.
+purpose: Establish machine-readable identity before inventory is moved through warehouse processes.
+inputs: [physical-item, supplier-label, barcode, rfid-tag]
+outputs: [validated-identity, warehouse-label, tracking-identifier]
+entities: [sku, lot, serial, handling-unit, lpn, sscc, barcode]
+strategies: [scan-existing, assign-lpn, print-label, rfid-capture]
+related_capabilities: [receiving, inspection, putaway]
+spotwo:
+  canonical_term: Identification
+  status: candidate
+research_gaps:
+  - Separate identification, labeling, serialization, and handling-unit creation into subcapabilities after broader vendor sampling.
+last_verified: 2026-08-18
+evidence_refs: []
