@@ -1,0 +1,12 @@
+id: oracle-internal-replenishment-2026
+subject: replenishment-workflow
+source_type: official-docs
+grade: A
+title: Set Up a Replenishment Wave Template - Oracle Warehouse Management
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26c/owmim/set-up-replenishment-wave-template.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+  - Oracle WMS replenishment wave templates reference replenishment rules and task creation templates.
+  - Trigger modes include Minimum Capacity, Percentage of Max, Reactive Replenishment and Order Based.
+  - Reactive replenishment can be initiated by scanning a location and can create a replenishment task for immediate execution.
