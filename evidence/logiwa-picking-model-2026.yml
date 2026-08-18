@@ -1,0 +1,12 @@
+id: logiwa-picking-model-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: Fulfillment of Orders - Outbound Operations
+url: https://www.logiwa.com/solutions/fulfillment-of-orders-outbound-operations
+publisher: Logiwa
+captured_at: '2026-08-18'
+supports:
+  - Logiwa supports multiple simultaneous picking strategies including order-based, cluster, batch, zone, pick-and-pass, put-to-wall and wave picking.
+  - Mobile scanning is used for execution and validation.
+  - Put-wall cells provide a downstream sorting and consolidation model after or during batch picking.
