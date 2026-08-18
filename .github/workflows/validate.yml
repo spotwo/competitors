@@ -2,15 +2,36 @@ name: Validate knowledge base
 
 on:
   pull_request:
-  push:
-    branches: [main]
+    paths:
+      - 'companies/**'
+      - 'evidence/**'
+      - 'terminology/**'
+      - 'authorities/**'
+      - 'claims/**'
+      - 'taxonomy/**'
+      - 'ontology/**'
+      - 'kpis/**'
+      - 'integrations/**'
+      - 'capabilities/**'
+      - 'workflows/**'
+      - 'schema/**'
+      - 'scripts/**'
+      - 'bin/**'
+      - 'requirements.txt'
+      - '.github/workflows/validate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: competitors-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,8 +39,4 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: python -m pip install -r requirements.txt
-      - run: python scripts/validate.py
-      - run: python scripts/generate_matrices.py --check
-      - run: python scripts/generate_audit.py --check
-      - run: python scripts/generate_domain_views.py --check
-      - run: python scripts/generate_workflow_views.py --check
+      - run: bash bin/check
