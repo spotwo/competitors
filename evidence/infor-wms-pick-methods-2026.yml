@@ -1,0 +1,12 @@
+id: infor-wms-pick-methods-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Pick Methods Tab - Infor WMS
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/sceconfigug/zone_pickmethods.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor configures picking method by unit of measure and zone, including task-directed, RF-assisted, voice-directed and paper methods.
+  - Pick-and-pass sequence is configured at zone level.
+  - Picking method and execution channel are separate from the canonical picking capability.
