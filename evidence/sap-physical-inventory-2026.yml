@@ -1,0 +1,13 @@
+id: sap-physical-inventory-2026
+subject: physical-inventory-workflow
+source_type: official-docs
+grade: A
+title: Physical Inventory
+url: https://help.sap.com/doc/saphelp_ewm900/9.0/en-US/4c/b4e7d54c1f1921e10000000a15822b/content.htm
+publisher: SAP
+captured_at: '2026-08-18'
+supports:
+  - SAP EWM physical inventory uses physical inventory documents and count documents before count execution.
+  - Workers enter count results and can perform recounts when required.
+  - Physical inventory documents are posted in EWM after counting.
+  - Inventory differences can be analyzed separately and posted through the Difference Analyzer.
