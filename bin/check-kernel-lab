@@ -20,8 +20,12 @@ python -m pip install -r "$LAB/requirements.txt"
 
 cleanup
 "${COMPOSE[@]}" up -d --wait
-"${COMPOSE[@]}" exec -T db \
-  psql -U postgres -d kernel_lab -v ON_ERROR_STOP=1 \
-  < "$LAB/sql/001_schema.sql"
+
+for migration in "$LAB"/sql/*.sql; do
+  echo "Applying $(basename "$migration")"
+  "${COMPOSE[@]}" exec -T db \
+    psql -U postgres -d kernel_lab -v ON_ERROR_STOP=1 \
+    < "$migration"
+done
 
 python -m pytest -q "$LAB/tests"
