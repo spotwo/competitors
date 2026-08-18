@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from malformed_delivery_telemetry import (  # noqa: E402
+    MalformedDeliveryAlertPolicy,
+    PostgresMalformedDeliveryTelemetryStore,
+    render_prometheus,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Inspect malformed NATS delivery telemetry and health"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument(
+        "--consumer-name", help="limit telemetry to one stable logical consumer"
+    )
+    parser.add_argument(
+        "--lookback-seconds",
+        type=int,
+        default=300,
+        help="recent-activity window, from 1 second to 7 days",
+    )
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check", action="store_true", help="exit 1 on warning, 2 on critical"
+    )
+    parser.add_argument("--warning-recent-count", type=int, default=1)
+    parser.add_argument("--critical-recent-count", type=int, default=10)
+    parser.add_argument("--warning-reobserved-count", type=int, default=1)
+    parser.add_argument("--critical-reobserved-count", type=int, default=5)
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+    if args.pretty and args.format != "json":
+        raise SystemExit("--pretty is available only with --format json")
+
+    try:
+        policy = MalformedDeliveryAlertPolicy(
+            warning_recent_count=args.warning_recent_count,
+            critical_recent_count=args.critical_recent_count,
+            warning_reobserved_count=args.warning_reobserved_count,
+            critical_reobserved_count=args.critical_reobserved_count,
+        )
+        snapshot = PostgresMalformedDeliveryTelemetryStore(
+            args.database_url
+        ).snapshot(
+            consumer_name=args.consumer_name,
+            lookback_seconds=args.lookback_seconds,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    report = policy.evaluate(snapshot)
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
