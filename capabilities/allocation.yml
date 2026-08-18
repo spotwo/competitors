@@ -1,0 +1,23 @@
+id: allocation
+group: fulfillment
+label: Allocation
+status: adopted
+definition: Reserve or assign available inventory and fulfilment resources to demand before or during execution.
+purpose: Decide which inventory should satisfy which order, shipment, wave, or downstream requirement.
+inputs: [demand, available-inventory, allocation-rule]
+outputs: [inventory-reservation, fulfilment-plan]
+entities: [order, order-line, inventory, sku, location]
+strategies: [hard-allocation, soft-allocation, priority-based, proximity-aware]
+related_capabilities: [waving, waveless, picking, cross-docking]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: advanced
+    notes: Current WMS material describes AI-driven order allocation and pick-density optimization.
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+spotwo:
+  canonical_term: Allocation
+  status: adopted
+research_gaps:
+  - Separate inventory allocation, order allocation, reservation, and WES task assignment terminology.
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026]
