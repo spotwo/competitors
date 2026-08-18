@@ -13,31 +13,54 @@ def load(path: Path):
         return yaml.safe_load(f)
 
 
-def summary_markdown(workflows: list[dict]) -> str:
+def picking_claims() -> list[dict]:
+    claims = []
+    for path in sorted(ROOT.glob("claims/*.yml")):
+        claim = load(path)
+        if claim.get("predicate") == "picking-model" and claim.get("status") == "current":
+            claims.append(claim)
+    return claims
+
+
+def summary_markdown(workflows: list[dict], supplemental: list[dict]) -> str:
     lines = [
         "# Workflow Decomposition Matrix",
         "",
-        "> Generated from `workflows/*.yml`. Do not edit by hand.",
+        "> Generated from `workflows/*.yml` and supplemental workflow claims. Do not edit by hand.",
         "",
-        "| Workflow | Capability | Status | Stages | Objects | States | Strategies | Exceptions | Vendor models | Evidence |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Workflow | Capability | Status | Stages | Objects | States | Strategies | Exceptions | Deep vendor models | Supplemental vendor claims | Evidence |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for workflow in workflows:
+        extra = supplemental if workflow["capability_id"] == "picking" else []
         lines.append(
             f"| {workflow['title']} | {workflow['capability_id']} | {workflow['status']} | "
             f"{len(workflow.get('stages', []))} | {len(workflow.get('objects', []))} | "
             f"{len(workflow.get('states', []))} | {len(workflow.get('strategies', []))} | "
             f"{len(workflow.get('exceptions', []))} | {len(workflow.get('vendor_models', []))} | "
-            f"{len(workflow.get('evidence_refs', []))} |"
+            f"{len(extra)} | {len(workflow.get('evidence_refs', []))} |"
         )
     return "\n".join(lines) + "\n"
 
 
-def detail_markdown(workflow: dict) -> str:
+def render_claim_value(value) -> str:
+    if isinstance(value, dict):
+        parts = []
+        for key, item in value.items():
+            if isinstance(item, list):
+                rendered = ", ".join(str(v) for v in item)
+            else:
+                rendered = str(item)
+            parts.append(f"{key}: {rendered}")
+        return "; ".join(parts)
+    return str(value)
+
+
+def detail_markdown(workflow: dict, supplemental: list[dict]) -> str:
     lines = [
         f"# {workflow['title']}",
         "",
-        "> Generated from canonical workflow data. Do not edit by hand.",
+        "> Generated from canonical workflow data and supplemental evidence-backed claims. Do not edit by hand.",
         "",
         workflow["definition"],
         "",
@@ -61,13 +84,21 @@ def detail_markdown(workflow: dict) -> str:
     for strategy in workflow.get("strategies", []):
         lines.append(f"| {strategy['category']} | {strategy['label']} | {strategy.get('status', '')} | {len(strategy.get('evidence_refs', []))} |")
 
-    lines += ["", "## Vendor models", "", "| Vendor | Workflow | Strategies | Channels | Evidence |", "|---|---|---|---|---:|"]
+    lines += ["", "## Deep vendor models", "", "| Vendor | Workflow | Strategies | Channels | Evidence |", "|---|---|---|---|---:|"]
     for model in workflow.get("vendor_models", []):
         lines.append(
             f"| {model['company_id']} | {' -> '.join(model['workflow'])} | "
             f"{', '.join(model.get('strategies', []))} | {', '.join(model.get('execution_channels', []))} | "
             f"{len(model.get('evidence_refs', []))} |"
         )
+
+    if workflow["capability_id"] == "picking" and supplemental:
+        lines += ["", "## Supplemental vendor observations", "", "| Vendor | Observation | Confidence | Evidence |", "|---|---|---|---:|"]
+        for claim in sorted(supplemental, key=lambda c: c["subject"]):
+            lines.append(
+                f"| {claim['subject']} | {render_claim_value(claim['value'])} | "
+                f"{claim['confidence']} | {len(claim.get('evidence_refs', []))} |"
+            )
 
     lines += ["", "## Exceptions", "", "| Exception | Status | Trigger | Outcomes |", "|---|---|---|---|"]
     for item in workflow.get("exceptions", []):
@@ -104,9 +135,10 @@ def main():
     args = parser.parse_args()
 
     workflows = [load(path) for path in sorted(ROOT.glob("workflows/*.yml"))]
-    outputs = {ROOT / "matrices/workflows.md": summary_markdown(workflows)}
+    supplemental = picking_claims()
+    outputs = {ROOT / "matrices/workflows.md": summary_markdown(workflows, supplemental)}
     for workflow in workflows:
-        outputs[ROOT / f"matrices/workflow-{workflow['id']}.md"] = detail_markdown(workflow)
+        outputs[ROOT / f"matrices/workflow-{workflow['id']}.md"] = detail_markdown(workflow, supplemental)
 
     stale = []
     for path, content in outputs.items():
