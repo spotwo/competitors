@@ -2,7 +2,7 @@
 
 Spotwo's local source of truth for intralogistics market, domain and WMS-kernel knowledge.
 
-This repository records competitors, products, capabilities, workflow decompositions, terminology, standards, market conventions, domain ontologies, inventory ledger semantics, domain events, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
+This repository records competitors, products, capabilities, workflow decompositions, terminology, standards, market conventions, domain ontologies, inventory position/key semantics, inventory ledger semantics, domain events, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
 
 > Directory tree represents identity. Metadata represents classification.
 
@@ -20,9 +20,10 @@ This repository records competitors, products, capabilities, workflow decomposit
 10. **Planning is not execution** - business need and policy create Warehouse Work; inventory changes only from explicit accepted transactions.
 11. **Transaction is not event** - the inventory ledger is durable internal history; Domain Events communicate committed facts; EPCIS is an external visibility model.
 12. **Current state is not history** - Inventory Position is optimized current state; posted Inventory Transactions are immutable history.
-13. **Time matters** - every researched fact has a verification or observation date.
-14. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
-15. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
+13. **Inventory identity means fungibility** - Inventory Key contains only dimensions that make quantities operationally non-equivalent; mutable quantities, commitments, holds, UOM and workflow state are not stock identity.
+14. **Time matters** - every researched fact has a verification or observation date.
+15. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
+16. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
 
 ## Knowledge model
 
@@ -51,11 +52,11 @@ Inventory-specific kernel
 Command
   -> Inventory Posting Service
        -> Inventory Transaction Ledger
-       -> Inventory Position
+       -> Inventory Position / Inventory Key
        -> Domain Event Outbox
 ```
 
-A capability answers **what operational outcome exists**. A workflow answers **how that capability becomes executable work**. The inventory kernel answers **how confirmed inventory changes are represented, validated, posted, read, audited and published**.
+A capability answers **what operational outcome exists**. A workflow answers **how that capability becomes executable work**. The inventory kernel answers **how confirmed inventory changes are identified, validated, posted, read, audited and published**.
 
 ## Repository map
 
@@ -115,6 +116,9 @@ Demand / Supply / Operational Need
       |         |          |
       v         v          v
    Ledger    Position    Outbox
+                |
+                v
+          Inventory Key
 ```
 
 ### Location
@@ -123,7 +127,7 @@ The repository intentionally does **not** treat `ROW -> RACK -> LEVEL -> BIN` as
 
 ### Handling units
 
-Handling-unit identity is separated from standardized supply-chain identity. A Handling Unit may have an LPN and may have an SSCC, but those identifiers are not synonyms. See `decisions/domain/0004-handling-unit-identifiers.md`.
+Handling-unit identity is separated from standardized supply-chain identity. A Handling Unit may have an LPN and may have an SSCC, but those identifiers are not synonyms. HUs can be nested through a direct-parent containment tree. Stock inside a HU references its immediate containing HU rather than copying all HU ancestors into its Inventory Key. See `decisions/domain/0004-handling-unit-identifiers.md` and `decisions/domain/0014-inventory-key-stock-dimensions.md`.
 
 ### Inventory state
 
@@ -138,10 +142,49 @@ Stock
   +-- Inventory Condition
   +-- Allocation Eligibility
   +-- Inventory Hold
-  +-- Owner / Lot / Serial / Location / Handling Unit
+  +-- Inventory Key dimensions
+  +-- Serial Membership when exact tracking applies
 ```
 
 Availability is a derived projection. Reservation is a candidate coarse commitment to demand. Allocation is an execution-relevant source binding. See `decisions/domain/0007-inventory-state-axes.md` and `decisions/domain/0009-inventory-commitment-model.md`.
+
+### Inventory Key and Stock Dimensions
+
+Inventory identity represents **fungibility and required segregation**, not every known stock attribute.
+
+Candidate semantic key:
+
+```text
+InventoryKey
+  warehouse_id
+  anchor = Location XOR direct HandlingUnit
+  item_id
+  owner_id
+  inventory_condition_id
+  lot_id?
+  stock_scope_id?
+  attribute_set_id?
+  stock_segment_id?
+```
+
+`tenant_id` participates in the physical database uniqueness boundary but is a namespace rather than a stock dimension.
+
+Deliberately excluded from the key:
+
+```text
+serial number        -> Serial Membership
+reserved/allocated   -> commitments
+available            -> derived projection
+hold/lock            -> restriction
+UOM                   -> quantity normalized to inventory/base UOM
+workflow state        -> process concern
+parent HU             -> containment tree
+resolved HU location  -> containment projection
+```
+
+A full-HU move updates HU placement and does not rewrite every contained stock row. Repacking part of an HU changes the direct anchor and therefore posts a normal inventory split/movement.
+
+The candidate PostgreSQL model uses a UUIDv7 surrogate position ID plus a `UNIQUE NULLS NOT DISTINCT` semantic key and row/version locking at the affected position granularity. See `decisions/domain/0014-inventory-key-stock-dimensions.md`.
 
 ### Warehouse Work
 
@@ -217,13 +260,14 @@ ONE DATABASE TRANSACTION
 
 Roles are deliberately distinct:
 
-- `InventoryPosition` - low-latency current operational balance.
+- `InventoryPosition` - low-latency current operational balance for one semantic Inventory Key.
+- `InventoryKey` - identity/fungibility dimensions for the position.
 - `InventoryTransaction` - immutable audit/rebuild journal.
 - `AvailabilityView` - disposable derived projection for a specific action and scope.
 - `DomainEvent` - committed fact for other modules/integrations.
 - `EPCIS Event` - standards-based supply-chain visibility representation when applicable.
 
-See `decisions/domain/0011-inventory-state-ledger-projection.md`.
+See `decisions/domain/0011-inventory-state-ledger-projection.md` and `decisions/domain/0014-inventory-key-stock-dimensions.md`.
 
 ### Balanced quantity postings
 
@@ -357,6 +401,12 @@ Physical Quantity != Available Quantity
 
 Inventory Position != Inventory Transaction
 
+Inventory Key != Serial Membership
+
+Inventory Anchor = Location XOR direct Handling Unit
+
+Full HU Move != rewriting contained Inventory Positions
+
 Inventory Transaction != Domain Event != EPCIS Event
 
 Movement Intent != Inventory Movement Confirmation
@@ -390,8 +440,9 @@ python scripts/kb.py workflow physical-inventory --vendor sap
 
 # Domain ontology
 python scripts/kb.py ontology inventory
-python scripts/kb.py ontology reservation
-python scripts/kb.py ontology allocation
+python scripts/kb.py ontology inventory-key
+python scripts/kb.py ontology inventory-anchor
+python scripts/kb.py ontology serial-membership
 python scripts/kb.py ontology inventory-movement
 python scripts/kb.py ontology inventory-transaction
 
@@ -407,9 +458,8 @@ python scripts/kernel.py envelope
 # Industry language / evidence
 python scripts/kb.py term reservation
 python scripts/kb.py term "inventory movement"
-python scripts/kb.py evidence --subject inventory-ledger
-python scripts/kb.py evidence --subject inventory-position
-python scripts/kb.py evidence --subject event-model
+python scripts/kb.py evidence --subject inventory-key
+python scripts/kb.py evidence --subject handling-unit
 python scripts/kb.py evidence --publisher GS1
 
 # Research backlog and live counts
@@ -447,7 +497,7 @@ Evidence grades:
 
 Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, company/product relationships, workflow references, nested workflow IDs, ontology parent/relationship references, ledger/event nested IDs and evidence, duplicate semantic event types, and generated-view freshness.
 
-Direct pushes to `main`, pull requests and manual workflow dispatch all run the knowledge-base check for relevant paths.
+Under `AGENTS.md`, agent development happens on task branches. Pull-request CI provides independent verification, merge-group/pre-merge checks protect `main`, and `push: main` is only the post-merge integrity safety net.
 
 ```bash
 python -m pip install -r requirements.txt
@@ -458,6 +508,7 @@ Equivalent explicit checks:
 
 ```bash
 python scripts/validate.py
+python scripts/validate_kernel_semantics.py
 python scripts/generate_matrices.py --check
 python scripts/generate_audit.py --check
 python scripts/generate_domain_views.py --check
