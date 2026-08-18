@@ -126,3 +126,19 @@
 | Shipping Workflow | candidate | 2 | 3 |
 | Shipping Workflow - Compare carrier manifest close versus warehouse shipment confirmation across parcel and freight WMS products. | research | 2 | 3 |
 | Shipping Workflow - Decide whether Outbound Load belongs in WMS core or an adjacent TMS/YMS boundary. | research | 2 | 3 |
+
+## Kernel research
+
+| Layer | Record / gap | Status | Evidence refs |
+|---|---|---|---:|
+| events | Inventory Domain Event Registry | candidate | 3 |
+| events | Inventory Domain Event Registry - Decide whether inventory.position.changed is published externally or remains an internal projection event only. | research | 3 |
+| events | Inventory Domain Event Registry - Define exact event payload schemas and PII/data-minimization rules for each event type. | research | 3 |
+| events | Inventory Domain Event Registry - Define replay and snapshot behavior for consumers rebuilding derived views from domain events versus querying the inventory ledger directly. | research | 3 |
+| events | Inventory Domain Event Registry - Map Receiving Shipping Packing Handling Unit aggregation and Cross-docking events to EPCIS 2.0 event classes and CBV vocabulary. | research | 3 |
+| ledger | Inventory Ledger Posting Model | candidate | 6 |
+| ledger | Inventory Ledger Posting Model - Benchmark row-locking versus optimistic version retry for high-contention pick-face allocation. | research | 6 |
+| ledger | Inventory Ledger Posting Model - Decide whether reservation and allocation legs live in the same physical journal as quantity legs or separate logical journals sharing one transaction envelope. | research | 6 |
+| ledger | Inventory Ledger Posting Model - Define UOM conversion rounding rules for conservation checks. | research | 6 |
+| ledger | Inventory Ledger Posting Model - Define archival and checkpoint policy for very high transaction volumes without breaking traceability. | research | 6 |
+| ledger | Inventory Ledger Posting Model - Define negative-inventory exceptions for integration latency and backflush scenarios. | research | 6 |
