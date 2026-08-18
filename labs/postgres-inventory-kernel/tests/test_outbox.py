@@ -25,6 +25,19 @@ def claim(conn: psycopg.Connection, worker: str, limit: int = 100, lease: int = 
     ).fetchall()
 
 
+def enqueue_test_event(conn: psycopg.Connection, *, key: str, value: int = 1):
+    return conn.execute(
+        """
+        SELECT kernel_lab.enqueue_domain_event(
+          %s, %s, 'test.event.created', %s,
+          'TestAggregate', %s, 1,
+          jsonb_build_object('value', %s)
+        )
+        """,
+        (lab.TENANT, key, f"test/{key}", key, value),
+    ).fetchone()[0]
+
+
 def test_receipt_persists_transaction_and_position_events_atomically():
     with lab.connect() as conn:
         position_id = lab.insert_position(conn, physical_qty=0)
@@ -112,6 +125,17 @@ def test_exact_posting_retry_does_not_duplicate_events():
         ).fetchone()[0] == Decimal("7")
         assert event_types(conn).count("inventory.transaction.posted") == 1
         assert event_types(conn).count("inventory.position.changed") == 1
+
+
+def test_event_dedup_key_is_payload_bound_and_returns_stable_event_id():
+    with lab.connect() as conn:
+        first = enqueue_test_event(conn, key="outbox:dedup", value=1)
+        retry = enqueue_test_event(conn, key="outbox:dedup", value=1)
+        assert retry == first
+
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            enqueue_test_event(conn, key="outbox:dedup", value=2)
+        conn.rollback()
 
 
 def test_movement_emits_one_movement_event_and_two_position_events():
@@ -225,36 +249,8 @@ def test_commitment_events_match_domain_registry_without_lying_for_low_level_all
 
 def test_parallel_publishers_claim_disjoint_event_sets():
     with lab.connect() as conn:
-        for index in range(6):
-            position_id = lab.insert_position(
-                conn,
-                location_id=lab.LOCATION_A if index == 0 else None,
-                handling_unit_id=None,
-                physical_qty=0,
-            ) if index == 0 else lab.insert_position(
-                conn,
-                position_id=lab.new_id(),
-                location_id=lab.LOCATION_A,
-                physical_qty=0,
-                item_id=lab.ITEM,
-            )
-            # A new semantic key is required for each receipt; use separate locations only
-            # where the schema allows it. Reuse one position and distinct idempotency keys
-            # to create a deterministic event backlog instead.
-            if index > 0:
-                position_id = first_position
-            else:
-                first_position = position_id
-            conn.execute(
-                "SELECT kernel_lab.post_inventory_receipt(%s, %s, %s, %s, 1, %s)",
-                (
-                    lab.new_id(),
-                    lab.TENANT,
-                    f"outbox:seed:{index}",
-                    position_id,
-                    f"ASN-{index}",
-                ),
-            )
+        for index in range(10):
+            enqueue_test_event(conn, key=f"outbox:seed:{index}", value=index)
         conn.commit()
 
     def worker(name: str):
@@ -273,15 +269,12 @@ def test_parallel_publishers_claim_disjoint_event_sets():
 
 def test_ack_nack_lease_and_consumer_deduplication():
     with lab.connect() as conn:
-        position_id = lab.insert_position(conn, physical_qty=0)
-        conn.execute(
-            "SELECT kernel_lab.post_inventory_receipt(%s, %s, %s, %s, 1, 'ASN-DELIVERY')",
-            (lab.new_id(), lab.TENANT, "outbox:delivery", position_id),
-        )
+        event_id = enqueue_test_event(conn, key="outbox:delivery")
         conn.commit()
 
         first_claim = claim(conn, "publisher-a", limit=1, lease=30)[0]
-        event_id, first_token = first_claim[0], first_claim[1]
+        first_token = first_claim[1]
+        assert first_claim[0] == event_id
 
         assert conn.execute(
             "SELECT kernel_lab.ack_domain_event(%s, %s)",
