@@ -4,23 +4,58 @@ kind: process
 status: candidate
 description: Canonical warehouse and intralogistics process vocabulary spanning inbound, storage, fulfillment, outbound and reverse flows.
 entities:
-  - {id: receiving, term: Receiving, definition: Accepting inbound goods and recording their arrival.}
-  - {id: inspection, term: Inspection, definition: Checking inbound or stored goods for quality, quantity, compliance or damage.}
-  - {id: putaway, term: Putaway, definition: Moving received or relocated stock to a selected storage location.}
-  - {id: replenishment, term: Replenishment, definition: Moving stock from reserve or upstream storage into a location that supplies picking or production.}
-  - {id: inventory-transfer, term: Inventory Transfer, definition: Moving stock or handling units between warehouse locations without changing ownership.}
-  - {id: cycle-counting, term: Cycle Counting, definition: Counting selected inventory without requiring a full physical inventory shutdown.}
-  - {id: allocation, term: Allocation, definition: Reserving or assigning available stock to demand.}
-  - {id: picking, term: Picking, definition: Retrieving stock from storage to satisfy an order production or transfer requirement.}
-  - {id: consolidation, term: Consolidation, definition: Combining picked units or containers for a common downstream order or shipment.}
-  - {id: packing, term: Packing, definition: Preparing picked goods into shipping or handling units.}
-  - {id: sortation, term: Sortation, definition: Routing units into destinations or sequences based on operational criteria.}
-  - {id: staging, term: Staging, definition: Temporarily positioning goods or handling units before the next process such as loading.}
-  - {id: loading, term: Loading, definition: Moving staged goods or handling units onto a transport vehicle or carrier asset.}
-  - {id: shipping, term: Shipping, definition: Confirming and dispatching outbound goods from the warehouse.}
-  - {id: cross-docking, term: Cross-docking, definition: Moving inbound goods toward outbound flow with minimal or no storage.}
-  - {id: returns, term: Returns, definition: Receiving and processing goods returned from customers or downstream locations.}
-  - {id: warehouse-task, term: Warehouse Task, definition: An executable unit of warehouse work that directs a movement or operation., vendor_specific: false}
+  - id: receiving
+    term: Receiving
+    definition: Accepting inbound goods and recording their arrival.
+  - id: inspection
+    term: Inspection
+    definition: Checking inbound or stored goods for quality, quantity, compliance or damage.
+  - id: putaway
+    term: Putaway
+    definition: Moving received or relocated stock to a selected storage location.
+  - id: replenishment
+    term: Replenishment
+    definition: Moving stock from reserve or upstream storage into a location that supplies picking or production.
+  - id: inventory-transfer
+    term: Inventory Transfer
+    definition: Moving stock or handling units between warehouse locations without changing ownership.
+  - id: cycle-counting
+    term: Cycle Counting
+    definition: Counting selected inventory without requiring a full physical inventory shutdown.
+  - id: allocation
+    term: Allocation
+    definition: Reserving or assigning available stock to demand.
+  - id: picking
+    term: Picking
+    definition: Retrieving stock from storage to satisfy an order, production or transfer requirement.
+  - id: consolidation
+    term: Consolidation
+    definition: Combining picked units or containers for a common downstream order or shipment.
+  - id: packing
+    term: Packing
+    definition: Preparing picked goods into shipping or handling units.
+  - id: sortation
+    term: Sortation
+    definition: Routing units into destinations or sequences based on operational criteria.
+  - id: staging
+    term: Staging
+    definition: Temporarily positioning goods or handling units before the next process such as loading.
+  - id: loading
+    term: Loading
+    definition: Moving staged goods or handling units onto a transport vehicle or carrier asset.
+  - id: shipping
+    term: Shipping
+    definition: Confirming and dispatching outbound goods from the warehouse.
+  - id: cross-docking
+    term: Cross-docking
+    definition: Moving inbound goods toward outbound flow with minimal or no storage.
+  - id: returns
+    term: Returns
+    definition: Receiving and processing goods returned from customers or downstream locations.
+  - id: warehouse-task
+    term: Warehouse Task
+    definition: An executable unit of warehouse work that directs a movement or operation.
+    vendor_specific: false
 relationships:
   - {subject: receiving, predicate: typically-precedes, object: putaway}
   - {subject: replenishment, predicate: supplies, object: picking}
@@ -32,6 +67,6 @@ relationships:
   - {subject: warehouse-task, predicate: executes, object: inventory-transfer}
 research_gaps:
   - Map process vocabulary against VDI 3601 task and performance areas and at least ten WMS navigation models.
-  - Separate business process executable task and automation command vocabularies in the next ontology revision.
+  - Separate business process, executable task and automation command vocabularies in the next ontology revision.
 last_verified: 2026-08-18
 evidence_refs: [sap-ewm-hu-warehouse-task-2026, werc-dc-measures-2026]
