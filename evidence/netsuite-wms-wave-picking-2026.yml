@@ -1,0 +1,13 @@
+id: netsuite-wms-wave-picking-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Creating Wave Transactions - NetSuite WMS
+url: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_1548078883.html
+publisher: Oracle NetSuite
+captured_at: '2026-08-18'
+supports:
+  - NetSuite WMS waves generate pick tasks and support Pending Release and Released states.
+  - Picking types include Single Order and Bulk Picking or Multiple Order.
+  - Pick tasks can be assigned to operators before release, while unassigned work can be claimed by the operator processing it in the mobile app.
+  - Released waves sort pick tasks and determine recommended bins where bin management is enabled.
