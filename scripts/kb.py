@@ -92,12 +92,9 @@ def command_capability(args):
     matches = []
     for capability in load_records("capabilities/*.yml"):
         candidates = [capability["id"], capability["label"], capability["spotwo"]["canonical_term"]]
-        if needle and not any(needle in normalized(candidate) for candidate in candidates):
-            continue
-        if args.group and capability["group"] != args.group:
-            continue
-        if args.vendor and not any(obs.get("company_id") == args.vendor for obs in capability.get("vendor_observations", [])):
-            continue
+        if needle and not any(needle in normalized(candidate) for candidate in candidates): continue
+        if args.group and capability["group"] != args.group: continue
+        if args.vendor and not any(obs.get("company_id") == args.vendor for obs in capability.get("vendor_observations", [])): continue
         matches.append(capability)
     matches.sort(key=lambda c: (c["group"], c["label"]))
     if args.json: return dump_json(matches)
@@ -105,8 +102,7 @@ def command_capability(args):
         print(f"## {capability['label']} [{capability['status']}]\n")
         print(capability["definition"])
         print(f"\nSpotwo: **{capability['spotwo']['canonical_term']}** [{capability['spotwo']['status']}]")
-        if capability.get("strategies"):
-            print("Strategies: " + ", ".join(capability["strategies"]))
+        if capability.get("strategies"): print("Strategies: " + ", ".join(capability["strategies"]))
         observations = capability.get("vendor_observations", []) or []
         if observations:
             print("\n| Vendor | Level | Terminology / note |")
@@ -118,6 +114,51 @@ def command_capability(args):
     if not matches: print("No capability matches.")
 
 
+def command_workflow(args):
+    needle = normalized(args.query) if args.query else None
+    matches = []
+    for workflow in load_records("workflows/*.yml"):
+        candidates = [workflow["id"], workflow["capability_id"], workflow["title"]]
+        if needle and not any(needle in normalized(candidate) for candidate in candidates): continue
+        if args.vendor and not any(model.get("company_id") == args.vendor for model in workflow.get("vendor_models", [])): continue
+        if args.strategy:
+            strategy_needle = normalized(args.strategy)
+            if not any(strategy_needle in normalized(s["id"]) or strategy_needle in normalized(s["label"]) for s in workflow.get("strategies", [])): continue
+        matches.append(workflow)
+    if args.json: return dump_json(matches)
+    for workflow in matches:
+        print(f"## {workflow['title']} [{workflow['status']}]\n")
+        print(workflow["definition"])
+        print("\n### Canonical spine")
+        for index, stage in enumerate(workflow["stages"], start=1):
+            print(f"{index}. **{stage['label']}** - {stage['purpose']}")
+        print("\n### Objects")
+        print("| Object | Role |")
+        print("|---|---|")
+        for obj in workflow["objects"]:
+            print(f"| {obj['term']} | {obj['role']} |")
+        print("\n### Task states")
+        print(" -> ".join(state["label"] for state in workflow["states"]))
+        print("\n### Strategies")
+        print("| Category | Strategy | Status |")
+        print("|---|---|---|")
+        for strategy in workflow.get("strategies", []):
+            print(f"| {strategy['category']} | {strategy['label']} | {strategy.get('status', '')} |")
+        print("\n### Vendor models")
+        print("| Vendor | Workflow | Strategies | Channels |")
+        print("|---|---|---|---|")
+        for model in workflow.get("vendor_models", []):
+            print(f"| {model['company_id']} | {' -> '.join(model['workflow'])} | {', '.join(model.get('strategies', []))} | {', '.join(model.get('execution_channels', []))} |")
+        if workflow.get("exceptions"):
+            print("\n### Exceptions")
+            print("| Exception | Trigger | Outcomes |")
+            print("|---|---|---|")
+            for item in workflow["exceptions"]:
+                print(f"| {item['label']} | {item['trigger']} | {', '.join(item['outcomes'])} |")
+        print()
+    if not matches: print("No workflow matches.")
+
+
 def command_ontology(args):
     needle = normalized(args.query) if args.query else None
     matches = []
@@ -126,7 +167,7 @@ def command_ontology(args):
         for entity in ontology.get("entities", []):
             candidates = [entity["id"], entity["term"], *(entity.get("aliases", []) or [])]
             if not needle or any(needle in normalized(candidate) for candidate in candidates): entity_matches.append(entity)
-        if (not needle or needle in normalized(ontology["id"]) or needle in normalized(ontology["title"]) or entity_matches):
+        if not needle or needle in normalized(ontology["id"]) or needle in normalized(ontology["title"]) or entity_matches:
             copy = dict(ontology)
             if needle: copy["entities"] = entity_matches
             matches.append(copy)
@@ -205,6 +246,10 @@ def command_gaps(args):
         if capability.get("status") in {"candidate", "observed", "needs-research"} or not capability.get("evidence_refs"):
             gaps.append({"type": "capability", "subject": capability["label"], "gap": f"status={capability['status']}; vendors={len(capability.get('vendor_observations', []))}; evidence_refs={len(capability.get('evidence_refs', []))}"})
         for gap in capability.get("research_gaps", []) or []: gaps.append({"type": "capability", "subject": capability["label"], "gap": gap})
+    for workflow in load_records("workflows/*.yml"):
+        if workflow.get("status") in {"candidate", "observed", "needs-research"}:
+            gaps.append({"type": "workflow", "subject": workflow["title"], "gap": f"status={workflow['status']}; vendors={len(workflow.get('vendor_models', []))}; evidence_refs={len(workflow.get('evidence_refs', []))}"})
+        for gap in workflow.get("research_gaps", []) or []: gaps.append({"type": "workflow", "subject": workflow["title"], "gap": gap})
     for pattern, kind in (("ontology/*.yml", "ontology"), ("kpis/*.yml", "kpi-registry"), ("integrations/*.yml", "integration-registry")):
         for record in load_records(pattern):
             for gap in record.get("research_gaps", []) or []: gaps.append({"type": kind, "subject": record["title"], "gap": gap})
@@ -219,6 +264,7 @@ def command_stats(args):
     companies = load_records("companies/*/company.yml")
     ontologies = load_records("ontology/*.yml")
     capabilities = load_records("capabilities/*.yml")
+    workflows = load_records("workflows/*.yml")
     stats = {
         "companies": len(companies),
         "products": sum(len(c.get("products", [])) for c in companies),
@@ -233,6 +279,10 @@ def command_stats(args):
         "integration_patterns": sum(len(r.get("patterns", [])) for r in load_records("integrations/*.yml")),
         "capabilities": len(capabilities),
         "vendor_capability_observations": sum(len(c.get("vendor_observations", [])) for c in capabilities),
+        "workflows": len(workflows),
+        "workflow_stages": sum(len(w.get("stages", [])) for w in workflows),
+        "workflow_strategies": sum(len(w.get("strategies", [])) for w in workflows),
+        "workflow_vendor_models": sum(len(w.get("vendor_models", [])) for w in workflows),
     }
     if args.json: return dump_json(stats)
     for key, value in stats.items(): print(f"{key}: {value}")
@@ -252,6 +302,7 @@ def build_parser():
     vendors.add_argument("--json", action="store_true"); vendors.set_defaults(func=command_vendors)
     term = sub.add_parser("term"); term.add_argument("query"); term.add_argument("--json", action="store_true"); term.set_defaults(func=command_term)
     capability = sub.add_parser("capability"); capability.add_argument("query", nargs="?"); capability.add_argument("--group"); capability.add_argument("--vendor"); capability.add_argument("--json", action="store_true"); capability.set_defaults(func=command_capability)
+    workflow = sub.add_parser("workflow"); workflow.add_argument("query", nargs="?"); workflow.add_argument("--vendor"); workflow.add_argument("--strategy"); workflow.add_argument("--json", action="store_true"); workflow.set_defaults(func=command_workflow)
     ontology = sub.add_parser("ontology"); ontology.add_argument("query", nargs="?"); ontology.add_argument("--json", action="store_true"); ontology.set_defaults(func=command_ontology)
     kpis = sub.add_parser("kpis"); kpis.add_argument("--category"); kpis.add_argument("--name"); kpis.add_argument("--json", action="store_true"); kpis.set_defaults(func=command_kpis)
     integrations = sub.add_parser("integrations"); integrations.add_argument("--category"); integrations.add_argument("--protocol"); integrations.add_argument("--json", action="store_true"); integrations.set_defaults(func=command_integrations)
