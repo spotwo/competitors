@@ -68,14 +68,29 @@
 
 | Workflow / gap | Status | Vendor models | Evidence refs |
 |---|---|---:|---:|
+| Cycle Counting Workflow | candidate | 3 | 4 |
+| Cycle Counting Workflow - Compare count freezing versus live-counting behavior across vendors and automation environments. | research | 3 | 4 |
+| Cycle Counting Workflow - Define recount policy and tolerance hierarchy across item location owner and facility scopes. | research | 3 | 4 |
 | Internal Replenishment Workflow | candidate | 3 | 3 |
 | Internal Replenishment Workflow - Add SAP EWM, Manhattan, Blue Yonder, Mecalux, PSIwms and at least four more WMS models before adopting the Spotwo workflow. | research | 3 | 3 |
 | Internal Replenishment Workflow - Compare whether source inventory is reserved at planning time, release time or task-start time across vendors. | research | 3 | 3 |
 | Internal Replenishment Workflow - Determine whether residual replenishment need should persist as an object or be recalculated from current inventory after every confirmation. | research | 3 | 3 |
 | Internal Replenishment Workflow - Model replenishment priority separately from outbound pick priority and define dependency semantics between replenishment and blocked pick work. | research | 3 | 3 |
+| Packing Workflow | candidate | 2 | 2 |
+| Packing Workflow - Compare cartonization recommendation and carrier-service selection across additional WMS products. | research | 2 | 2 |
+| Packing Workflow - Separate packing station UX from packing domain semantics. | research | 2 | 2 |
 | Picking Workflow | candidate | 10 | 15 |
 | Picking Workflow - Add UI interaction observations for handheld RF, voice, pick-to-light and goods-to-person stations without treating presentation details as domain semantics. | research | 10 | 15 |
 | Picking Workflow - Compare short-pick residual-demand and automatic reallocation behavior across SAP, Manhattan, Blue Yonder, Oracle, Infor and Mecalux. | research | 10 | 15 |
 | Picking Workflow - Determine whether zone handoff should create a new Pick Work Group or preserve one group across zones. | research | 10 | 15 |
 | Picking Workflow - Sample at least ten more WMS products before adopting the Spotwo task state model. | research | 10 | 15 |
 | Picking Workflow - Separate inventory allocation from pick-source selection where vendors model them independently. | research | 10 | 15 |
+| Putaway Workflow | candidate | 3 | 3 |
+| Putaway Workflow - Compare fixed-bin random-storage product-affinity and hazard-class strategies across more vendors. | research | 3 | 3 |
+| Putaway Workflow - Decide whether putaway work grouping should reuse a generic Warehouse Work Group abstraction shared with picking. | research | 3 | 3 |
+| Receiving Workflow | candidate | 3 | 3 |
+| Receiving Workflow - Decide whether Shipment Verification is a canonical object or vendor-specific completion policy. | research | 3 | 3 |
+| Receiving Workflow - Sample unexpected receiving and blind receiving models across additional WMS products. | research | 3 | 3 |
+| Shipping Workflow | candidate | 2 | 3 |
+| Shipping Workflow - Compare carrier manifest close versus warehouse shipment confirmation across parcel and freight WMS products. | research | 2 | 3 |
+| Shipping Workflow - Decide whether Outbound Load belongs in WMS core or an adjacent TMS/YMS boundary. | research | 2 | 3 |
