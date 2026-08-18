@@ -1,0 +1,11 @@
+id: oracle-wms-outbound-flow-2026
+subject: shipping-workflow
+source_type: official-docs
+grade: A
+title: Outbound Orders
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/allow-expired-inventory-flag.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Oracle documents outbound order flow as order creation, wave planning, picking, packing, shipping confirmation and inventory update.
+  - Shipping confirmation is a distinct step after packing.
