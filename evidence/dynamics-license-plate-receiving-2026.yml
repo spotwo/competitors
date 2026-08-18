@@ -1,0 +1,13 @@
+id: dynamics-license-plate-receiving-2026
+subject: receiving-workflow
+source_type: official-docs
+grade: A
+title: License plate receiving via the Warehouse Management mobile app
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/warehousing-mobile-device-app-license-plate-receiving
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Receiving can register inbound inventory from ASN data by scanning an incoming license plate.
+  - Receiving can create putaway work or skip work creation depending on policy.
+  - Receiving and putaway can run as one mobile operation or as separate warehouse operations.
+  - Inbound inventory can be registered at a receiving dock location before putaway.
