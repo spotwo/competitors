@@ -1,0 +1,12 @@
+id: epg-lfs-picking-model-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: LFS Modules - Retrieval and Picking
+url: https://www.epg.com/gb/logistics-software/warehouse-management-system-lfswms/lfs-modules/
+publisher: EPG
+captured_at: '2026-08-18'
+supports:
+  - LFS retrieves complete work packages from delivery notes, customer orders, production orders or online-store orders.
+  - LFS supports single-stage, two-stage, pick-and-pack, multi-order and path-optimized picking.
+  - Execution channels include paper, RF/mobile data collection and Pick-by-Voice, with additional Pick-by-Light support documented in LFS modules.
