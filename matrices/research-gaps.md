@@ -35,9 +35,14 @@
 
 | Term | Status | Evidence refs |
 |---|---|---:|
+| Allocation | candidate | 2 |
 | Clear Height | candidate | 4 |
+| Inventory Availability | candidate | 2 |
+| Inventory Movement | candidate | 3 |
+| Inventory Transfer | candidate | 1 |
 | License Plate Number | observed | 2 |
 | Material Flow System | observed | 2 |
+| Reservation | candidate | 2 |
 | Warehouse Order | observed | 1 |
 | Warehouse Task | observed | 1 |
 
