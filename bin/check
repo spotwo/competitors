@@ -4,6 +4,7 @@ set -euo pipefail
 python scripts/validate.py
 python scripts/validate_kernel_semantics.py
 python scripts/validate_scenarios.py
+python scripts/validate_kernel_spec.py
 python scripts/generate_matrices.py --check
 python scripts/generate_audit.py --check
 python scripts/generate_domain_views.py --check
