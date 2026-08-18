@@ -1,0 +1,12 @@
+id: odoo-inventory-routes-2026
+subject: capability-knowledge-graph
+source_type: official-docs
+grade: A
+title: Routes and push/pull rules
+url: https://www.odoo.com/documentation/18.0/applications/inventory_and_mrp/inventory/shipping_receiving/daily_operations/use_routes.html
+publisher: Odoo
+captured_at: 2026-08-18
+supports:
+  - Models receiving, quality control, storage, picking, packing and shipping as configurable location flows.
+  - Documents push and pull rules that generate warehouse transfers.
+  - Documents configurable one-step and multi-step inbound and outbound routes.
