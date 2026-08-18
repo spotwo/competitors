@@ -16,6 +16,8 @@ on:
       - 'decisions/domain/0020-wms-kernel-v0.1.md'
       - 'decisions/domain/0021-transactional-outbox-domain-events.md'
       - 'decisions/domain/0022-outbox-publisher-runtime.md'
+      - 'decisions/domain/0023-domain-event-transport-selection.md'
+      - 'decisions/domain/0024-nats-jetstream-transport-adapter.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -41,6 +43,8 @@ on:
       - 'decisions/domain/0020-wms-kernel-v0.1.md'
       - 'decisions/domain/0021-transactional-outbox-domain-events.md'
       - 'decisions/domain/0022-outbox-publisher-runtime.md'
+      - 'decisions/domain/0023-domain-event-transport-selection.md'
+      - 'decisions/domain/0024-nats-jetstream-transport-adapter.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -99,6 +103,8 @@ jobs:
             decisions/domain/0020-wms-kernel-v0.1.md \
             decisions/domain/0021-transactional-outbox-domain-events.md \
             decisions/domain/0022-outbox-publisher-runtime.md \
+            decisions/domain/0023-domain-event-transport-selection.md \
+            decisions/domain/0024-nats-jetstream-transport-adapter.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \

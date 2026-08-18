@@ -13,3 +13,14 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
+
+  nats:
+    image: nats:2.14.5@sha256:026a66a4497c6d7d3eed741781770099c48c755bf3a55b6950d76dd210596eb3
+    command: ["--jetstream", "--store_dir", "/data"]
+    ports:
+      - "${KERNEL_LAB_NATS_PORT:-54222}:4222"
+    volumes:
+      - nats-data:/data
+
+volumes:
+  nats-data:
