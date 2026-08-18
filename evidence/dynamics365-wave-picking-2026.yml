@@ -1,0 +1,12 @@
+id: dynamics365-wave-picking-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Wave Templates - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/wave-templates
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Wave templates determine when outbound demand is grouped and processed into warehouse work.
+  - Wave processing creates picking work using work templates and location directives.
+  - Wave creation and processing can be manual, partially automated, or fully automated based on configured criteria and thresholds.
