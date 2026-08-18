@@ -6,6 +6,7 @@ import json
 import math
 import os
 import statistics
+import threading
 import time
 import uuid
 
@@ -205,16 +206,11 @@ def collect_plan() -> dict[str, object]:
     root = document["Plan"]
     index_names: set[str] = set()
     node_types: list[str] = []
-    shared_hit = 0
-    shared_read = 0
 
     def walk(node: dict[str, object]) -> None:
-        nonlocal shared_hit, shared_read
         node_types.append(str(node.get("Node Type", "")))
         if node.get("Index Name"):
             index_names.add(str(node["Index Name"]))
-        shared_hit += int(node.get("Shared Hit Blocks", 0) or 0)
-        shared_read += int(node.get("Shared Read Blocks", 0) or 0)
         for child in node.get("Plans", []) or []:
             walk(child)
 
@@ -222,8 +218,8 @@ def collect_plan() -> dict[str, object]:
     return {
         "execution_ms": round(float(document.get("Execution Time", 0.0)), 3),
         "planning_ms": round(float(document.get("Planning Time", 0.0)), 3),
-        "shared_hit_blocks": shared_hit,
-        "shared_read_blocks": shared_read,
+        "shared_hit_blocks": int(root.get("Shared Hit Blocks", 0) or 0),
+        "shared_read_blocks": int(root.get("Shared Read Blocks", 0) or 0),
         "index_names": sorted(index_names),
         "node_types": node_types,
     }
@@ -244,27 +240,34 @@ def benchmark_hot_allocation(workers: int) -> dict[str, object]:
             (capacity, hot_position),
         )
 
+    start_box: dict[str, float] = {}
+    barrier = threading.Barrier(
+        workers + 1,
+        action=lambda: start_box.__setitem__("started", time.perf_counter()),
+    )
+
     def attempt(worker: int) -> tuple[str, float]:
-        started = time.perf_counter()
-        try:
-            with connect(autocommit=True) as conn:
+        with connect(autocommit=True) as conn:
+            barrier.wait()
+            started = time.perf_counter()
+            try:
                 conn.execute(
                     "SELECT kernel_lab.allocate_inventory_position(%s, %s, %s, %s, 1)",
                     (uuid.uuid4(), TENANT, f"bench:allocation:{worker}", hot_position),
                 )
-            return "success", (time.perf_counter() - started) * 1000
-        except psycopg.errors.CheckViolation:
-            return "rejected", (time.perf_counter() - started) * 1000
-        except psycopg.errors.DeadlockDetected:
-            return "deadlock", (time.perf_counter() - started) * 1000
+                return "success", (time.perf_counter() - started) * 1000
+            except psycopg.errors.CheckViolation:
+                return "rejected", (time.perf_counter() - started) * 1000
+            except psycopg.errors.DeadlockDetected:
+                return "deadlock", (time.perf_counter() - started) * 1000
 
-    wall_started = time.perf_counter()
     results: list[tuple[str, float]] = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(attempt, worker) for worker in range(workers)]
+        barrier.wait()
         for future in as_completed(futures):
             results.append(future.result())
-    wall_seconds = time.perf_counter() - wall_started
+    wall_seconds = time.perf_counter() - start_box["started"]
 
     statuses = [status for status, _ in results]
     latencies = [latency for _, latency in results]
@@ -317,14 +320,21 @@ def benchmark_opposite_transfers(workers: int, iterations: int) -> dict[str, obj
             "SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()"
         ).fetchone()[0]
 
+    start_box: dict[str, float] = {}
+    barrier = threading.Barrier(
+        workers + 1,
+        action=lambda: start_box.__setitem__("started", time.perf_counter()),
+    )
+
     def worker(worker_id: int) -> tuple[int, list[float]]:
         local_deadlocks = 0
         local_latencies: list[float] = []
-        for iteration in range(iterations):
-            source, target = (left, right) if (worker_id + iteration) % 2 == 0 else (right, left)
-            started = time.perf_counter()
-            try:
-                with connect(autocommit=True) as conn:
+        with connect(autocommit=True) as conn:
+            barrier.wait()
+            for iteration in range(iterations):
+                source, target = (left, right) if (worker_id + iteration) % 2 == 0 else (right, left)
+                started = time.perf_counter()
+                try:
                     conn.execute(
                         "SELECT kernel_lab.transfer_inventory_quantity(%s, %s, %s, %s, %s, 1)",
                         (
@@ -335,21 +345,21 @@ def benchmark_opposite_transfers(workers: int, iterations: int) -> dict[str, obj
                             target,
                         ),
                     )
-            except psycopg.errors.DeadlockDetected:
-                local_deadlocks += 1
-            local_latencies.append((time.perf_counter() - started) * 1000)
+                except psycopg.errors.DeadlockDetected:
+                    local_deadlocks += 1
+                local_latencies.append((time.perf_counter() - started) * 1000)
         return local_deadlocks, local_latencies
 
-    wall_started = time.perf_counter()
     deadlocks = 0
     latencies: list[float] = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(worker, worker_id) for worker_id in range(workers)]
+        barrier.wait()
         for future in as_completed(futures):
             local_deadlocks, local_latencies = future.result()
             deadlocks += local_deadlocks
             latencies.extend(local_latencies)
-    wall_seconds = time.perf_counter() - wall_started
+    wall_seconds = time.perf_counter() - start_box["started"]
 
     with connect() as conn:
         total = conn.execute(
