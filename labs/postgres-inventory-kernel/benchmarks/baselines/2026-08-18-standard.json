@@ -1,0 +1,65 @@
+{
+  "source": {
+    "workflow_run_id": 32160933418,
+    "job_id": 95789380796,
+    "branch_head_sha": "d292d10cba5bab1a4bb430624d356ad8ca325b06",
+    "merge_candidate_sha": "a5ea0dad7268d8636aeeb5643f5fd64ab5221580",
+    "base_sha": "5e922eb8caff74e6240d7e48a82fd2bfa93cf5ef",
+    "runner_os": "Ubuntu 24.04",
+    "runner_image": "20260810.271.1",
+    "captured_at": "2026-08-18"
+  },
+  "report": {
+    "candidate_plan": {
+      "execution_ms": 1.404,
+      "index_names": ["inventory_positions_item_warehouse_idx"],
+      "node_types": ["Limit", "Sort", "Index Scan"],
+      "planning_ms": 0.619,
+      "shared_hit_blocks": 327,
+      "shared_read_blocks": 0
+    },
+    "configuration": {
+      "positions": 100000,
+      "transfer_iterations": 10,
+      "workers": 32
+    },
+    "dataset": {
+      "items": 316,
+      "locations": 317,
+      "positions": 100000,
+      "seed_seconds": 4.198
+    },
+    "hot_allocation": {
+      "capacity": 16,
+      "deadlocks": 0,
+      "final_allocated_qty": 16.0,
+      "max_ms": 424.945,
+      "mean_ms": 239.043,
+      "p50_ms": 238.349,
+      "p95_ms": 421.8,
+      "p99_ms": 424.945,
+      "rejected": 16,
+      "successes": 16,
+      "throughput_ops_s": 73.2,
+      "wall_seconds": 0.437,
+      "workers": 32
+    },
+    "opposite_transfers": {
+      "conserved_physical_qty": 200000.0,
+      "deadlocks_pg_stat_delta": 0,
+      "deadlocks_seen_by_clients": 0,
+      "iterations_per_worker": 10,
+      "max_ms": 167.295,
+      "mean_ms": 58.789,
+      "operations": 320,
+      "p50_ms": 52.051,
+      "p95_ms": 130.125,
+      "p99_ms": 150.932,
+      "throughput_ops_s": 516.14,
+      "wall_seconds": 0.62,
+      "workers": 32
+    },
+    "postgresql_version": "18.4 (Debian 18.4-1.pgdg12+1)",
+    "profile": "standard"
+  }
+}
