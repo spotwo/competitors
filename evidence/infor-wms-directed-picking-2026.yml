@@ -1,0 +1,12 @@
+id: infor-wms-directed-picking-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Performing a Standard Task-Directed Pick
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/scepickug/bfy1612893563711.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS distributes pick work using user permissions, order priority and task creation time.
+  - Assigned work is presented before unassigned work, and otherwise the next logical picking task is selected.
+  - RF task picking is an explicit execution model for directed warehouse work.
