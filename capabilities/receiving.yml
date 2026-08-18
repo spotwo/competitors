@@ -1,0 +1,38 @@
+id: receiving
+group: inbound
+label: Receiving
+status: adopted
+definition: Accept inbound goods into warehouse control, verify expected versus actual receipt data, and establish inventory identity and status.
+purpose: Convert a physical arrival into controlled warehouse inventory and trigger downstream inbound work.
+inputs: [purchase-order, asn, inbound-load, handling-unit]
+outputs: [receipt, inventory, putaway-work, exception]
+entities: [asn, receipt, handling-unit, sku, lot, serial, location]
+strategies: [asn-based, blind-receiving, scan-based, staged-receiving]
+related_capabilities: [unloading, inspection, identification, putaway, cross-docking]
+vendor_observations:
+  - company_id: manhattan-associates
+    product_id: manhattan-associates/activewarehouse
+    level: core
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    product_id: blue-yonder/warehouse-management
+    level: core
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    product_id: infios/warehouse-management
+    level: core
+    evidence_refs: [infios-wms-capabilities-2026]
+  - company_id: mecalux
+    product_id: mecalux/easy-wms
+    level: core
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+  - company_id: odoo
+    product_id: odoo/odoo-inventory
+    level: observed
+    terminology: [receiving, incoming shipments]
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Receiving
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-wms-capabilities-2026, mecalux-easy-wms-capabilities-2026, odoo-inventory-routes-2026]
