@@ -1,0 +1,12 @@
+id: oracle-wms-packing-2026
+subject: packing-workflow
+source_type: official-docs
+grade: A
+title: Packing
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/packing.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Packing is a distinct order-fulfillment step that prepares inventory for shipment.
+  - Oracle uses outbound LPNs as packing containers.
+  - Packing transactions can support substitution and container-level operations.
