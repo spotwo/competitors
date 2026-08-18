@@ -1,0 +1,26 @@
+id: waving
+group: fulfillment
+label: Wave Planning / Release
+status: adopted
+definition: Group and release outbound demand into executable batches of warehouse work according to operational criteria.
+purpose: Coordinate fulfilment workload around cutoffs, carriers, zones, resources, and shipment dependencies.
+inputs: [orders, inventory, cutoff, capacity]
+outputs: [wave, released-work]
+entities: [order, shipment, wave, warehouse-task]
+strategies: [scheduled-wave, carrier-wave, zone-wave, priority-wave]
+related_capabilities: [allocation, picking, replenishment, waveless]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    terminology: [waving]
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: infios
+    level: core
+    terminology: [waving]
+    evidence_refs: [infios-3pl-capabilities-2026]
+spotwo:
+  canonical_term: Wave Planning
+  status: candidate
+  notes: Preserve Wave as the object and Wave Planning/Release as the capability until broader UI terminology is sampled.
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-3pl-capabilities-2026]
