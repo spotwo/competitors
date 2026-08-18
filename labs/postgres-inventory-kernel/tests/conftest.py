@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import os
+import sys
 import uuid
+from pathlib import Path
 
 import psycopg
 import pytest
+
+LAB_DIR = Path(__file__).resolve().parents[1]
+if str(LAB_DIR) not in sys.path:
+    sys.path.insert(0, str(LAB_DIR))
 
 DATABASE_URL = os.getenv(
     "KERNEL_LAB_DATABASE_URL",
