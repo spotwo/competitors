@@ -21,6 +21,27 @@ on:
       - 'bin/**'
       - 'requirements.txt'
       - '.github/workflows/validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'companies/**'
+      - 'evidence/**'
+      - 'terminology/**'
+      - 'authorities/**'
+      - 'claims/**'
+      - 'taxonomy/**'
+      - 'ontology/**'
+      - 'kpis/**'
+      - 'integrations/**'
+      - 'capabilities/**'
+      - 'workflows/**'
+      - 'ledger/**'
+      - 'events/**'
+      - 'schema/**'
+      - 'scripts/**'
+      - 'bin/**'
+      - 'requirements.txt'
+      - '.github/workflows/validate.yml'
   workflow_dispatch:
 
 concurrency:
