@@ -1,0 +1,12 @@
+id: odoo-wave-picking-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Wave Transfers - Odoo 18 Documentation
+url: https://www.odoo.com/documentation/18.0/applications/inventory_and_mrp/inventory/shipping_receiving/picking_methods/wave.html
+publisher: Odoo
+captured_at: '2026-08-18'
+supports:
+  - Odoo wave transfers split transfer lines before grouping them into a batch.
+  - Wave grouping can use product, product category, location and scheduled shipping criteria, and waves can be assigned to workers.
+  - Wave picking separates release/grouping logic from physical picking execution.
