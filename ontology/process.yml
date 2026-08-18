@@ -6,25 +6,28 @@ description: Canonical warehouse and intralogistics process vocabulary spanning 
 entities:
   - id: receiving
     term: Receiving
-    definition: Accepting inbound goods and recording their arrival.
+    definition: Accepting inbound goods and recording their arrival under warehouse control.
   - id: inspection
     term: Inspection
     definition: Checking inbound or stored goods for quality, quantity, compliance or damage.
   - id: putaway
     term: Putaway
-    definition: Moving received or relocated stock to a selected storage location.
+    definition: Moving received inventory to a selected storage location under putaway policy.
   - id: replenishment
-    term: Replenishment
-    definition: Moving stock from reserve or upstream storage into a location that supplies picking or production.
+    term: Internal Replenishment
+    definition: Moving stock from reserve or upstream storage into a location that supplies picking or production execution.
+  - id: relocation
+    term: Relocation
+    definition: Moving inventory between internal warehouse locations for storage correction balancing consolidation or operational reorganization.
   - id: inventory-transfer
     term: Inventory Transfer
-    definition: Moving stock or handling units between warehouse locations without changing ownership.
+    definition: Business process for moving inventory across warehouse or organizational contexts; it may be immediate or may orchestrate picking shipping in-transit receipt and putaway.
   - id: cycle-counting
     term: Cycle Counting
-    definition: Counting selected inventory without requiring a full physical inventory shutdown.
+    definition: Counting selected inventory without requiring a full physical inventory event.
   - id: allocation
     term: Allocation
-    definition: Reserving or assigning available stock to demand.
+    definition: Binding eligible demand to an execution-relevant inventory source while keeping coarser reservation semantics separate where needed.
   - id: picking
     term: Picking
     definition: Retrieving stock from storage to satisfy an order, production or transfer requirement.
@@ -48,10 +51,10 @@ entities:
     definition: Confirming and dispatching outbound goods from the warehouse.
   - id: cross-docking
     term: Cross-docking
-    definition: Moving inbound goods toward outbound flow with minimal or no storage.
+    definition: Matching inbound supply to outbound demand and routing matched inventory toward outbound flow with minimal or no normal storage dwell.
   - id: returns
     term: Returns
-    definition: Receiving and processing goods returned from customers or downstream locations.
+    definition: Receiving and dispositioning goods returned from customers or downstream locations.
   - id: warehouse-task
     term: Warehouse Task
     definition: An executable unit of warehouse work that directs a movement or operation.
@@ -64,9 +67,14 @@ relationships:
   - {subject: packing, predicate: typically-precedes, object: staging}
   - {subject: staging, predicate: typically-precedes, object: loading}
   - {subject: loading, predicate: typically-precedes, object: shipping}
-  - {subject: warehouse-task, predicate: executes, object: inventory-transfer}
+  - {subject: warehouse-task, predicate: may-execute, object: relocation}
+  - {subject: inventory-transfer, predicate: may-orchestrate, object: picking}
+  - {subject: inventory-transfer, predicate: may-orchestrate, object: shipping}
+  - {subject: inventory-transfer, predicate: may-orchestrate, object: receiving}
+  - {subject: inventory-transfer, predicate: may-orchestrate, object: putaway}
 research_gaps:
   - Map process vocabulary against VDI 3601 task and performance areas and at least ten WMS navigation models.
-  - Separate business process, executable task and automation command vocabularies in the next ontology revision.
-last_verified: 2026-08-18
-evidence_refs: [sap-ewm-hu-warehouse-task-2026, werc-dc-measures-2026]
+  - Separate business process executable Warehouse Work inventory movement and automation command vocabularies in the next ontology revision.
+  - Validate inter-warehouse transfer orchestration across SAP Oracle Infor and ERP-centric systems.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-hu-warehouse-task-2026, werc-dc-measures-2026, dynamics365-inventory-movement-2026, dynamics365-inventory-transfer-2026, oracle-allocation-model-2026]
