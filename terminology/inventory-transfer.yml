@@ -1,0 +1,10 @@
+id: inventory-transfer
+preferred_term: Inventory Transfer
+definition: Business intent or process for moving inventory between warehouse or organizational contexts, potentially through multiple warehouse workflows and in-transit state rather than one atomic movement.
+domain: [inventory, transfer, logistics]
+aliases: [stock transfer, warehouse transfer, inter-warehouse transfer]
+status: candidate
+spotwo_term: Inventory Transfer
+notes: Spotwo separates Transfer from Inventory Movement. A transfer may be immediate or may orchestrate Pick, Shipping, In Transit, Receiving, and Putaway.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-inventory-transfer-2026]
