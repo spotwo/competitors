@@ -62,7 +62,7 @@ It does not make arbitrary network side effects exactly-once.
 - `PostgresConsumerFailureArchiveStore` - one transactional, consumer-scoped archive batch;
 - `ConsumerFailureArchiveBatch` - archive run identity and reconciled failure/action counts.
 
-`malformed_delivery_quarantine.py` provides `PostgresNatsMalformedDeliveryQuarantine`, which persists pre-`event_id` poison evidence by trusted JetStream identity before ACK.
+`malformed_delivery.py` provides `PostgresNatsMalformedDeliveryQuarantine`, which persists pre-`event_id` poison evidence by trusted JetStream identity before ACK.
 
 `malformed_delivery_telemetry.py` provides read-only live poison snapshots, bounded failure kinds, recent-activity alerts, JSON output, and Prometheus exposition without transport sequence or payload labels.
 
@@ -84,7 +84,7 @@ from consumer_failure import (
     PostgresConsumerFailureStore,
 )
 from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore
-from malformed_delivery_quarantine import PostgresNatsMalformedDeliveryQuarantine
+from malformed_delivery import PostgresNatsMalformedDeliveryQuarantine
 from nats_consumer import NatsJetStreamPullSource
 from psycopg.types.json import Jsonb
 
