@@ -1,0 +1,13 @@
+id: extensiv-picking-model-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Wave Picking and Pick Jobs - Extensiv Warehouse Manager
+url: https://help.extensiv.com/en_US/wm-wave-pick-information/1619216-what-is-wave-picking
+publisher: Extensiv
+captured_at: '2026-08-18'
+supports:
+  - Wave picking is optional and groups orders for simultaneous picking and picker delegation.
+  - The wave routes a picker using a configured pick path and supports pick-to-tote order separation.
+  - Extensiv also models Pick Jobs for batch and multi-order picking while single-order pick jobs are optional.
+notes: Complementary current Pick Jobs documentation is available at https://extensiv.helpjuice.com/en_US/outbound-operations/creating-pick-jobs.
