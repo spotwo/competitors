@@ -8,7 +8,7 @@
 | Products | 88 |
 | Evidence records | 157 |
 | Claims | 22 |
-| Terminology records | 30 |
+| Terminology records | 35 |
 | Authorities | 8 |
 | Taxonomy vocabularies | 9 |
 | Ontologies | 6 |
