@@ -1,0 +1,66 @@
+id: shipping
+capability_id: shipping
+title: Shipping Workflow
+status: candidate
+definition: Cross-vendor decomposition of how packed outbound inventory is assigned to shipment or load context, staged, loaded, confirmed and handed off to a carrier while warehouse inventory is updated.
+stages:
+  - {id: shipping-ready, label: Shipping Ready, purpose: Establish packed inventory eligible for shipment execution.}
+  - {id: load-assignment, label: Load Assignment, purpose: Associate outbound containers with shipment load route or carrier context.}
+  - {id: staging, label: Staging, purpose: Position shipping-ready containers at an outbound staging location.}
+  - {id: dock-handoff, label: Dock Handoff, purpose: Move staged inventory to bay door dock or carrier loading context.}
+  - {id: loading, label: Loading, purpose: Physically place outbound containers onto the transport asset.}
+  - {id: shipment-confirmation, label: Shipment Confirmation, purpose: Record dispatch and close the warehouse shipment execution state.}
+  - {id: inventory-update, label: Inventory and Interface Update, purpose: Apply outbound inventory changes and emit downstream shipping information.}
+objects:
+  - {id: shipment, term: Shipment, role: Outbound delivery execution context for one or more containers or order lines.}
+  - {id: outbound-load, term: Outbound Load, role: Transport grouping for one or more shipments or containers.}
+  - {id: outbound-container, term: Outbound Container, role: Packed carton pallet or outbound LPN ready for shipment.}
+  - {id: staging-location, term: Staging Location, role: Temporary outbound location before dock or loading.}
+  - {id: dock-door, term: Dock Door, role: Physical handoff point between warehouse and transport.}
+  - {id: carrier, term: Carrier, role: External transport provider or carrier context.}
+  - {id: shipping-confirmation, term: Shipping Confirmation, role: Recorded proof that warehouse dispatch is complete.}
+states:
+  - {id: ready, label: Ready, meaning: Packed inventory is available for shipping.}
+  - {id: load-assigned, label: Load Assigned, meaning: Container or shipment is associated with outbound transport context.}
+  - {id: staged, label: Staged, meaning: Inventory is positioned for outbound loading.}
+  - {id: at-dock, label: At Dock, meaning: Inventory is at the dock or bay-door handoff point.}
+  - {id: loading, label: Loading, meaning: Inventory is being transferred to transport.}
+  - {id: loaded, label: Loaded, meaning: Physical loading is complete.}
+  - {id: shipped, label: Shipped, meaning: Shipment confirmation is recorded and warehouse dispatch is complete., terminal: true}
+  - {id: exception, label: Exception, meaning: Shipping cannot complete normally.}
+  - {id: cancelled, label: Cancelled, meaning: Shipping execution has been invalidated., terminal: true}
+strategies:
+  - {id: automatic-load-assignment, category: load-assignment, label: Automatic Load Assignment, definition: Assign packed containers to an outbound load automatically using route or ship-to logic., status: observed, evidence_refs: [oracle-wms-load-assignment-2026]}
+  - {id: manual-load-assignment, category: load-assignment, label: Manual Load Assignment, definition: Let an operator associate containers with an outbound load., status: observed, evidence_refs: [oracle-wms-load-assignment-2026]}
+  - {id: staged-loading, category: execution, label: Staged Loading, definition: Move outbound handling units through staging and dock locations before loading., status: adopted, evidence_refs: [dynamics-outbound-loading-2026]}
+  - {id: shipment-confirmation, category: confirmation, label: Shipment Confirmation, definition: Explicitly confirm warehouse dispatch after packing and loading activities., status: adopted, evidence_refs: [oracle-wms-outbound-flow-2026]}
+exceptions:
+  - {id: load-mismatch, label: Load Mismatch, trigger: A container is presented for a load shipment or route it is not eligible for., outcomes: [block-or-reassign, record-exception], status: candidate, evidence_refs: [oracle-wms-load-assignment-2026]}
+  - {id: partial-shipment, label: Partial Shipment, trigger: Only part of the planned outbound quantity is ready or loaded., outcomes: [ship-eligible-containers, preserve-open-demand], status: candidate, evidence_refs: [oracle-wms-outbound-flow-2026]}
+vendor_models:
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    terminology: {container: OBLPN, transport_group: Outbound Load, completion: Shipping Confirmation}
+    workflow: [packed-oblpn, load-assignment, outbound-load, shipping-confirmation, inventory-update]
+    strategies: [automatic-load-assignment, manual-load-assignment]
+    evidence_refs: [oracle-wms-load-assignment-2026, oracle-wms-outbound-flow-2026]
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {container: Target License Plate, staging: STAGE, dock: BAYDOOR}
+    workflow: [picked-license-plate, stage, bay-door, loading, work-close]
+    strategies: [staged-loading]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics-outbound-loading-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [shipping-ready, load-assignment, staging, dock-handoff, loading, shipment-confirmation, inventory-update]
+  canonical_objects: [shipment, outbound-load, outbound-container, staging-location, dock-door, carrier, shipping-confirmation]
+  task_states: [ready, load-assigned, staged, at-dock, loading, loaded, shipped, exception, cancelled]
+  commands: [assign-to-load, stage-outbound-container, move-to-dock, start-loading, confirm-loaded, confirm-shipment, cancel-shipment]
+  events: [outbound-load-assigned, container-staged, container-at-dock, loading-started, container-loaded, shipment-confirmed, shipment-cancelled]
+  notes: Packed, loaded and shipped are separate state transitions.
+research_gaps:
+  - Compare carrier manifest close versus warehouse shipment confirmation across parcel and freight WMS products.
+  - Decide whether Outbound Load belongs in WMS core or an adjacent TMS/YMS boundary.
+last_verified: '2026-08-18'
+evidence_refs: [oracle-wms-outbound-flow-2026, oracle-wms-load-assignment-2026, dynamics-outbound-loading-2026]
