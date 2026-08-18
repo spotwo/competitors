@@ -132,4 +132,5 @@ The PostgreSQL kernel lab proves:
 - optional consumer labels require a bounded deployment-controlled consumer set;
 - default thresholds require deployment calibration;
 - metrics identify the operational class, not the individual failed event;
-- dashboards, hosted exporters, notification routing, retention, bulk review, and malformed-message adapter quarantine remain later slices.
+- dashboards, hosted exporters, notification routing, bulk review, and malformed-message adapter quarantine remain later slices;
+- resolved history leaves the live table only through the ADR 0034 consumer-scoped archive.

@@ -15,6 +15,7 @@ on:
       - 'bin/run-kernel-position-projection-retries'
       - 'bin/replay-kernel-consumer-failure'
       - 'bin/inspect-kernel-consumer-failures'
+      - 'bin/archive-kernel-consumer-failures'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -35,6 +36,7 @@ on:
       - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
       - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
       - 'decisions/domain/0033-consumer-failure-operational-telemetry.md'
+      - 'decisions/domain/0034-consumer-failure-retention-archive.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -59,6 +61,7 @@ on:
       - 'bin/run-kernel-position-projection-retries'
       - 'bin/replay-kernel-consumer-failure'
       - 'bin/inspect-kernel-consumer-failures'
+      - 'bin/archive-kernel-consumer-failures'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -79,6 +82,7 @@ on:
       - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
       - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
       - 'decisions/domain/0033-consumer-failure-operational-telemetry.md'
+      - 'decisions/domain/0034-consumer-failure-retention-archive.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -136,6 +140,7 @@ jobs:
             bin/run-kernel-position-projection-retries \
             bin/replay-kernel-consumer-failure \
             bin/inspect-kernel-consumer-failures \
+            bin/archive-kernel-consumer-failures \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -156,6 +161,7 @@ jobs:
             decisions/domain/0031-controlled-position-projection-rebuild.md \
             decisions/domain/0032-consumer-failure-deferral-quarantine.md \
             decisions/domain/0033-consumer-failure-operational-telemetry.md \
+            decisions/domain/0034-consumer-failure-retention-archive.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
