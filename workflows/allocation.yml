@@ -1,0 +1,188 @@
+id: allocation
+capability_id: allocation
+title: Inventory Allocation and Commitment Workflow
+status: candidate
+definition: A cross-vendor decomposition of how outbound or operational demand is evaluated against inventory availability, optionally reserved at a coarse scope, bound to specific source inventory for warehouse execution, and later consumed, released, reallocated, or cancelled.
+stages:
+  - id: demand-eligible
+    label: Demand Eligible
+    purpose: Establish demand that is eligible to consume or commit warehouse inventory.
+    inputs: [demand, item, requested-quantity]
+    outputs: [eligible-demand]
+  - id: availability-evaluation
+    label: Availability Evaluation
+    purpose: Calculate inventory quantity eligible for the requested commitment under current dimensions, holds, reservations, allocation rules, and policy.
+    inputs: [eligible-demand, inventory-position, availability-policy]
+    outputs: [availability-view]
+  - id: reservation
+    label: Reservation / Commitment
+    purpose: Optionally reserve inventory capacity for demand without requiring exact source location or handling-unit identity.
+    inputs: [eligible-demand, availability-view, reservation-policy]
+    outputs: [reservation]
+  - id: source-resolution
+    label: Source Resolution
+    purpose: Select the inventory dimensions, location, LPN or other source identity required for execution.
+    inputs: [eligible-demand, reservation, inventory-position, source-policy]
+    outputs: [source-inventory]
+  - id: allocation-creation
+    label: Allocation Creation
+    purpose: Bind demand to specific source inventory or an executable inventory source decision.
+    inputs: [eligible-demand, source-inventory]
+    outputs: [allocation]
+  - id: execution-handoff
+    label: Execution Handoff
+    purpose: Expose the allocation to wave, picking, cross-docking, replenishment, or another warehouse execution capability.
+    inputs: [allocation]
+    outputs: [execution-demand]
+  - id: commitment-resolution
+    label: Commitment Resolution
+    purpose: Consume, release, reallocate, partially satisfy, or cancel the commitment as execution and demand state change.
+    inputs: [reservation, allocation, execution-outcome]
+    outputs: [updated-commitment, residual-demand, updated-availability]
+objects:
+  - id: demand
+    term: Demand
+    role: Order line, shipment requirement, transfer demand, production demand, or other requirement for inventory.
+  - id: availability-view
+    term: Availability View
+    role: Derived quantity projection answering whether and how much inventory is eligible for a defined action under current rules.
+  - id: reservation
+    term: Reservation
+    role: Commitment of inventory capacity to demand that may remain less specific than the final warehouse execution source.
+    notes: Candidate Spotwo meaning. Vendor terminology varies and some systems use reservation and allocation as synonyms.
+  - id: allocation
+    term: Allocation
+    role: Binding of demand to a specific inventory source or sufficiently specific source decision for warehouse execution.
+  - id: inventory-scope
+    term: Inventory Scope
+    role: Dimensions at which a commitment is expressed, such as site, warehouse, status, lot, location, or handling unit.
+  - id: source-inventory
+    term: Source Inventory
+    role: Inventory identity selected to fulfil part or all of demand.
+  - id: reservation-policy
+    term: Reservation Policy
+    role: Rules controlling commitment timing and granularity.
+  - id: source-policy
+    term: Source Selection Policy
+    role: Rules controlling which inventory source is eligible or preferred.
+  - id: residual-demand
+    term: Residual Demand
+    role: Portion of demand not satisfied after allocation or execution outcome.
+states:
+  - id: pending
+    label: Pending
+    meaning: Demand exists but no inventory commitment has been established.
+  - id: reserved
+    label: Reserved
+    meaning: Inventory capacity is committed to demand without requiring final execution source binding.
+  - id: allocated
+    label: Allocated
+    meaning: Demand is bound to an execution-relevant inventory source.
+  - id: partially-consumed
+    label: Partially Consumed
+    meaning: Some committed quantity has been physically or logically consumed while residual commitment remains.
+  - id: consumed
+    label: Consumed
+    meaning: The committed quantity has been fully consumed by the intended downstream execution.
+    terminal: true
+  - id: released
+    label: Released
+    meaning: The commitment has been removed and quantity returned to the applicable availability pool.
+    terminal: true
+  - id: exception
+    label: Exception
+    meaning: Commitment cannot progress or reconcile normally because availability, source identity, or execution outcome diverged.
+  - id: cancelled
+    label: Cancelled
+    meaning: Demand or commitment is no longer valid.
+    terminal: true
+strategies:
+  - id: delayed-source-binding
+    category: commitment
+    label: Delayed Source Binding
+    definition: Reserve demand at a coarser inventory scope and postpone exact location or handling-unit selection until warehouse execution.
+    status: adopted
+    evidence_refs: [dynamics365-reservations-2026]
+  - id: exact-dimension-reservation
+    category: commitment
+    label: Exact Dimension Reservation
+    definition: Commit inventory at all required physical dimensions when demand or policy requires a specific source identity early.
+    status: observed
+    evidence_refs: [dynamics365-reservations-2026]
+  - id: wave-allocation
+    category: allocation
+    label: Wave Allocation
+    definition: Create source allocations during wave execution for picking or replenishment demand.
+    status: adopted
+    evidence_refs: [oracle-allocation-model-2026]
+  - id: direct-allocation
+    category: allocation
+    label: Direct Allocation
+    definition: Bind order demand directly to inventory without requiring a standard picking wave.
+    status: adopted
+    evidence_refs: [oracle-allocation-model-2026]
+  - id: cross-dock-allocation
+    category: allocation
+    label: Cross-Dock Allocation
+    definition: Bind received inbound inventory to outbound demand during receiving or distribution processing.
+    status: adopted
+    evidence_refs: [oracle-allocation-model-2026, oracle-cross-docking-2026]
+  - id: partial-commitment
+    category: commitment
+    label: Partial Commitment
+    definition: Commit only the currently eligible quantity while preserving residual unfulfilled demand.
+    status: observed
+    evidence_refs: [dynamics365-reservations-2026]
+exceptions:
+  - id: insufficient-availability
+    label: Insufficient Availability
+    trigger: Eligible quantity is lower than requested commitment quantity.
+    outcomes: [partial-commitment, preserve-residual-demand, reject-or-backorder]
+    status: adopted
+    evidence_refs: [dynamics365-reservations-2026, dynamics365-onhand-availability-2026]
+  - id: source-no-longer-eligible
+    label: Source No Longer Eligible
+    trigger: Previously selected source inventory becomes blocked, unavailable, moved, consumed, or otherwise invalid before execution.
+    outcomes: [release-allocation, select-alternate-source, reallocate, exception]
+    status: candidate
+    evidence_refs: [dynamics365-reservations-2026]
+  - id: execution-shortfall
+    label: Execution Shortfall
+    trigger: Physical execution consumes less quantity than was allocated.
+    outcomes: [consume-actual, preserve-residual-demand, reallocate-or-release-residual]
+    status: candidate
+    evidence_refs: [oracle-allocation-model-2026]
+vendor_models:
+  - company_id: microsoft
+    terminology:
+      commitment: Reservation
+      granularity: Reservation Hierarchy
+      availability: Available Physical
+    workflow: [demand, reservation-hierarchy, availability-calculation, reservation-above-location, location-directive-at-execution, work-reservation]
+    strategies: [above-location, all-dimensions, batch-level, policy-driven]
+    execution_channels: [warehouse-management]
+    evidence_refs: [dynamics365-reservations-2026, dynamics365-onhand-availability-2026]
+  - company_id: oracle
+    terminology:
+      commitment: Allocation
+      demand_detail: Order Detail
+      source_binding: from_inventory_id
+    workflow: [order-demand, wave-or-direct-allocation, source-inventory-binding, optional-task-grouping, pick-or-cross-dock-execution]
+    strategies: [wave-allocation, direct-allocation, pick-and-allocate, cross-dock-allocation]
+    execution_channels: [wms, rf, mobile]
+    evidence_refs: [oracle-allocation-model-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [demand-eligible, availability-evaluation, reservation, source-resolution, allocation-creation, execution-handoff, commitment-resolution]
+  canonical_objects: [demand, availability-view, reservation, allocation, inventory-scope, source-inventory, reservation-policy, source-policy, residual-demand]
+  task_states: [pending, reserved, allocated, partially-consumed, consumed, released, exception, cancelled]
+  commands: [evaluate-availability, reserve-inventory, release-reservation, allocate-inventory, reallocate-inventory, release-allocation, consume-allocation]
+  events: [inventory-reserved, reservation-released, inventory-allocated, allocation-reallocated, allocation-released, allocation-consumed, allocation-shortfall-detected]
+  notes: Reservation and Allocation are distinct candidate Spotwo concepts. Reservation represents inventory commitment that may be coarse-grained; Allocation represents execution-relevant source binding. Availability is derived from inventory and commitment state rather than treated as an independently mutable quantity bucket.
+research_gaps:
+  - Sample SAP EWM, Manhattan, Blue Yonder, Infor, Tecsys and 3PL-first systems to validate reservation-versus-allocation boundaries.
+  - Define whether allocation can exist without a reservation object in the persisted Spotwo model or whether reservation is an optional conceptual state only.
+  - Separate soft commercial allocation quotas from warehouse inventory reservation and executable allocation.
+  - Define concurrency and idempotency invariants for simultaneous reservation and allocation attempts against the same stock.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-reservations-2026, dynamics365-onhand-availability-2026, oracle-allocation-model-2026]
