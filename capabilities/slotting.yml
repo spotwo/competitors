@@ -1,0 +1,29 @@
+id: slotting
+group: storage
+label: Slotting
+status: adopted
+definition: Determine or optimize the preferred storage and picking locations for SKUs using operational, physical, and demand characteristics.
+purpose: Reduce travel and handling while improving space utilization, replenishment behavior, and throughput.
+inputs: [sku-profile, demand-history, location-capacity, warehouse-layout]
+outputs: [location-recommendation, slotting-plan]
+entities: [sku, location, inventory-policy]
+strategies: [velocity-based, affinity-based, size-weight-fit, replenishment-aware]
+related_capabilities: [putaway, storage, replenishment, picking]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: module
+    terminology: [Slotting Optimization]
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: infios
+    level: module
+    terminology: [Slotting]
+    evidence_refs: [infios-wms-capabilities-2026, infios-enterprise-capabilities-2026]
+  - company_id: mecalux
+    level: advanced
+    terminology: [advanced slotting]
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+spotwo:
+  canonical_term: Slotting
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-wms-capabilities-2026, infios-enterprise-capabilities-2026, mecalux-easy-wms-capabilities-2026]
