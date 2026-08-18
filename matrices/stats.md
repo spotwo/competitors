@@ -6,7 +6,7 @@
 |---|---:|
 | Companies | 50 |
 | Products | 88 |
-| Evidence records | 174 |
+| Evidence records | 175 |
 | Claims | 26 |
 | Terminology records | 35 |
 | Authorities | 8 |
