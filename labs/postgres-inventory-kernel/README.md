@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for ADR 0014 and the inventory transaction kernel.
+Executable proof-of-concept for ADR 0014, ADR 0015, and the inventory transaction kernel.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -68,9 +68,33 @@ contained stock -> direct Handling Unit
 
 A same-warehouse full-HU relocation updates the HU placement record and HU movement history without rewriting every contained Inventory Position. Repacking stock between HUs is a real inventory movement between two position keys.
 
+### Inventory commitments
+
+The lab separates:
+
+```text
+Availability != Reservation != Allocation != Assignment
+```
+
+A coarse Reservation commits quantity against an exact stock-dimension scope but does not select a Location, HU, or Inventory Position. An Allocation binds demand to one exact Inventory Position.
+
+For the current exact scope:
+
+```text
+available =
+  physical
+  - exact-position reserved
+  - exact-position allocated
+  - coarse reservation remainder
+```
+
+Converting Reservation remainder into Allocation preserves availability because one commitment form decreases by the same amount that the more-specific form increases.
+
+Reservation creation and unreserved allocation serialize through a transaction-scoped advisory lock derived from the stock-dimension scope. Position writes additionally take row locks.
+
 ### Position-level commitments
 
-`allocated_qty` and `reserved_qty` on the position represent only commitments already bound to that exact Inventory Key. The allocation function locks the position and prevents competing allocations from exceeding physical quantity.
+`allocated_qty` and `reserved_qty` on the position represent only commitments already bound to that exact Inventory Key. The low-level allocation function now also respects coarse Reservation capacity so it cannot bypass the commitment engine.
 
 ### Balanced physical movements
 
@@ -82,7 +106,7 @@ Exact serial tracking uses `inventory_serial_memberships`; a tenant/serial can h
 
 ### Retry safety
 
-Inventory posting commands carry a tenant-scoped idempotency key bound to a canonical request fingerprint. An exact retry returns the already-posted transaction instead of applying the quantity delta a second time; reuse of the same key for a different position, quantity, or movement payload is rejected.
+Inventory posting commands carry a tenant-scoped idempotency key bound to a canonical request fingerprint. An exact retry returns the already-posted transaction instead of applying the quantity delta a second time; reuse of the same key for a different payload is rejected.
 
 ## Executable scenarios
 
@@ -97,12 +121,24 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | deadlock ordering | opposite concurrent transfers lock the same pair in deterministic order |
 | idempotent retry | repeating one logical allocation does not double-post it |
 | idempotency collision | reusing one key for a different payload is rejected |
+| coarse reservation | reservation reduces scope availability without touching position `reserved_qty` |
+| reservation conversion | Reservation -> Allocation preserves global availability |
+| reserved-capacity protection | unreserved allocation cannot steal coarse-reserved stock |
+| reservation race | concurrent reservations cannot overcommit one stock scope |
+| multi-position allocation | one Reservation can allocate across multiple Inventory Positions |
+| allocation release | active Reservation regains remainder rather than free capacity |
+| closed reservation | releasing a later Allocation cannot reopen a released Reservation |
+| reservation retry | reservation idempotency replays exact payload and rejects collision |
 
 ## Deliberate simplifications
 
 This is a kernel lab, not the production schema. It intentionally omits or simplifies:
 
-- reservation aggregates above exact-position granularity;
+- wildcard/overlapping reservation scopes;
+- inventory holds and eligibility policy;
+- reservation expiration and priority;
+- FEFO/source-selection policy;
+- Warehouse Work creation and assignment;
 - outbox/domain-event persistence;
 - cross-warehouse transfer orchestration;
 - lot genealogy;
@@ -113,8 +149,13 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - production UUIDv7 generation policy;
 - performance benchmarks and `EXPLAIN (ANALYZE, BUFFERS)` tuning.
 
-These are next-layer concerns after the concurrency semantics prove sound.
+These are next-layer concerns after the commitment and concurrency semantics prove sound.
 
 ## Source of truth
 
-The conceptual decision remains `decisions/domain/0014-inventory-key-stock-dimensions.md`. This lab exists to falsify or strengthen that candidate model with executable PostgreSQL behavior.
+The conceptual decisions are:
+
+- `decisions/domain/0014-inventory-key-stock-dimensions.md`
+- `decisions/domain/0015-inventory-commitment-engine.md`
+
+The lab exists to falsify or strengthen those candidate models with executable PostgreSQL behavior.
