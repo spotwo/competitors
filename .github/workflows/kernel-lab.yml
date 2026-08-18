@@ -9,6 +9,8 @@ on:
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
       - 'decisions/domain/0017-warehouse-work-execution-engine.md'
+      - 'decisions/domain/0018-golden-warehouse-scenarios.md'
+      - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
@@ -26,6 +28,8 @@ on:
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
       - 'decisions/domain/0017-warehouse-work-execution-engine.md'
+      - 'decisions/domain/0018-golden-warehouse-scenarios.md'
+      - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
@@ -66,6 +70,8 @@ jobs:
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
             decisions/domain/0017-warehouse-work-execution-engine.md \
+            decisions/domain/0018-golden-warehouse-scenarios.md \
+            scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
             ontology/handling-unit.yml \
