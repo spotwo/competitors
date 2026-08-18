@@ -1,0 +1,13 @@
+id: infor-physical-inventory-2026
+subject: physical-inventory-workflow
+source_type: official-docs
+grade: A
+title: Entering a physical count on a workstation
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/sceinmgtug/inventory_management/review_physical_inventory_help.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS physical inventory captures team, owner, inventory tag, item, lot, location, LPN, UOM, and counted quantity as count evidence.
+  - Multiple physical counts can exist for the same item and the latest count can be used for inventory posting.
+  - RF execution can create physical count records automatically.
+  - Physical counting and inventory posting are separate steps.
