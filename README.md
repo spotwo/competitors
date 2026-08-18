@@ -14,12 +14,13 @@ This repository records competitors, products, capabilities, workflow decomposit
 4. **One entity, many facets** - geography, segment, industry, solution layer, and deployment model are metadata, not directory nesting.
 5. **Terminology is a product asset** - record standards, dominant market usage, aliases, and Spotwo decisions.
 6. **Domain model is evidence-driven** - vendor structures are observations, not automatic Spotwo architecture.
-7. **Capability is not implementation** - receiving, replenishment, picking, etc. are canonical capabilities; wave, batch, min/max, GTP, voice, and similar choices are strategies or implementation patterns where appropriate.
-8. **Workflow is deeper than capability** - a workflow decomposes a capability into stages, objects, states, strategies, assignment rules, execution channels and exceptions.
-9. **Process state is not inventory state** - packed, loaded, receiving, held, allocated and physically present are different concerns and must not collapse into one inventory-status enum.
-10. **Time matters** - every researched fact has a verification or observation date.
-11. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
-12. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
+7. **Capability is not implementation** - receiving, replenishment, picking, etc. are canonical capabilities; wave, batch, min/max, GTP, voice, and similar choices are strategies or implementation patterns.
+8. **Workflow is deeper than capability** - a workflow decomposes a capability into stages, objects, states, strategies, execution channels, exceptions, and vendor mappings.
+9. **Process state is not inventory state** - packed, loaded, receiving, held, reserved, allocated, available, and physically present are different concerns.
+10. **Planning is not execution** - business need and policy create Warehouse Work; inventory changes only from explicit confirmed transactions.
+11. **Time matters** - every researched fact has a verification or observation date.
+12. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
+13. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
 
 ## Knowledge model
 
@@ -50,52 +51,176 @@ A capability answers **what operational outcome exists**. A workflow answers **h
 
 ```text
 companies/       Vendor and product records
-capabilities/    Canonical warehouse capabilities, strategies and vendor observations
-workflows/       Deep capability decompositions: stages, objects, states, vendor mappings and exceptions
+capabilities/    Canonical warehouse capabilities and vendor observations
+workflows/       Deep capability decompositions
 claims/          Reusable factual assertions linked to evidence
 taxonomy/        Controlled vocabularies
 terminology/     Industry terms, aliases, usage, and Spotwo naming decisions
 authorities/     Standards, regulations, associations, and industry guides
 evidence/        Source records supporting claims and domain models
-ontology/        Facility, location, inventory, handling-unit and process models
+ontology/        Facility, location, inventory, handling-unit, process, and movement models
 kpis/            Warehouse/DC KPI registry
 integrations/    Integration and interoperability patterns
 decisions/       Spotwo ADR-style product/domain/UX decisions
-matrices/        Generated comparison, stats, domain, workflow and research views
+matrices/        Generated comparison, stats, workflow, domain, and research views
 schema/          JSON Schema definitions
 templates/       Research and record templates
 scripts/         Validation, query, and generation tools
 .github/         CI workflows and contribution templates
 ```
 
-## Current domain stance
+## Current WMS kernel stance
 
-The repository intentionally does **not** treat `ROW -> RACK -> LEVEL -> BIN` as a universal warehouse standard. Current evidence supports a more flexible model where `Location` is the canonical addressable place, while rack, aisle, bay/stack and level are optional physical or coordinate dimensions. See `decisions/domain/0003-location-model.md`.
+The current model is intentionally a **candidate kernel**, not a frozen implementation specification.
 
-Handling-unit identity is separated from standardized supply-chain identity. An internal Handling Unit may have an LPN and may have an SSCC, but those identifiers are not treated as synonyms. See `decisions/domain/0004-handling-unit-identifiers.md`.
+```text
+Demand / Supply / Operational Need
+             |
+             v
+     Decision / Policy Layer
+             |
+      +------+-------+
+      |              |
+      v              v
+ Reservation?    Allocation
+      |              |
+      +------+-------+
+             |
+             v
+        Warehouse Work
+             |
+             v
+        Warehouse Task
+             |
+             v
+     Execution / Exception
+             |
+             v
+        Confirmation
+             |
+             v
+   Inventory Movement / Adjustment
+```
 
-Inventory is modeled through orthogonal axes rather than one overloaded `inventory_status`. Physical quantity, allocated quantity, available quantity, business/quality condition, allocation eligibility and operational holds are separate concepts. See `decisions/domain/0007-inventory-state-axes.md`.
+### Location
 
-The process taxonomy has one canonical capability record for every defined warehouse process. Capability records distinguish the business capability from strategies such as batch/cluster/zone picking, min-max/order-based replenishment, wave versus waveless release, directed versus user-selected putaway, blind versus guided counting, or human versus automated execution.
+The repository intentionally does **not** treat `ROW -> RACK -> LEVEL -> BIN` as a universal warehouse standard. `Location` is the canonical addressable place; rack, aisle, bay/stack and level may be physical structures or coordinate dimensions. See `decisions/domain/0003-location-model.md`.
+
+### Handling units
+
+Handling-unit identity is separated from standardized supply-chain identity. A Handling Unit may have an LPN and may have an SSCC, but those identifiers are not synonyms. See `decisions/domain/0004-handling-unit-identifiers.md`.
+
+### Inventory state
+
+Inventory is modeled through orthogonal axes rather than one overloaded `inventory_status`:
+
+```text
+Stock
+  +-- Physical Quantity
+  +-- Reserved Quantity
+  +-- Allocated Quantity
+  +-- Available Quantity / Availability View
+  +-- Inventory Condition
+  +-- Allocation Eligibility
+  +-- Inventory Hold
+  +-- Owner / Lot / Serial / Location / Handling Unit
+```
+
+Availability is a derived projection. Reservation is a candidate coarse commitment to demand. Allocation is an execution-relevant source binding. See `decisions/domain/0007-inventory-state-axes.md` and `decisions/domain/0009-inventory-commitment-model.md`.
+
+### Warehouse Work
+
+Repeated vendor patterns support a proposed shared execution layer:
+
+```text
+Business Need
+  -> Planning / Decision
+  -> Warehouse Work
+  -> Warehouse Task
+  -> Assignment / Claim
+  -> Execution
+  -> Confirmation / Exception
+```
+
+Picking, Putaway, Replenishment, Relocation and Cycle Counting can reuse execution infrastructure without losing their capability-specific semantics. See `decisions/domain/0008-warehouse-work-abstraction.md`.
+
+### Inventory Movement
+
+Putaway, Internal Replenishment, Cross-docking and Relocation all perform inventory-context changes but have different planning reasons.
+
+```text
+Movement Intent
+      |
+      v
+Warehouse Work / Task
+      |
+      v
+Inventory Movement
+      |
+      v
+Movement Confirmation
+```
+
+`Inventory Movement` is one confirmed source-to-destination inventory-context change. `Inventory Transfer` is a business intent and may orchestrate multiple movements and workflows. A tracked inter-warehouse transfer may be:
+
+```text
+Transfer Order
+  -> Pick
+  -> Ship
+  -> In Transit
+  -> Receive
+  -> Putaway
+```
+
+See `decisions/domain/0010-inventory-movement-model.md`.
 
 ## Deep workflow coverage
 
-Current deep decompositions:
+The repository currently contains 12 deep workflow decompositions:
 
 ```text
-Receiving
-  -> Putaway
+Inbound
+  Receiving
+  Cross-docking
+  Putaway
 
-Internal Replenishment
+Inventory / storage
+  Internal Replenishment
+  Internal Relocation
+  Cycle Counting
+  Physical Inventory
 
-Picking
-  -> Packing
-  -> Shipping
+Fulfillment / outbound
+  Inventory Allocation and Commitment
+  Picking
+  Packing
+  Shipping
 
-Cycle Counting
+Reverse
+  Customer Returns
 ```
 
-Each workflow records its own stages, canonical objects, candidate task/process states, strategies, exceptions, vendor mappings, commands/events and research gaps.
+Each workflow records stages, canonical objects, candidate states, strategies, exceptions, vendor mappings, commands/events and explicit research gaps.
+
+### Important semantic boundaries
+
+```text
+Arrival != Receipt != Putaway
+
+Reservation != Allocation != Task Assignment
+
+Physical Quantity != Available Quantity
+
+Return Reason != Return Disposition != Commercial Outcome
+
+Count Result != Accepted Count != Inventory Difference != Adjustment
+
+Picked != Packed != Staged != Loaded != Shipped
+
+Relocation != Transfer
+
+Movement Intent != Inventory Movement Confirmation
+```
 
 ### Picking
 
@@ -110,7 +235,7 @@ Demand Ready
   -> Handoff
 ```
 
-The candidate model uses `Pick Work Group -> Pick Task` instead of adopting one vendor vocabulary. SAP `Warehouse Order -> Warehouse Task`, Dynamics `Work -> Work Line`, Oracle `Task -> Allocation`, NetSuite `Wave -> Pick Task`, and Infor `Assignment -> Pick Task` remain explicit mappings. See `decisions/domain/0005-picking-work-model.md`.
+The candidate model uses `Pick Work Group -> Pick Task` instead of adopting one vendor vocabulary. See `decisions/domain/0005-picking-work-model.md`.
 
 ### Internal replenishment
 
@@ -125,73 +250,114 @@ Trigger Evaluation
   -> Completion / Recalculation
 ```
 
-Internal warehouse replenishment is deliberately separated from procurement, production supply and inter-warehouse resupply. See `decisions/domain/0006-internal-replenishment-scope.md`.
+Internal warehouse replenishment is separated from procurement, production supply and inter-warehouse resupply. See `decisions/domain/0006-internal-replenishment-scope.md`.
 
-### Receiving and putaway
+### Allocation and commitment
 
-Receiving separates arrival/unloading, registration, quality, goods receipt, verification and downstream handoff. Putaway then separates destination selection from executable movement work. A product may combine receipt and putaway in one worker UI flow without making them one domain concept.
+```text
+Demand Eligible
+  -> Availability Evaluation
+  -> Reservation? 
+  -> Source Resolution
+  -> Allocation Creation
+  -> Execution Handoff
+  -> Commitment Resolution
+```
 
-### Packing and shipping
+Reservation is optional in the candidate model. Exact source identity may be deferred until execution when policy permits. See `decisions/domain/0009-inventory-commitment-model.md`.
 
-Packing creates and closes outbound containers. Shipping separately handles load assignment, staging, dock handoff, physical loading and shipment confirmation. `Packed`, `Loaded` and `Shipped` are therefore separate transitions.
+### Cross-docking
 
-### Cycle counting
+```text
+Inbound Eligibility
+  -> Demand Match
+  -> Cross-Dock Allocation
+  -> Work Creation
+  -> Move to Outbound Flow
+  -> Outbound Handoff
+  -> Residual / Fallback Putaway
+```
 
-Cycle counting separates count selection, executable count work, count evidence, variance review and inventory adjustment. A count result does not automatically imply an inventory mutation.
+Cross-docking is a demand-linked allocation and routing decision, not merely a special storage location.
+
+### Returns
+
+```text
+Return Arrival
+  -> Identification
+  -> Authorization / Blind Return Resolution
+  -> Return Receipt
+  -> Inspection and Disposition
+  -> Disposition Work
+  -> Execution
+  -> Return Resolution
+```
+
+Receiving a returned item does not automatically make it allocatable.
+
+### Physical inventory
+
+```text
+Scope Definition
+  -> Inventory Document
+  -> Count Release
+  -> Count Execution
+  -> Recount / Review
+  -> Difference Analysis
+  -> Adjustment Posting
+  -> Reconciliation / Close
+```
+
+Physical Inventory is broader audit/reconciliation scope than routine Cycle Counting.
 
 ## Querying the knowledge base
 
 ```bash
-# Competitor questions
+# Competitors
 python scripts/kb.py vendors --segment smb --market europe --layer wms
 python scripts/kb.py vendors --country UA
-python scripts/kb.py vendors --layer wes --deployment cloud
 python scripts/kb.py vendors --capability picking
 
-# Capability graph
+# Capabilities
 python scripts/kb.py capability
-python scripts/kb.py capability replenishment
-python scripts/kb.py capability picking --vendor blue-yonder
-python scripts/kb.py capability --group inbound
-python scripts/kb.py capability automation --json
+python scripts/kb.py capability allocation
+python scripts/kb.py capability cross-docking --vendor oracle
+python scripts/kb.py capability --group inventory
 
-# Deep workflow decomposition
+# Deep workflows
 python scripts/kb.py workflow
+python scripts/kb.py workflow allocation
+python scripts/kb.py workflow cross-docking
 python scripts/kb.py workflow receiving
 python scripts/kb.py workflow putaway
 python scripts/kb.py workflow replenishment
-python scripts/kb.py workflow picking --vendor sap
+python scripts/kb.py workflow relocation --vendor microsoft
 python scripts/kb.py workflow picking --strategy cluster
 python scripts/kb.py workflow packing
 python scripts/kb.py workflow shipping
-python scripts/kb.py workflow cycle-counting --vendor oracle
-python scripts/kb.py workflow cycle-counting --json
+python scripts/kb.py workflow returns
+python scripts/kb.py workflow cycle-counting
+python scripts/kb.py workflow physical-inventory --vendor sap
+python scripts/kb.py workflow allocation --json
+
+# Domain ontology
+python scripts/kb.py ontology
+python scripts/kb.py ontology inventory
+python scripts/kb.py ontology reservation
+python scripts/kb.py ontology allocation
+python scripts/kb.py ontology availability
+python scripts/kb.py ontology inventory-movement
+python scripts/kb.py ontology handling-unit --json
 
 # Industry language
 python scripts/kb.py term "clear height"
 python scripts/kb.py term bin
 
-# Domain ontology
-python scripts/kb.py ontology
-python scripts/kb.py ontology location
-python scripts/kb.py ontology handling-unit --json
-python scripts/kb.py ontology inventory
-python scripts/kb.py ontology available
-
-# Warehouse KPIs
-python scripts/kb.py kpis
+# KPIs / integrations / evidence
 python scripts/kb.py kpis --category inbound
-python scripts/kb.py kpis --name picking
-
-# Integration patterns
-python scripts/kb.py integrations
-python scripts/kb.py integrations --category event
 python scripts/kb.py integrations --protocol OPC
-
-# Claims and evidence
-python scripts/kb.py claims --subject clear-height
-python scripts/kb.py evidence --subject receiving-workflow
-python scripts/kb.py evidence --subject cycle-counting-workflow
+python scripts/kb.py evidence --subject inventory-commitment-model
+python scripts/kb.py evidence --subject inventory-movement-model
 python scripts/kb.py evidence --publisher GS1
 
 # Research backlog and live counts
@@ -199,9 +365,9 @@ python scripts/kb.py gaps
 python scripts/kb.py stats
 ```
 
-Add `--json` when an agent, MCP server, CI job, or another tool needs machine-readable output.
+Add `--json` when an agent, MCP server, CI job or another tool needs machine-readable output.
 
-`workflows/*.yml` is canonical. `matrices/workflows.md` is a generated compact comparison view; detailed workflow data should be queried from YAML/CLI rather than duplicated into large generated Markdown files.
+`workflows/*.yml` is canonical. `matrices/workflows.md` is a generated compact comparison view. Detailed workflow data should be queried from YAML/CLI rather than duplicated into large generated Markdown files.
 
 ## Authority order for terminology
 
@@ -229,7 +395,7 @@ When the market term differs from a formal standard, record both and create a de
 
 ## Validation
 
-Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, capability/vendor/product relationships, workflow/company/capability relationships, nested workflow IDs, and generated-view freshness.
+Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, company/product relationships, workflow references, nested workflow IDs, ontology parent/relationship references, and generated-view freshness.
 
 ```bash
 python -m pip install -r requirements.txt
