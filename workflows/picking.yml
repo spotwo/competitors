@@ -1,0 +1,358 @@
+id: picking
+capability_id: picking
+title: Picking Workflow
+status: candidate
+definition: A cross-vendor decomposition of how outbound demand becomes executable pick work, is assigned and navigated, confirmed by a worker or automation resource, resolved through exceptions, and handed off to consolidation, packing, staging or downstream execution.
+stages:
+  - id: demand-ready
+    label: Demand Ready
+    purpose: Establish eligible outbound demand and inventory prerequisites before warehouse execution.
+    inputs: [order, shipment, inventory]
+    outputs: [eligible-demand]
+  - id: release
+    label: Release / Orchestration
+    purpose: Decide when demand enters execution and whether it is grouped into a wave, streamed continuously, or released directly.
+    inputs: [eligible-demand]
+    outputs: [released-demand, wave]
+  - id: work-creation
+    label: Pick Work Creation
+    purpose: Convert released demand and allocation decisions into executable picking work and source-destination instructions.
+    inputs: [released-demand, allocation, location-policy]
+    outputs: [pick-work-group, pick-task]
+  - id: assignment
+    label: Assignment
+    purpose: Match available pick work to a worker, equipment resource, queue, zone or shared task pool.
+    inputs: [pick-task, worker-resource, equipment-resource]
+    outputs: [assignment]
+  - id: routing
+    label: Sequence / Route
+    purpose: Order stops or tasks to reduce travel and honor priority, permissions, deadlines and dependencies.
+    inputs: [assignment, source-location, priority]
+    outputs: [pick-route]
+  - id: execution
+    label: Travel and Pick
+    purpose: Guide the picker or automation resource to the source, identify stock and move the requested quantity into a pick handling unit or destination.
+    inputs: [pick-route, pick-task, handling-unit]
+    outputs: [picked-quantity, pick-confirmation]
+  - id: exception-resolution
+    label: Exception Resolution
+    purpose: Capture shortages, damage, validation failures or container constraints and determine downstream corrective work.
+    inputs: [pick-task, exception]
+    outputs: [exception-resolution, inventory-verification, residual-demand]
+  - id: handoff
+    label: Handoff
+    purpose: Transfer completed pick output to consolidation, packing, staging, sortation, loading or another execution zone.
+    inputs: [picked-quantity, handling-unit]
+    outputs: [downstream-work]
+objects:
+  - id: fulfillment-demand
+    term: Fulfillment Demand
+    role: Business demand that requires inventory to be picked.
+    aliases: [order-line, shipment-line, outbound-demand]
+  - id: allocation
+    term: Allocation
+    role: Reservation or source decision linking demand to inventory.
+  - id: wave
+    term: Wave
+    role: Optional release grouping used to process multiple demand lines together.
+  - id: pick-work-group
+    term: Pick Work Group
+    role: Canonical abstraction for a grouping of executable pick tasks assigned or selected together.
+    aliases: [warehouse-order, work, assignment, pick-list]
+    notes: This is a Spotwo abstraction. Vendor terms must remain mapped rather than treated as synonyms in source systems.
+  - id: pick-task
+    term: Pick Task
+    role: Smallest independently executable picking instruction in the canonical model.
+    aliases: [warehouse-task, pick-line, work-line]
+  - id: assignment
+    term: Assignment
+    role: Association between work and an execution resource or eligible task pool.
+  - id: worker-resource
+    term: Worker Resource
+    role: Human warehouse resource eligible to execute work based on permissions, zone or equipment constraints.
+  - id: equipment-resource
+    term: Equipment Resource
+    role: Forklift, cart, robot, station or other resource that constrains or executes pick work.
+  - id: pick-route
+    term: Pick Route
+    role: Ordered sequence of locations or tasks for execution.
+    aliases: [picking-tour, route-sequence]
+  - id: handling-unit
+    term: Pick Handling Unit
+    role: Tote, carton, pallet, cart position or other unit into which picked stock is accumulated.
+  - id: source-location
+    term: Source Location
+    role: Addressable place from which stock is removed.
+  - id: destination-location
+    term: Destination Location
+    role: Handoff, staging, consolidation or packing destination for completed work.
+  - id: pick-confirmation
+    term: Pick Confirmation
+    role: Recorded evidence that requested stock was picked, including actual quantity and identity validations.
+  - id: pick-exception
+    term: Pick Exception
+    role: Structured deviation between requested work and executable or actual outcome.
+states:
+  - id: planned
+    label: Planned
+    meaning: Work exists conceptually but is not yet available to execute.
+  - id: released
+    label: Released
+    meaning: Work has entered execution and may be assigned or claimed.
+  - id: assigned
+    label: Assigned
+    meaning: Work is associated with a specific worker, resource, queue or execution context.
+  - id: in-progress
+    label: In Progress
+    meaning: At least one physical or confirmation action has started.
+  - id: held
+    label: Held
+    meaning: Work remains valid but is temporarily unavailable for execution.
+  - id: exception
+    label: Exception
+    meaning: Work cannot complete normally without a shortage, validation or operational resolution.
+  - id: completed
+    label: Completed
+    meaning: Required pick outcome is confirmed or explicitly closed with an accepted partial or zero-pick outcome.
+    terminal: true
+  - id: cancelled
+    label: Cancelled
+    meaning: Work has been invalidated and must not be executed.
+    terminal: true
+strategies:
+  - id: wave-release
+    category: release
+    label: Wave Release
+    definition: Group demand using configured criteria and release the resulting work as a planned execution batch.
+    status: adopted
+    evidence_refs: [dynamics365-wave-picking-2026, netsuite-wms-wave-picking-2026, odoo-wave-picking-2026]
+  - id: waveless-streaming
+    category: release
+    label: Waveless / Order Streaming
+    definition: Continuously release or reprioritize eligible work without requiring all demand to wait for a traditional wave boundary.
+    status: candidate
+    evidence_refs: [manhattan-order-streaming-2026, blue-yonder-wes-picking-2026]
+  - id: single-order
+    category: grouping
+    label: Single Order Picking
+    definition: Keep pick work scoped to one outbound order or shipment during execution.
+    status: adopted
+    evidence_refs: [netsuite-wms-wave-picking-2026]
+  - id: batch-picking
+    category: grouping
+    label: Batch Picking
+    definition: Combine multiple orders or demand lines so common inventory locations can be visited once before downstream sorting.
+    status: adopted
+    evidence_refs: [netsuite-wms-wave-picking-2026, odoo-wave-picking-2026]
+  - id: cluster-picking
+    category: grouping
+    label: Cluster Picking
+    definition: Pick multiple orders in one trip while preserving order separation in dedicated tote, carton or cart positions during the pick.
+    status: adopted
+    evidence_refs: [dynamics365-cluster-picking-2026, odoo-cluster-picking-2026]
+  - id: zone-picking
+    category: grouping
+    label: Zone Picking
+    definition: Restrict workers or work to warehouse zones and hand work or containers between zones as required.
+    status: observed
+    evidence_refs: [infor-wms-pick-methods-2026]
+  - id: pick-and-pass
+    category: grouping
+    label: Pick and Pass
+    definition: Execute a container or order through a configured sequence of picking zones.
+    status: observed
+    evidence_refs: [infor-wms-pick-methods-2026]
+  - id: system-directed-assignment
+    category: assignment
+    label: System-Directed Assignment
+    definition: Automatically choose the next work based on eligibility, permissions, priority, proximity, queue or other execution rules.
+    status: adopted
+    evidence_refs: [sap-ewm-picking-rf-2026, oracle-wms-task-execution-2026, infor-wms-directed-picking-2026, blue-yonder-wes-picking-2026]
+  - id: explicit-assignment
+    category: assignment
+    label: Explicit Assignment
+    definition: Associate work with a named worker before execution.
+    status: adopted
+    evidence_refs: [oracle-wms-task-execution-2026, netsuite-wms-wave-picking-2026]
+  - id: task-pool
+    category: assignment
+    label: Shared Task Pool
+    definition: Release eligible work into a pool from which a worker can receive or claim the next task.
+    status: adopted
+    evidence_refs: [oracle-wms-task-execution-2026, infor-wms-directed-picking-2026]
+  - id: priority-proximity-routing
+    category: routing
+    label: Priority and Proximity Routing
+    definition: Sequence or assign work using location proximity together with operational priority and resource constraints.
+    status: observed
+    evidence_refs: [blue-yonder-wes-picking-2026]
+  - id: route-sequence
+    category: routing
+    label: Route Sequence
+    definition: Use configured or calculated location order to determine the sequence in which picks are presented.
+    status: adopted
+    evidence_refs: [infor-wms-directed-picking-2026]
+  - id: rf-barcode
+    category: execution
+    label: RF / Barcode Directed Picking
+    definition: Present instructions on a mobile RF or barcode device and validate locations, items, quantities or containers through scans and keyed confirmations.
+    status: adopted
+    evidence_refs: [sap-ewm-picking-rf-2026, oracle-wms-task-execution-2026, infor-wms-directed-picking-2026, odoo-cluster-picking-2026]
+  - id: voice
+    category: execution
+    label: Voice Picking
+    definition: Deliver instructions and capture confirmations through a headset while keeping the worker hands-free.
+    status: adopted
+    evidence_refs: [infios-voice-picking-2026, infor-wms-pick-methods-2026]
+  - id: pick-to-light
+    category: execution
+    label: Pick-to-Light
+    definition: Guide source-location picking with illuminated displays that identify the location and requested quantity.
+    status: adopted
+    evidence_refs: [mecalux-picking-methods-2026]
+  - id: put-to-light
+    category: execution
+    label: Put-to-Light
+    definition: Guide placement of picked stock into order-specific containers or destinations using illuminated displays.
+    status: adopted
+    evidence_refs: [mecalux-picking-methods-2026]
+  - id: scan-confirmation
+    category: confirmation
+    label: Scan Confirmation
+    definition: Confirm execution through scans of source location, item, handling unit or destination identifiers.
+    status: adopted
+    evidence_refs: [odoo-cluster-picking-2026, infor-wms-directed-picking-2026]
+  - id: voice-confirmation
+    category: confirmation
+    label: Voice Confirmation
+    definition: Confirm picked quantity and exception information verbally through the voice execution channel.
+    status: adopted
+    evidence_refs: [infios-voice-picking-2026]
+exceptions:
+  - id: short-pick
+    label: Short Pick
+    trigger: Actual available or picked quantity is less than the requested quantity.
+    outcomes: [record-actual-quantity, capture-reason, create-residual-demand, trigger-inventory-verification]
+    status: adopted
+    evidence_refs: [oracle-wms-short-pick-2026, netsuite-wms-partial-picks-2026, infios-voice-picking-2026]
+  - id: zero-pick
+    label: Zero Pick
+    trigger: No requested quantity can be picked from the task source.
+    outcomes: [close-or-replan-task, preserve-unfulfilled-demand, inventory-verification]
+    status: observed
+    evidence_refs: [netsuite-wms-partial-picks-2026]
+  - id: validation-failure
+    label: Validation Failure
+    trigger: Scanned or entered location, item, LPN, quantity or other required attribute fails execution validation.
+    outcomes: [keep-task-in-progress, show-error, retry-or-escalate]
+    status: observed
+    evidence_refs: [infor-wms-directed-picking-2026]
+  - id: damaged-stock
+    label: Damaged Stock
+    trigger: Worker identifies stock damage during pick execution.
+    outcomes: [record-exception, exclude-or-hold-stock, continue-or-replan-demand]
+    status: candidate
+    evidence_refs: [infios-voice-picking-2026]
+vendor_models:
+  - company_id: sap
+    terminology:
+      work_group: Warehouse Order
+      task: Warehouse Task
+      execution_channel: RF
+    workflow: [warehouse-request, warehouse-task, warehouse-order-selection, rf-execution, confirmation]
+    strategies: [system-guided, queue-guided, request-directed, warehouse-order-directed, handling-unit-directed]
+    execution_channels: [rf]
+    evidence_refs: [sap-ewm-picking-rf-2026]
+  - company_id: oracle
+    terminology:
+      work_group: Task
+      task_detail: Allocation
+      execution_channel: RF Execute Task
+    workflow: [allocation, task-creation, release-or-assignment, priority-ordering, rf-execution, completion]
+    strategies: [explicit-assignment, shared-task-pool, priority-ordering]
+    execution_channels: [rf]
+    evidence_refs: [oracle-wms-task-execution-2026, oracle-wms-short-pick-2026]
+  - company_id: microsoft
+    terminology:
+      release_group: Wave
+      work_group: Work
+      task_detail: Work Line
+    workflow: [release-to-warehouse, wave, wave-processing, work-creation, mobile-execution, completion]
+    strategies: [wave, automated-wave, cluster-picking]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics365-wave-picking-2026, dynamics365-cluster-picking-2026]
+  - company_id: infor
+    terminology:
+      work_group: Assignment
+      task: Pick Task
+      execution_channel: RF Task Picking
+    workflow: [wave-release, assignment-or-task-pool, task-selection, rf-execution, validation, next-task]
+    strategies: [task-directed, cluster-by-order, cluster-by-case, assignment-pick, pick-and-pass]
+    execution_channels: [rf, voice, paper]
+    evidence_refs: [infor-wms-directed-picking-2026, infor-wms-pick-methods-2026]
+  - company_id: netsuite
+    terminology:
+      release_group: Wave
+      task: Pick Task
+    workflow: [order-release, wave, pick-task-generation, assignment, mobile-picking, staging, fulfillment]
+    strategies: [single-order, bulk-picking, multiple-order, zone-picking]
+    execution_channels: [mobile-app]
+    evidence_refs: [netsuite-wms-wave-picking-2026, netsuite-wms-partial-picks-2026]
+  - company_id: odoo
+    terminology:
+      release_group: Wave Transfer
+      work_group: Batch Transfer
+      task_detail: Detailed Operation
+    workflow: [transfer, batch-or-wave-grouping, worker-assignment, location-grouped-execution, barcode-confirmation, output-location]
+    strategies: [batch, wave, cluster]
+    execution_channels: [barcode-app, web]
+    evidence_refs: [odoo-wave-picking-2026, odoo-cluster-picking-2026]
+  - company_id: blue-yonder
+    terminology:
+      orchestration: Warehouse Execution
+      work_group: Picking Tour
+      task: Task
+    workflow: [task-pool, dynamic-prioritization, adaptive-assignment, picking-tour, execution, dependency-recalculation]
+    strategies: [dynamic-priority, proximity-assignment, grouped-tasks, real-time-picking-tours]
+    execution_channels: [wms-wes-directed]
+    evidence_refs: [blue-yonder-wes-picking-2026]
+  - company_id: manhattan-associates
+    terminology:
+      release_model: Order Streaming
+      orchestration: Embedded WES
+    workflow: [demand-arrival, dynamic-allocation, wave-or-stream-release, adaptive-work-planning, smart-task-execution]
+    strategies: [wave, waveless, order-streaming, adaptive-pick-path]
+    execution_channels: [mobile-workflow]
+    evidence_refs: [manhattan-order-streaming-2026]
+  - company_id: mecalux
+    terminology:
+      work_group: Pick List
+      orchestration: Easy WMS
+    workflow: [order, pick-list-generation, task-allocation, operator-guidance, confirmation, downstream-handoff]
+    strategies: [rf, voice, pick-to-light, put-to-light, goods-to-person, pick-and-pass]
+    execution_channels: [rf, voice, pick-to-light, put-to-light]
+    evidence_refs: [mecalux-picking-methods-2026]
+  - company_id: infios
+    terminology:
+      execution_channel: Voice
+      task: Task
+    workflow: [task-direction, location-guidance, quantity-guidance, verbal-confirmation-or-exception, next-task]
+    strategies: [voice, optimized-walk-path]
+    execution_channels: [voice]
+    evidence_refs: [infios-voice-picking-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [demand-ready, release, work-creation, assignment, routing, execution, exception-resolution, handoff]
+  canonical_objects: [fulfillment-demand, allocation, wave, pick-work-group, pick-task, assignment, worker-resource, equipment-resource, pick-route, handling-unit, source-location, destination-location, pick-confirmation, pick-exception]
+  task_states: [planned, released, assigned, in-progress, held, exception, completed, cancelled]
+  commands: [release-pick-work, assign-pick-work, start-pick-task, confirm-pick, report-short-pick, report-damage, hold-pick-work, resume-pick-work, cancel-pick-work, complete-pick-work]
+  events: [pick-work-released, pick-work-assigned, pick-task-started, pick-confirmed, pick-short-reported, pick-damage-reported, pick-work-held, pick-work-resumed, pick-work-cancelled, pick-work-completed]
+  notes: Keep Wave optional. Pick Work Group and Pick Task are canonical abstractions; vendor terms such as Warehouse Order, Work, Assignment and Pick List remain integration mappings. Execution channel must not be encoded into the business capability or task type.
+research_gaps:
+  - Sample at least ten more WMS products before adopting the Spotwo task state model.
+  - Separate inventory allocation from pick-source selection where vendors model them independently.
+  - Determine whether zone handoff should create a new Pick Work Group or preserve one group across zones.
+  - Compare short-pick residual-demand and automatic reallocation behavior across SAP, Manhattan, Blue Yonder, Oracle, Infor and Mecalux.
+  - Add UI interaction observations for handheld RF, voice, pick-to-light and goods-to-person stations without treating presentation details as domain semantics.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-picking-rf-2026, oracle-wms-task-execution-2026, oracle-wms-short-pick-2026, dynamics365-wave-picking-2026, dynamics365-cluster-picking-2026, infor-wms-directed-picking-2026, infor-wms-pick-methods-2026, netsuite-wms-wave-picking-2026, netsuite-wms-partial-picks-2026, odoo-wave-picking-2026, odoo-cluster-picking-2026, blue-yonder-wes-picking-2026, manhattan-order-streaming-2026, mecalux-picking-methods-2026, infios-voice-picking-2026]
