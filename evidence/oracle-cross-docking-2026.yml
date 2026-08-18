@@ -1,0 +1,13 @@
+id: oracle-cross-docking-2026
+subject: cross-docking-workflow
+source_type: official-docs
+grade: A
+title: Cross-Dock Configuration
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/cancel-orders-after-shipment-verification.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+  - Oracle WMS supports cross-dock allocation during receiving based on configured cross-dock modes.
+  - Cross-dock matching can use required LPN identity, single-SKU matching, multi-SKU rules, order type, quantity, and inventory-attribute checks.
+  - A successful cross-dock receive creates allocation between received inventory and outbound demand rather than routing all received stock through normal storage.
+  - Cross-docking is integrated with receiving, distribution, putaway, and outbound order execution.
