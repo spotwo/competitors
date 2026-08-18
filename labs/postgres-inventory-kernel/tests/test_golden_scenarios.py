@@ -62,7 +62,11 @@ def start_single_task_work(
     return work_id, task_id, assignment_id, execution_id
 
 
-def insert_allocation_hold_policy(conn: psycopg.Connection, *, code: str = "PICKED-STAGING"):
+def insert_allocation_hold_policy(
+    conn: psycopg.Connection,
+    *,
+    code: str = "PICKED-STAGING",
+):
     policy_id = lab.new_id()
     conn.execute(
         """
@@ -74,6 +78,81 @@ def insert_allocation_hold_policy(conn: psycopg.Connection, *, code: str = "PICK
         (policy_id, lab.TENANT, code),
     )
     return policy_id
+
+
+def create_reservation(conn, *, demand: str, qty: int, key: str):
+    reservation_id = lab.new_id()
+    conn.execute(
+        """
+        SELECT kernel_lab.create_inventory_reservation(
+          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        """,
+        (
+            reservation_id,
+            lab.new_id(),
+            lab.TENANT,
+            key,
+            demand,
+            lab.WAREHOUSE,
+            lab.ITEM,
+            lab.OWNER,
+            lab.CONDITION,
+            qty,
+        ),
+    )
+    return reservation_id
+
+
+def create_allocation(
+    conn,
+    *,
+    demand: str,
+    position_id,
+    reservation_id,
+    qty: int,
+    key: str,
+):
+    allocation_id = lab.new_id()
+    conn.execute(
+        """
+        SELECT kernel_lab.allocate_inventory_commitment(
+          %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        """,
+        (
+            allocation_id,
+            lab.new_id(),
+            lab.TENANT,
+            key,
+            demand,
+            position_id,
+            qty,
+            reservation_id,
+        ),
+    )
+    return allocation_id
+
+
+def consume_allocation(conn, *, allocation_id, target_id, qty: int, key: str):
+    transaction_id = lab.new_id()
+    conn.execute(
+        """
+        SELECT kernel_lab.consume_inventory_allocation_movement(
+          %s, %s, %s, %s, %s, %s, %s
+        )
+        """,
+        (
+            lab.new_id(),
+            transaction_id,
+            lab.TENANT,
+            key,
+            allocation_id,
+            target_id,
+            qty,
+        ),
+    )
+    return transaction_id
 
 
 def test_order_fulfillment_happy_path():
@@ -88,7 +167,11 @@ def test_order_fulfillment_happy_path():
             "SELECT kernel_lab.post_inventory_receipt(%s, %s, %s, %s, 100, 'ASN-100')",
             (receipt_tx, lab.TENANT, "golden:receipt", inbound),
         )
-        assert position_qty(conn, inbound) == (Decimal("100"), Decimal("0"), Decimal("0"))
+        assert position_qty(conn, inbound) == (
+            Decimal("100"),
+            Decimal("0"),
+            Decimal("0"),
+        )
         assert scope_available(conn) == Decimal("100")
 
         putaway_work, putaway_task, _, _ = start_single_task_work(
@@ -100,7 +183,6 @@ def test_order_fulfillment_happy_path():
             planned_quantity=100,
         )
         putaway_tx = lab.new_id()
-        putaway_confirmation = lab.new_id()
         conn.execute(
             """
             SELECT kernel_lab.confirm_inventory_movement_task(
@@ -108,7 +190,7 @@ def test_order_fulfillment_happy_path():
             )
             """,
             (
-                putaway_confirmation,
+                lab.new_id(),
                 putaway_tx,
                 lab.TENANT,
                 "golden:putaway:move",
@@ -121,55 +203,33 @@ def test_order_fulfillment_happy_path():
         assert position_qty(conn, inbound)[0] == Decimal("0")
         assert position_qty(conn, storage)[0] == Decimal("100")
         assert conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s", (putaway_work,)
+            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s",
+            (putaway_work,),
         ).fetchone()[0] == "completed"
 
-        reservation_id = lab.new_id()
-        reservation_tx = lab.new_id()
-        conn.execute(
-            """
-            SELECT kernel_lab.create_inventory_reservation(
-              %s, %s, %s, %s, 'ORDER-100', %s, %s, %s, %s, 20
-            )
-            """,
-            (
-                reservation_id,
-                reservation_tx,
-                lab.TENANT,
-                "golden:reserve",
-                lab.WAREHOUSE,
-                lab.ITEM,
-                lab.OWNER,
-                lab.CONDITION,
-            ),
+        reservation_id = create_reservation(
+            conn,
+            demand="ORDER-100",
+            qty=20,
+            key="golden:reserve",
         )
         assert scope_available(conn) == Decimal("80")
 
-        allocation_id = lab.new_id()
-        allocation_tx = lab.new_id()
-        conn.execute(
-            """
-            SELECT kernel_lab.allocate_inventory_commitment(
-              %s, %s, %s, %s, 'ORDER-100', %s, 20, %s
-            )
-            """,
-            (
-                allocation_id,
-                allocation_tx,
-                lab.TENANT,
-                "golden:allocate",
-                storage,
-                reservation_id,
-            ),
+        allocation_id = create_allocation(
+            conn,
+            demand="ORDER-100",
+            position_id=storage,
+            reservation_id=reservation_id,
+            qty=20,
+            key="golden:allocate",
         )
-        reservation_state = conn.execute(
+        assert conn.execute(
             """
             SELECT allocated_qty, consumed_qty, remaining_qty
             FROM kernel_lab.inventory_reservations WHERE id = %s
             """,
             (reservation_id,),
-        ).fetchone()
-        assert reservation_state == (Decimal("20"), Decimal("0"), Decimal("0"))
+        ).fetchone() == (Decimal("20"), Decimal("0"), Decimal("0"))
         assert position_qty(conn, storage)[2] == Decimal("20")
         assert scope_available(conn) == Decimal("80")
 
@@ -181,11 +241,8 @@ def test_order_fulfillment_happy_path():
             operation="pick",
             planned_quantity=20,
         )
-        consumption_id = lab.new_id()
-        pick_tx = lab.new_id()
         staging_hold_id = lab.new_id()
-        staging_hold_tx = lab.new_id()
-        pick_confirmation = lab.new_id()
+        pick_tx = lab.new_id()
         conn.execute(
             """
             SELECT kernel_lab.confirm_pick_task(
@@ -196,11 +253,11 @@ def test_order_fulfillment_happy_path():
             )
             """,
             (
-                pick_confirmation,
-                consumption_id,
+                lab.new_id(),
+                lab.new_id(),
                 pick_tx,
                 staging_hold_id,
-                staging_hold_tx,
+                lab.new_id(),
                 lab.TENANT,
                 "golden:pick:move",
                 "golden:pick:hold",
@@ -211,29 +268,35 @@ def test_order_fulfillment_happy_path():
                 staging_policy,
             ),
         )
-        assert position_qty(conn, storage) == (Decimal("80"), Decimal("0"), Decimal("0"))
+        assert position_qty(conn, storage) == (
+            Decimal("80"),
+            Decimal("0"),
+            Decimal("0"),
+        )
         assert position_qty(conn, staging)[0] == Decimal("20")
-        reservation_state = conn.execute(
+        assert conn.execute(
             """
             SELECT allocated_qty, consumed_qty, released_qty, remaining_qty
             FROM kernel_lab.inventory_reservations WHERE id = %s
             """,
             (reservation_id,),
-        ).fetchone()
-        allocation_state = conn.execute(
+        ).fetchone() == (
+            Decimal("0"),
+            Decimal("20"),
+            Decimal("0"),
+            Decimal("0"),
+        )
+        assert conn.execute(
             """
             SELECT consumed_qty, released_qty, remaining_qty
             FROM kernel_lab.inventory_allocations WHERE id = %s
             """,
             (allocation_id,),
-        ).fetchone()
-        assert reservation_state == (
-            Decimal("0"), Decimal("20"), Decimal("0"), Decimal("0")
-        )
-        assert allocation_state == (Decimal("20"), Decimal("0"), Decimal("0"))
+        ).fetchone() == (Decimal("20"), Decimal("0"), Decimal("0"))
         assert scope_available(conn) == Decimal("80")
         assert conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s", (pick_work,)
+            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s",
+            (pick_work,),
         ).fetchone()[0] == "completed"
 
         pack_work, pack_task, _, _ = start_single_task_work(
@@ -257,7 +320,8 @@ def test_order_fulfillment_happy_path():
             "SELECT sum(physical_qty) FROM kernel_lab.inventory_positions"
         ).fetchone()[0] == Decimal("100")
         assert conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s", (pack_work,)
+            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s",
+            (pack_work,),
         ).fetchone()[0] == "completed"
 
         ship_work, ship_task, _, _ = start_single_task_work(
@@ -269,8 +333,6 @@ def test_order_fulfillment_happy_path():
             planned_quantity=20,
         )
         ship_tx = lab.new_id()
-        hold_release_tx = lab.new_id()
-        ship_confirmation = lab.new_id()
         conn.execute(
             """
             SELECT kernel_lab.confirm_shipping_task(
@@ -281,9 +343,9 @@ def test_order_fulfillment_happy_path():
             )
             """,
             (
-                ship_confirmation,
+                lab.new_id(),
                 ship_tx,
-                hold_release_tx,
+                lab.new_id(),
                 lab.TENANT,
                 "golden:ship:issue",
                 "golden:ship:hold-release",
@@ -293,29 +355,27 @@ def test_order_fulfillment_happy_path():
                 staging_hold_id,
             ),
         )
-
         assert conn.execute(
             "SELECT sum(physical_qty) FROM kernel_lab.inventory_positions"
         ).fetchone()[0] == Decimal("80")
         assert position_qty(conn, staging)[0] == Decimal("0")
         assert scope_available(conn) == Decimal("80")
         assert conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s", (ship_work,)
+            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s",
+            (ship_work,),
         ).fetchone()[0] == "completed"
         assert conn.execute(
             "SELECT released_at IS NOT NULL FROM kernel_lab.inventory_holds WHERE id = %s",
             (staging_hold_id,),
         ).fetchone()[0] is True
 
-        tx_types = [
+        tx_types = {
             row[0]
             for row in conn.execute(
-                "SELECT transaction_type FROM kernel_lab.inventory_transactions ORDER BY recorded_at, id"
+                "SELECT transaction_type FROM kernel_lab.inventory_transactions"
             ).fetchall()
-        ]
-        assert "receipt" in tx_types
-        assert "issue" in tx_types
-        assert tx_types.count("movement") >= 2
+        }
+        assert {"receipt", "movement", "reservation", "allocation", "issue"} <= tx_types
 
 
 def test_whole_hu_relocation():
@@ -340,7 +400,6 @@ def test_whole_hu_relocation():
             operation="relocate-hu",
         )
         movement_id = lab.new_id()
-        confirmation_id = lab.new_id()
         conn.execute(
             """
             SELECT kernel_lab.confirm_hu_relocation_task(
@@ -348,7 +407,7 @@ def test_whole_hu_relocation():
             )
             """,
             (
-                confirmation_id,
+                lab.new_id(),
                 movement_id,
                 lab.TENANT,
                 "golden:hu-relocation:confirm",
@@ -358,64 +417,44 @@ def test_whole_hu_relocation():
             ),
         )
 
-        hu_location = conn.execute(
-            "SELECT location_id FROM kernel_lab.handling_units WHERE id = %s", (hu_id,)
-        ).fetchone()[0]
-        position_after = conn.execute(
+        assert conn.execute(
+            "SELECT location_id FROM kernel_lab.handling_units WHERE id = %s",
+            (hu_id,),
+        ).fetchone()[0] == lab.LOCATION_B
+        assert conn.execute(
             """
             SELECT handling_unit_id, physical_qty, version
             FROM kernel_lab.inventory_positions WHERE id = %s
             """,
             (position_id,),
-        ).fetchone()
-        work_state = conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s", (relocation_work,)
-        ).fetchone()[0]
-
-    assert hu_location == lab.LOCATION_B
-    assert position_after == (original_anchor, Decimal("40"), 0)
-    assert work_state == "completed"
+        ).fetchone() == (original_anchor, Decimal("40"), 0)
+        assert conn.execute(
+            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s",
+            (relocation_work,),
+        ).fetchone()[0] == "completed"
 
 
 def test_short_pick_recovery():
     with lab.connect() as conn:
         source = lab.insert_position(conn, location_id=lab.LOCATION_A, physical_qty=10)
         staging = lab.insert_position(conn, location_id=lab.LOCATION_C, physical_qty=0)
-        staging_policy = insert_allocation_hold_policy(conn, code="SHORT-PICK-STAGING")
-
-        reservation_id = lab.new_id()
-        conn.execute(
-            """
-            SELECT kernel_lab.create_inventory_reservation(
-              %s, %s, %s, %s, 'ORDER-200', %s, %s, %s, %s, 10
-            )
-            """,
-            (
-                reservation_id,
-                lab.new_id(),
-                lab.TENANT,
-                "golden:short:reserve",
-                lab.WAREHOUSE,
-                lab.ITEM,
-                lab.OWNER,
-                lab.CONDITION,
-            ),
+        staging_policy = insert_allocation_hold_policy(
+            conn,
+            code="SHORT-PICK-STAGING",
         )
-        allocation_id = lab.new_id()
-        conn.execute(
-            """
-            SELECT kernel_lab.allocate_inventory_commitment(
-              %s, %s, %s, %s, 'ORDER-200', %s, 10, %s
-            )
-            """,
-            (
-                allocation_id,
-                lab.new_id(),
-                lab.TENANT,
-                "golden:short:allocate",
-                source,
-                reservation_id,
-            ),
+        reservation_id = create_reservation(
+            conn,
+            demand="ORDER-200",
+            qty=10,
+            key="golden:short:reserve",
+        )
+        allocation_id = create_allocation(
+            conn,
+            demand="ORDER-200",
+            position_id=source,
+            reservation_id=reservation_id,
+            qty=10,
+            key="golden:short:allocate",
         )
 
         work_id, task_id, _, first_execution = start_single_task_work(
@@ -426,21 +465,12 @@ def test_short_pick_recovery():
             operation="pick",
             planned_quantity=10,
         )
-
-        conn.execute(
-            """
-            SELECT kernel_lab.consume_inventory_allocation_movement(
-              %s, %s, %s, %s, %s, %s, 6
-            )
-            """,
-            (
-                lab.new_id(),
-                lab.new_id(),
-                lab.TENANT,
-                "golden:short:pick-6",
-                allocation_id,
-                staging,
-            ),
+        consume_allocation(
+            conn,
+            allocation_id=allocation_id,
+            target_id=staging,
+            qty=6,
+            key="golden:short:pick-6",
         )
         staging_hold_id = lab.new_id()
         conn.execute(
@@ -458,20 +488,17 @@ def test_short_pick_recovery():
                 staging,
             ),
         )
-
-        allocation_state = conn.execute(
+        assert conn.execute(
             "SELECT consumed_qty, remaining_qty FROM kernel_lab.inventory_allocations WHERE id = %s",
             (allocation_id,),
-        ).fetchone()
-        reservation_state = conn.execute(
+        ).fetchone() == (Decimal("6"), Decimal("4"))
+        assert conn.execute(
             """
             SELECT consumed_qty, allocated_qty, remaining_qty
             FROM kernel_lab.inventory_reservations WHERE id = %s
             """,
             (reservation_id,),
-        ).fetchone()
-        assert allocation_state == (Decimal("6"), Decimal("4"))
-        assert reservation_state == (Decimal("6"), Decimal("4"), Decimal("0"))
+        ).fetchone() == (Decimal("6"), Decimal("4"), Decimal("0"))
 
         exception_id, _ = work.raise_exception(
             conn,
@@ -480,7 +507,7 @@ def test_short_pick_recovery():
             code="SHORT_PICK",
             details='{"picked":6,"planned":10}',
         )
-        states = conn.execute(
+        assert conn.execute(
             """
             SELECT w.state, t.state, e.state
             FROM kernel_lab.warehouse_works w
@@ -489,8 +516,7 @@ def test_short_pick_recovery():
             WHERE w.id = %s AND e.id = %s
             """,
             (work_id, first_execution),
-        ).fetchone()
-        assert states == ("exception", "exception", "blocked")
+        ).fetchone() == ("exception", "exception", "blocked")
 
         conn.execute(
             "SELECT kernel_lab.resolve_warehouse_task_exception(%s, %s, %s, 'resume')",
@@ -502,31 +528,21 @@ def test_short_pick_recovery():
             key="golden:short:retry-start",
             execution_id=lab.new_id(),
         )
-        first_state = conn.execute(
+        assert conn.execute(
             "SELECT state FROM kernel_lab.warehouse_task_executions WHERE id = %s",
             (first_execution,),
-        ).fetchone()[0]
-        second_state = conn.execute(
+        ).fetchone()[0] == "aborted"
+        assert conn.execute(
             "SELECT state FROM kernel_lab.warehouse_task_executions WHERE id = %s",
             (second_execution,),
-        ).fetchone()[0]
-        assert first_state == "aborted"
-        assert second_state == "in_progress"
+        ).fetchone()[0] == "in_progress"
 
-        conn.execute(
-            """
-            SELECT kernel_lab.consume_inventory_allocation_movement(
-              %s, %s, %s, %s, %s, %s, 4
-            )
-            """,
-            (
-                lab.new_id(),
-                lab.new_id(),
-                lab.TENANT,
-                "golden:short:pick-4",
-                allocation_id,
-                staging,
-            ),
+        consume_allocation(
+            conn,
+            allocation_id=allocation_id,
+            target_id=staging,
+            qty=4,
+            key="golden:short:pick-4",
         )
         work.confirm(
             conn,
@@ -536,24 +552,21 @@ def test_short_pick_recovery():
             domain_result_reference=f"inventory-allocation:{allocation_id}",
         )
 
-        allocation_state = conn.execute(
+        assert conn.execute(
             "SELECT consumed_qty, remaining_qty FROM kernel_lab.inventory_allocations WHERE id = %s",
             (allocation_id,),
-        ).fetchone()
-        reservation_state = conn.execute(
+        ).fetchone() == (Decimal("10"), Decimal("0"))
+        assert conn.execute(
             """
             SELECT consumed_qty, allocated_qty, remaining_qty
             FROM kernel_lab.inventory_reservations WHERE id = %s
             """,
             (reservation_id,),
-        ).fetchone()
-        final_task = conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_tasks WHERE id = %s", (task_id,)
-        ).fetchone()[0]
-
-    assert allocation_state == (Decimal("10"), Decimal("0"))
-    assert reservation_state == (Decimal("10"), Decimal("0"), Decimal("0"))
-    assert final_task == "completed"
+        ).fetchone() == (Decimal("10"), Decimal("0"), Decimal("0"))
+        assert conn.execute(
+            "SELECT state FROM kernel_lab.warehouse_tasks WHERE id = %s",
+            (task_id,),
+        ).fetchone()[0] == "completed"
 
 
 def test_cycle_count_reconciliation():
@@ -565,10 +578,8 @@ def test_cycle_count_reconciliation():
             capability="cycle-counting",
             domain_reference="COUNT-001",
             operation="count",
-            planned_quantity=None,
         )
         count_result_id = lab.new_id()
-        confirmation_id = lab.new_id()
         conn.execute(
             """
             SELECT kernel_lab.confirm_count_task(
@@ -576,7 +587,7 @@ def test_cycle_count_reconciliation():
             )
             """,
             (
-                confirmation_id,
+                lab.new_id(),
                 count_result_id,
                 lab.TENANT,
                 "golden:count:record",
@@ -585,57 +596,76 @@ def test_cycle_count_reconciliation():
                 position_id,
             ),
         )
-
-        count_state = conn.execute(
+        assert conn.execute(
             """
             SELECT system_quantity_snapshot, counted_quantity, variance_quantity, state
             FROM kernel_lab.inventory_count_results WHERE id = %s
             """,
             (count_result_id,),
-        ).fetchone()
-        physical_before = position_qty(conn, position_id)[0]
-        work_state = conn.execute(
-            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s", (count_work,)
-        ).fetchone()[0]
-        assert count_state == (Decimal("100"), Decimal("97"), Decimal("-3"), "observed")
-        assert physical_before == Decimal("100")
-        assert work_state == "completed"
+        ).fetchone() == (
+            Decimal("100"),
+            Decimal("97"),
+            Decimal("-3"),
+            "observed",
+        )
+        assert position_qty(conn, position_id)[0] == Decimal("100")
+        assert conn.execute(
+            "SELECT state FROM kernel_lab.warehouse_works WHERE id = %s",
+            (count_work,),
+        ).fetchone()[0] == "completed"
 
         reconciliation_tx = lab.new_id()
         conn.execute(
             "SELECT kernel_lab.reconcile_inventory_count_result(%s, %s, %s, %s)",
-            (reconciliation_tx, lab.TENANT, "golden:count:reconcile", count_result_id),
+            (
+                reconciliation_tx,
+                lab.TENANT,
+                "golden:count:reconcile",
+                count_result_id,
+            ),
         )
-        physical_after = position_qty(conn, position_id)[0]
-        count_after = conn.execute(
+        assert position_qty(conn, position_id)[0] == Decimal("97")
+        assert conn.execute(
             """
             SELECT state, reconciliation_transaction_id
             FROM kernel_lab.inventory_count_results WHERE id = %s
             """,
             (count_result_id,),
-        ).fetchone()
-        leg = conn.execute(
+        ).fetchone() == ("reconciled", reconciliation_tx)
+        assert conn.execute(
             """
-            SELECT physical_delta FROM kernel_lab.inventory_transaction_legs
+            SELECT physical_delta
+            FROM kernel_lab.inventory_transaction_legs
             WHERE transaction_id = %s AND position_id = %s
             """,
             (reconciliation_tx, position_id),
-        ).fetchone()[0]
-
-    assert physical_after == Decimal("97")
-    assert count_after == ("reconciled", reconciliation_tx)
-    assert leg == Decimal("-3")
+        ).fetchone()[0] == Decimal("-3")
 
 
 def test_count_reconciliation_rejects_stale_snapshot():
-    with lab.connect() as conn:
-        position_id = lab.insert_position(conn, location_id=lab.LOCATION_A, physical_qty=100)
-        count_result_id = lab.new_id()
-        conn.execute(
-            "SELECT kernel_lab.record_inventory_count_result(%s, %s, %s, %s, 97, 'COUNT-STALE')",
-            (count_result_id, lab.TENANT, "golden:count:stale-record", position_id),
+    position_id = lab.new_id()
+    count_result_id = lab.new_id()
+
+    # Commit the observation and the subsequent physical change first. The
+    # expected serialization failure must happen in its own DB transaction so
+    # Psycopg doesn't attempt to RELEASE an already-aborted nested savepoint.
+    with lab.connect() as setup_conn:
+        lab.insert_position(
+            setup_conn,
+            position_id=position_id,
+            location_id=lab.LOCATION_A,
+            physical_qty=100,
         )
-        conn.execute(
+        setup_conn.execute(
+            "SELECT kernel_lab.record_inventory_count_result(%s, %s, %s, %s, 97, 'COUNT-STALE')",
+            (
+                count_result_id,
+                lab.TENANT,
+                "golden:count:stale-record",
+                position_id,
+            ),
+        )
+        setup_conn.execute(
             """
             UPDATE kernel_lab.inventory_positions
             SET physical_qty = 99, version = version + 1
@@ -644,16 +674,24 @@ def test_count_reconciliation_rejects_stale_snapshot():
             (position_id,),
         )
 
-        with conn.transaction():
-            with pytest.raises(psycopg.errors.SerializationFailure):
-                conn.execute(
-                    "SELECT kernel_lab.reconcile_inventory_count_result(%s, %s, %s, %s)",
-                    (lab.new_id(), lab.TENANT, "golden:count:stale-reconcile", count_result_id),
-                )
+    with lab.connect(autocommit=True) as failing_conn:
+        with pytest.raises(psycopg.errors.SerializationFailure):
+            failing_conn.execute(
+                "SELECT kernel_lab.reconcile_inventory_count_result(%s, %s, %s, %s)",
+                (
+                    lab.new_id(),
+                    lab.TENANT,
+                    "golden:count:stale-reconcile",
+                    count_result_id,
+                ),
+            )
 
-        count_state = conn.execute(
+    with lab.connect() as read_conn:
+        count_state = read_conn.execute(
             "SELECT state FROM kernel_lab.inventory_count_results WHERE id = %s",
             (count_result_id,),
         ).fetchone()[0]
+        physical = position_qty(read_conn, position_id)[0]
 
     assert count_state == "observed"
+    assert physical == Decimal("99")
