@@ -1,0 +1,30 @@
+id: shipping
+group: outbound
+label: Shipping
+status: adopted
+definition: Finalize outbound warehouse execution, confirm dispatch, produce required shipping data or labels, and hand shipment responsibility to transportation or carrier processes.
+purpose: Close warehouse custody of outbound goods with accurate shipment state and traceability.
+inputs: [packed-or-loaded-goods, shipment, carrier-service]
+outputs: [shipment-confirmation, shipping-label, tracking-data, inventory-decrement]
+entities: [shipment, package, handling-unit, carrier, tracking-number]
+strategies: [parcel, freight, multi-carrier, direct-carrier-integration]
+related_capabilities: [packing, staging, loading]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    notes: ActiveWarehouse includes direct parcel connectivity to major carriers.
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-wms-capabilities-2026, infios-enterprise-capabilities-2026]
+  - company_id: mecalux
+    level: core
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+  - company_id: odoo
+    level: core
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Shipping
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-wms-capabilities-2026, infios-enterprise-capabilities-2026, mecalux-easy-wms-capabilities-2026, odoo-inventory-routes-2026]
