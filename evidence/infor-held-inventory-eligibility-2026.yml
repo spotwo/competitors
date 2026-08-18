@@ -1,0 +1,13 @@
+id: infor-held-inventory-eligibility-2026
+subject: inventory-hold-eligibility
+source_type: official-docs
+grade: A
+title: Rules for dynamic picks of held inventory
+url: https://docs.infor.com/wms/2026.x/en-us/useradminlib/scedynallug/ppj1612893680888.html
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+  - Infor WMS evaluates hold reason codes when deciding whether inventory is eligible for allocation and dynamic picking.
+  - Inventory with multiple hold codes is unavailable for picking when at least one applicable hold code is not accepted for the order type.
+  - Eligibility is therefore compositional across multiple active hold reasons rather than represented by physical absence of stock.
+  - Hold behavior can differ by hold scope, including location, lot, and license plate semantics after picking.
