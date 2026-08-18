@@ -1,0 +1,19 @@
+id: infios
+name: Infios
+entity_type: platform-vendor
+website: https://www.infios.com/
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+warehouse_complexity: [2, 3, 4, 5]
+solution_layers: [wms, oms, tms, lms, robotics-orchestration]
+deployment_models: [saas, on-premise]
+industries: [3pl, retail, ecommerce, wholesale, cold-chain]
+operating_environments: [distribution-center, fulfillment-center, 3pl, cold-storage]
+capabilities: [receiving, putaway, storage, slotting, replenishment, picking, packing, shipping, labor-management, automation-orchestration]
+products:
+- {id: wm, name: Infios Warehouse Management, categories: [wms, lms, robotics-orchestration]}
+- {id: om, name: Infios Order Management, categories: [oms]}
+- {id: tm, name: Infios Transportation Management, categories: [tms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [infios-wm-2026]

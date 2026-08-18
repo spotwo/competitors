@@ -1,0 +1,17 @@
+id: generix
+name: Generix Group
+entity_type: platform-vendor
+website: https://www.generixgroup.com/
+hq_country: FR
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, lms]
+deployment_models: [cloud]
+industries: [retail, 3pl, manufacturing, food-beverage, pharma]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [receiving, putaway, cross-docking, picking, waving, labor-management, packing, shipping, yard-management, automation-orchestration]
+products:
+- {id: wms, name: Generix WMS, categories: [wms, lms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [generix-wms-2026]

@@ -1,0 +1,20 @@
+id: dematic
+name: Dematic
+entity_type: automation-vendor
+website: https://www.dematic.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, wes, wcs, machine-control]
+deployment_models: [on-premise, cloud]
+industries: [retail, ecommerce, 3pl]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, sortation, shipping, automation-orchestration]
+products:
+- {id: wms, name: Dematic WMS, categories: [wms]}
+- id: wes
+  name: Dematic WES
+  categories: [wes]
+  notes: Used to manage and synchronize automated warehouse processes.
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [dematic-wms-2026]

@@ -1,0 +1,17 @@
+id: tecsys
+name: Tecsys
+entity_type: platform-vendor
+website: https://www.tecsys.com/
+hq_country: CA
+markets: [north-america, europe]
+segments: [mid-market, enterprise]
+solution_layers: [wms]
+deployment_models: [saas, cloud]
+industries: [healthcare, retail, ecommerce, industrial, wholesale]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, labor-management, automation-orchestration]
+products:
+- {id: elite-wms, name: Tecsys WMS / Elite platform, categories: [wms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [tecsys-wms-2026]

@@ -1,0 +1,19 @@
+id: logiwa
+name: Logiwa
+entity_type: vendor
+website: https://www.logiwa.com/
+markets: [global]
+segments: [mid-market, enterprise]
+solution_layers: [wms, wes]
+deployment_models: [saas, cloud]
+industries: [ecommerce, 3pl, retail]
+operating_environments: [fulfillment-center, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- id: logiwa-io
+  name: Logiwa IO
+  categories: [wms, wes]
+  notes: Positioned as an AI-native, headless warehouse execution platform for high-volume fulfillment.
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [logiwa-io-2026]

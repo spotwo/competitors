@@ -1,0 +1,20 @@
+id: mecalux
+name: Mecalux
+entity_type: automation-vendor
+website: https://www.mecalux.com/
+hq_country: ES
+markets: [europe, north-america, latam]
+segments: [mid-market, enterprise, large-enterprise]
+solution_layers: [wms, wes, wcs, dom]
+deployment_models: [saas, cloud, on-premise]
+industries: [retail, ecommerce, manufacturing, automotive, industrial, wholesale]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: easy-wms, name: Easy WMS, categories: [wms]}
+- {id: easy-wes, name: Easy WES, categories: [wes]}
+- {id: easy-wcs, name: Easy WCS, categories: [wcs]}
+- {id: easy-dom, name: Easy DOM, categories: [dom]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [mecalux-easy-wms-2026, mecalux-software-portfolio-2026]

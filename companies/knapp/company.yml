@@ -1,0 +1,18 @@
+id: knapp
+name: KNAPP
+entity_type: automation-vendor
+website: https://www.knapp.com/
+hq_country: AT
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms, wes, wcs, machine-control, analytics]
+deployment_models: [saas, cloud, on-premise]
+industries: [retail, ecommerce, food-beverage, pharma, healthcare, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, storage, replenishment, physical-inventory, picking, packing, shipping, returns, cross-docking, slotting, automation-orchestration]
+products:
+- {id: kisoft-wms, name: KiSoft WMS, categories: [wms]}
+- {id: kisoft, name: KiSoft Platform, categories: [wms, wes, wcs, machine-control, analytics]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [knapp-kisoft-wms-2026, knapp-kisoft-platform-2026]

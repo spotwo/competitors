@@ -1,0 +1,22 @@
+id: consafe-logistics
+name: Consafe Logistics
+entity_type: vendor
+website: https://www.consafelogistics.com/
+hq_country: SE
+markets: [europe]
+segments: [smb, mid-market, enterprise]
+solution_layers: [wms, wes, wcs]
+deployment_models: [saas, cloud]
+industries: [retail, food-beverage, 3pl, manufacturing, wholesale]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: astro-wms, name: Astro WMS, categories: [wms, wes]}
+- {id: astro-wcs, name: Astro WCS, categories: [wcs]}
+- id: astro-go-wms
+  name: Astro Go WMS
+  categories: [wms]
+  notes: Cloud-native WMS positioned for small and medium businesses.
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [consafe-solutions-2026, consafe-astro-go-rebrand-2025]

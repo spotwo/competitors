@@ -1,0 +1,18 @@
+id: blue-yonder
+name: Blue Yonder
+entity_type: platform-vendor
+website: https://blueyonder.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, wes, lms, yms, robotics-orchestration]
+deployment_models: [saas, cloud]
+industries: [retail, manufacturing, 3pl]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, inspection, cross-docking, storage, replenishment, cycle-counting, picking, packing, loading, shipping, returns, labor-management, yard-management, slotting, automation-orchestration]
+products:
+- id: warehouse-management
+  name: Warehouse Management
+  categories: [wms, wes, lms, yms, robotics-orchestration]
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [blue-yonder-wms-2026]

@@ -1,0 +1,18 @@
+id: epg
+name: EPG (Ehrhardt Partner Group)
+entity_type: platform-vendor
+website: https://www.epg.com/
+hq_country: DE
+markets: [global]
+segments: [smb, mid-market, enterprise]
+solution_layers: [wms, analytics]
+deployment_models: [cloud, on-premise]
+industries: [3pl, food-beverage, automotive, manufacturing, chemicals, pharma, healthcare, ecommerce, fashion, electronics]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, slotting, picking, packing, shipping, cross-docking, physical-inventory]
+products:
+- {id: lfs, name: EPG WMS (LFS), categories: [wms]}
+- {id: timesquare, name: TIMESQUARE, categories: [analytics]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [epg-lfs-2026, epg-lfs-modules-2026]

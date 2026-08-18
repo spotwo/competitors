@@ -1,0 +1,19 @@
+id: made4net
+name: Made4net
+entity_type: platform-vendor
+website: https://made4net.com/
+hq_country: US
+markets: [global]
+segments: [smb, mid-market, enterprise]
+solution_layers: [wms, wcs, wes, yms, lms]
+deployment_models: [cloud, on-premise]
+industries: [fmcg, ecommerce, food-beverage, manufacturing, retail, 3pl]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, cycle-counting, picking, packing, shipping, labor-management, yard-management, automation-orchestration, billing]
+products:
+- {id: warehouseexpert, name: WarehouseExpert, categories: [wms]}
+- {id: scexpert, name: SCExpert Platform, categories: [wms, wcs, wes, yms, lms]}
+- {id: 3plexpert, name: Synapse 3PLExpert, categories: [wms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [made4net-warehouseexpert-2026, made4net-scexpert-2026]

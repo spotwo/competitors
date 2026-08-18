@@ -1,0 +1,17 @@
+id: infor
+name: Infor
+entity_type: platform-vendor
+website: https://www.infor.com/
+hq_country: US
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, lms]
+deployment_models: [saas, cloud]
+industries: [3pl, manufacturing, wholesale, retail]
+operating_environments: [distribution-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, inspection, cross-docking, storage, replenishment, picking, packing, shipping, labor-management, billing, automation-orchestration]
+products:
+- {id: wms, name: Infor WMS, categories: [wms, lms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [infor-wms-2026]

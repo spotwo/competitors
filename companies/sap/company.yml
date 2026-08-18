@@ -1,0 +1,17 @@
+id: sap
+name: SAP
+entity_type: erp-vendor
+website: https://www.sap.com/
+hq_country: DE
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [erp, wms]
+deployment_models: [on-premise]
+industries: [retail, manufacturing, automotive, food-beverage, pharma, healthcare, industrial, wholesale]
+operating_environments: [distribution-center, manufacturing-warehouse, production-supply]
+capabilities: [receiving, putaway, storage, slotting, cross-docking, packing, shipping, labor-management, physical-inventory]
+products:
+- {id: ewm, name: SAP Extended Warehouse Management, categories: [wms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-2026]

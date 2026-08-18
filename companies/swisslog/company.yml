@@ -1,0 +1,17 @@
+id: swisslog
+name: Swisslog
+entity_type: automation-vendor
+website: https://www.swisslog.com/
+hq_country: CH
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, wes, wcs, mfs, analytics]
+deployment_models: [cloud, on-premise]
+industries: [retail, ecommerce, food-beverage, pharma, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: synq, name: SynQ, categories: [wms, wes, wcs, mfs, analytics]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [swisslog-synq-2026]

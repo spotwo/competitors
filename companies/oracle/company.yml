@@ -1,0 +1,17 @@
+id: oracle
+name: Oracle
+entity_type: erp-vendor
+website: https://www.oracle.com/
+hq_country: US
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [erp, wms]
+deployment_models: [saas, cloud]
+industries: [retail, ecommerce, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: warehouse-management-cloud, name: Oracle Warehouse Management Cloud, categories: [wms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [oracle-wms-26c]

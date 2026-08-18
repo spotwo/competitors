@@ -1,0 +1,22 @@
+id: ssi-schaefer
+name: SSI SCHAEFER
+entity_type: automation-vendor
+website: https://www.ssi-schaefer.com/
+hq_country: DE
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms, wes, wcs, mfs, cmms, analytics]
+deployment_models: [on-premise]
+industries: [retail, wholesale, ecommerce, food-beverage, fashion]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: wamas-wms, name: WAMAS WMS, categories: [wms]}
+- {id: wamas-wes, name: WAMAS WES, categories: [wes]}
+- {id: wamas-wcs, name: WAMAS WCS, categories: [wcs]}
+- {id: wamas-mfs, name: WAMAS MFS, categories: [mfs]}
+- {id: wamas-control-center, name: WAMAS Control Center, categories: [analytics]}
+- {id: wamas-maintenance-center, name: WAMAS Maintenance Center, categories: [cmms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [ssi-wamas-2026]
