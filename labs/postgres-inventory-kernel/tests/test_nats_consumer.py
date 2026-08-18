@@ -89,9 +89,9 @@ def enqueue_projection_event(
           %s,
           %s,
           jsonb_build_object(
-            'transaction_id', %s,
+            'transaction_id', %s::uuid,
             'transaction_type', 'projection-test',
-            'position_id', %s,
+            'position_id', %s::uuid,
             'physical_delta', %s,
             'reserved_delta', %s,
             'allocated_delta', %s

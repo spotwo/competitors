@@ -188,7 +188,7 @@ def test_gap_is_durably_buffered_then_drained_by_missing_versions():
         ).fetchone()
     assert gap == (1, 3, 3, 1)
     with lab.connect() as conn:
-        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+        with pytest.raises(psycopg.errors.RestrictViolation):
             conn.execute(
                 """
                 DELETE FROM kernel_lab.domain_event_inbox
