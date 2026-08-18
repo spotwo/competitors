@@ -1,0 +1,14 @@
+id: redpanda-kafka-semantics-2026
+subject: transport-selection
+source_type: official-docs
+grade: A
+title: Redpanda Kafka-compatible producer, partition, and consumer semantics
+url: https://docs.redpanda.com/streaming/current/develop/kafka-clients/
+publisher: Redpanda Data
+captured_at: '2026-08-18'
+supports:
+  - Redpanda supports Kafka-compatible clients and core produce, consume, consumer-group, and transaction APIs.
+  - A message key determines its partition, making aggregate identity suitable as a partition key when per-aggregate ordering is required.
+  - Idempotent producers reject duplicate retries within a producer session and preserve producer ordering when configured for idempotence.
+  - Consumer groups horizontally distribute partitions among consumers; records in one partition are processed in partition order while different partitions can progress in parallel.
+  - Redpanda supports transaction semantics and long-lived replayable topic retention, making it strong for broader streaming and data-platform workloads.
