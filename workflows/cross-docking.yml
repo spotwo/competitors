@@ -1,0 +1,139 @@
+id: cross-docking
+capability_id: cross-docking
+title: Cross-Docking Workflow
+status: candidate
+definition: A cross-vendor decomposition of how inbound inventory that already has eligible outbound demand bypasses normal storage, is allocated or matched to that demand, becomes movement work, and is handed to outbound staging or shipping.
+stages:
+  - id: inbound-eligible
+    label: Inbound Eligibility
+    purpose: Identify received or imminently received inventory that is eligible for cross-dock processing.
+    inputs: [inbound-inventory, receipt, cross-dock-policy]
+    outputs: [eligible-inbound]
+  - id: demand-match
+    label: Demand Match
+    purpose: Match eligible inbound inventory to outbound demand using order, reservation, item, quantity, LPN, destination, or inventory-attribute rules.
+    inputs: [eligible-inbound, outbound-demand]
+    outputs: [cross-dock-opportunity]
+  - id: allocation
+    label: Cross-Dock Allocation
+    purpose: Bind all or part of inbound inventory to outbound demand before regular storage putaway.
+    inputs: [cross-dock-opportunity]
+    outputs: [cross-dock-allocation, residual-inbound]
+  - id: work-creation
+    label: Cross-Dock Work Creation
+    purpose: Create executable movement work from inbound or production source toward outbound staging, dock, or shipment location.
+    inputs: [cross-dock-allocation, source-location, outbound-destination]
+    outputs: [cross-dock-work, cross-dock-task]
+  - id: movement
+    label: Move to Outbound Flow
+    purpose: Execute pick/move/put operations that bypass normal storage dwell.
+    inputs: [cross-dock-task]
+    outputs: [moved-inventory, movement-confirmation]
+  - id: outbound-handoff
+    label: Outbound Handoff
+    purpose: Make cross-docked inventory available to staging, packing, loading, or shipment execution.
+    inputs: [movement-confirmation]
+    outputs: [outbound-ready-inventory]
+  - id: fallback
+    label: Residual / Fallback Putaway
+    purpose: Route unmatched or excess inbound quantity through normal putaway.
+    inputs: [residual-inbound]
+    outputs: [putaway-demand]
+objects:
+  - {id: inbound-inventory, term: Inbound Inventory, role: Received or imminently received inventory considered for direct outbound flow.}
+  - {id: outbound-demand, term: Outbound Demand, role: Sales transfer production or other demand eligible to consume inbound inventory.}
+  - {id: cross-dock-policy, term: Cross-Dock Policy, role: Rules controlling when and how inbound supply can bypass storage.}
+  - {id: cross-dock-opportunity, term: Cross-Dock Opportunity, role: Candidate match between inbound supply and outbound demand before allocation.}
+  - {id: cross-dock-allocation, term: Cross-Dock Allocation, role: Binding of inbound inventory to outbound demand.}
+  - {id: cross-dock-work, term: Cross-Dock Work, role: Grouping of executable movement operations for cross-dock flow.}
+  - {id: cross-dock-task, term: Cross-Dock Task, role: Executable source-to-outbound movement instruction.}
+  - {id: outbound-destination, term: Outbound Destination, role: Staging load dock or shipment location receiving cross-docked inventory.}
+  - {id: residual-inbound, term: Residual Inbound Inventory, role: Quantity not consumed by cross-dock allocation and therefore requiring normal inbound handling.}
+states:
+  - {id: candidate, label: Candidate, meaning: Inbound inventory is eligible for cross-dock evaluation.}
+  - {id: matched, label: Matched, meaning: Outbound demand has been identified for the inbound inventory.}
+  - {id: allocated, label: Allocated, meaning: Inbound quantity is committed to outbound demand.}
+  - {id: released, label: Released, meaning: Cross-dock movement work is executable.}
+  - {id: in-progress, label: In Progress, meaning: Inventory is moving through the cross-dock path.}
+  - {id: handed-off, label: Handed Off, meaning: Inventory has reached outbound execution., terminal: true}
+  - {id: fallback-putaway, label: Fallback Putaway, meaning: Quantity is no longer cross-docked and has entered normal putaway. , terminal: true}
+  - {id: exception, label: Exception, meaning: Demand match inventory attributes quantity or destination prevents normal cross-dock completion.}
+strategies:
+  - id: planned-cross-dock
+    category: matching
+    label: Planned Cross-Dock
+    definition: Cross-dock supply and demand are linked or planned before receipt and work is created when inbound inventory arrives.
+    status: adopted
+    evidence_refs: [dynamics365-cross-docking-2026]
+  - id: lpn-match
+    category: matching
+    label: LPN Match
+    definition: Match received handling-unit identity directly to outbound demand requiring that LPN.
+    status: adopted
+    evidence_refs: [oracle-cross-docking-2026]
+  - id: sku-match
+    category: matching
+    label: SKU / Quantity Match
+    definition: Match inbound inventory to outbound demand based on SKU and quantity when exact LPN identity is not required.
+    status: adopted
+    evidence_refs: [oracle-cross-docking-2026]
+  - id: attribute-match
+    category: matching
+    label: Inventory Attribute Match
+    definition: Require selected inbound inventory attributes to satisfy outbound demand before cross-dock allocation.
+    status: observed
+    evidence_refs: [oracle-cross-docking-2026]
+  - id: direct-outbound-movement
+    category: execution
+    label: Direct Outbound Movement
+    definition: Execute cross-dock as movement work from inbound source toward outbound staging or dock instead of standard storage.
+    status: adopted
+    evidence_refs: [dynamics365-cross-docking-2026]
+exceptions:
+  - id: no-demand-match
+    label: No Eligible Demand Match
+    trigger: No outbound demand satisfies cross-dock matching rules.
+    outcomes: [normal-putaway]
+    status: adopted
+    evidence_refs: [dynamics365-cross-docking-2026, oracle-cross-docking-2026]
+  - id: partial-cross-dock
+    label: Partial Cross-Dock
+    trigger: Only part of received quantity can satisfy outbound demand.
+    outcomes: [allocate-matched-quantity, create-cross-dock-work, putaway-residual]
+    status: adopted
+    evidence_refs: [dynamics365-cross-docking-2026]
+  - id: attribute-mismatch
+    label: Inventory Attribute Mismatch
+    trigger: Received inventory attributes do not satisfy configured outbound matching requirements.
+    outcomes: [reject-cross-dock-match, normal-putaway, alternate-demand-match]
+    status: observed
+    evidence_refs: [oracle-cross-docking-2026]
+vendor_models:
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {policy: Cross Docking Template, work: Cross Docking Work, destination: Shipment Location}
+    workflow: [inbound-receipt, cross-dock-need-identification, demand-link, movement-work-creation, pick, put-to-outbound-location, shipment]
+    strategies: [planned-cross-dock, demand-release-policy, location-directive]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics365-cross-docking-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    terminology: {allocation: Cross-Dock Allocation, container: LPN, receiving_mode: XDock Mode}
+    workflow: [receive-lpn, evaluate-xdock-mode, match-order, cross-dock-allocation, distribute-or-putaway, outbound-execution]
+    strategies: [lpn-match, sku-match, multi-sku-match, attribute-match]
+    execution_channels: [mobile, rf]
+    evidence_refs: [oracle-cross-docking-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [inbound-eligible, demand-match, allocation, work-creation, movement, outbound-handoff, fallback]
+  canonical_objects: [inbound-inventory, outbound-demand, cross-dock-policy, cross-dock-opportunity, cross-dock-allocation, cross-dock-work, cross-dock-task, outbound-destination, residual-inbound]
+  task_states: [candidate, matched, allocated, released, in-progress, handed-off, fallback-putaway, exception]
+  commands: [evaluate-cross-dock, allocate-cross-dock, release-cross-dock-work, confirm-cross-dock-movement, fallback-to-putaway]
+  events: [cross-dock-opportunity-found, cross-dock-allocated, cross-dock-work-released, cross-dock-movement-confirmed, cross-dock-handed-off, cross-dock-fallback-created]
+  notes: Cross-docking is not merely a special storage location. It is a demand-linked routing decision that can replace regular putaway and later picking for the matched quantity while residual inbound quantity follows normal putaway.
+research_gaps:
+  - Compare opportunistic versus pre-planned cross-docking across SAP EWM Manhattan Blue Yonder and 3PL-first systems.
+  - Decide whether CrossDockAllocation should reuse the generic Allocation object with a cross-dock reason or remain a typed domain object.
+  - Model outbound destination ownership when cross-dock flow terminates at packing staging or direct loading.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-cross-docking-2026, oracle-cross-docking-2026]
