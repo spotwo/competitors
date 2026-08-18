@@ -21,6 +21,29 @@ python -m pip install -r "$LAB/requirements.txt"
 cleanup
 "${COMPOSE[@]}" up -d --wait
 
+# The official Postgres image can briefly expose its temporary initialization
+# server as healthy before that server is stopped and the final server starts.
+# Require two consecutive SQL probes through the same exec path used by migrations.
+stable_probes=0
+for attempt in $(seq 1 30); do
+  if "${COMPOSE[@]}" exec -T db \
+      psql -U postgres -d kernel_lab -Atqc 'SELECT 1' >/dev/null 2>&1; then
+    stable_probes=$((stable_probes + 1))
+    if [[ "$stable_probes" -ge 2 ]]; then
+      break
+    fi
+  else
+    stable_probes=0
+  fi
+  sleep 1
+done
+
+if [[ "$stable_probes" -lt 2 ]]; then
+  echo "PostgreSQL did not become stably ready" >&2
+  "${COMPOSE[@]}" logs db >&2 || true
+  exit 2
+fi
+
 for migration in "$LAB"/sql/*.sql; do
   echo "Applying $(basename "$migration")"
   "${COMPOSE[@]}" exec -T db \

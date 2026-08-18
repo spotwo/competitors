@@ -6,6 +6,7 @@ on:
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
+      - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
       - '.github/workflows/kernel-lab.yml'
@@ -17,6 +18,7 @@ on:
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
+      - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'ontology/inventory-transaction.yml'
       - 'ontology/handling-unit.yml'
       - '.github/workflows/kernel-lab.yml'
@@ -51,6 +53,7 @@ jobs:
             labs/postgres-inventory-kernel \
             bin/check-kernel-lab \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
+            decisions/domain/0015-inventory-commitment-engine.md \
             ontology/inventory-transaction.yml \
             ontology/handling-unit.yml \
             .github/workflows/kernel-lab.yml; then
