@@ -1,0 +1,13 @@
+id: nats-leafnodes-edge-2026
+subject: transport-selection
+source_type: official-docs
+grade: A
+title: NATS Leaf Nodes and JetStream edge deployment
+url: https://docs.nats.io/running-a-nats-service/configuration/leafnodes
+publisher: NATS
+captured_at: '2026-08-18'
+supports:
+  - Leaf Nodes extend NATS into remote or edge locations while keeping local client traffic low-latency and locally authenticated.
+  - NATS documents Leaf Nodes as useful for IoT and edge scenarios and supports local routing even when the remote system is not directly reachable from clients.
+  - JetStream on Leaf Nodes can provide independent local JetStream islands for disconnected operation when hub or cloud connectivity is unavailable.
+  - NATS server is a compact single binary and can run on-premises, in containers, on edge hardware, or in cloud infrastructure.
