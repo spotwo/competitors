@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import uuid
-from pathlib import Path
 
 import psycopg
 import pytest
@@ -120,21 +119,22 @@ def clean_database():
             "INSERT INTO kernel_lab.warehouses (id, tenant_id, code) VALUES (%s, %s, 'W1')",
             (WAREHOUSE, TENANT),
         )
-        conn.executemany(
-            "INSERT INTO kernel_lab.locations (id, tenant_id, warehouse_id, code) VALUES (%s, %s, %s, %s)",
-            [
-                (LOCATION_A, TENANT, WAREHOUSE, "A-01"),
-                (LOCATION_B, TENANT, WAREHOUSE, "B-01"),
-                (LOCATION_C, TENANT, WAREHOUSE, "C-01"),
-            ],
-        )
-        conn.executemany(
-            "INSERT INTO kernel_lab.items (id, tenant_id, sku, exact_serial_tracking) VALUES (%s, %s, %s, %s)",
-            [
-                (ITEM, TENANT, "SKU-001", False),
-                (SERIAL_ITEM, TENANT, "SER-001", True),
-            ],
-        )
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO kernel_lab.locations (id, tenant_id, warehouse_id, code) VALUES (%s, %s, %s, %s)",
+                [
+                    (LOCATION_A, TENANT, WAREHOUSE, "A-01"),
+                    (LOCATION_B, TENANT, WAREHOUSE, "B-01"),
+                    (LOCATION_C, TENANT, WAREHOUSE, "C-01"),
+                ],
+            )
+            cur.executemany(
+                "INSERT INTO kernel_lab.items (id, tenant_id, sku, exact_serial_tracking) VALUES (%s, %s, %s, %s)",
+                [
+                    (ITEM, TENANT, "SKU-001", False),
+                    (SERIAL_ITEM, TENANT, "SER-001", True),
+                ],
+            )
         conn.execute(
             "INSERT INTO kernel_lab.owners (id, tenant_id, code) VALUES (%s, %s, 'OWNER')",
             (OWNER, TENANT),
