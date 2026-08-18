@@ -6,7 +6,7 @@
 |---|---:|
 | Companies | 50 |
 | Products | 88 |
-| Evidence records | 94 |
+| Evidence records | 103 |
 | Claims | 15 |
 | Terminology records | 30 |
 | Authorities | 8 |
@@ -15,3 +15,5 @@
 | Ontology entities | 48 |
 | KPI metrics | 25 |
 | Integration patterns | 8 |
+| Capability records | 27 |
+| Vendor capability observations | 64 |
