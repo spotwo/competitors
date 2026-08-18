@@ -6,7 +6,7 @@ The lab deliberately tests **database invariants and concurrency behavior**, not
 
 ## Runtime
 
-- PostgreSQL 18.4 (`postgres:18.4-bookworm`)
+- PostgreSQL 18.4 (`postgres:18.4-bookworm`, pinned by multi-platform digest)
 - Python 3.12+
 - Psycopg 3.3.4
 - pytest 9.1.1
@@ -80,6 +80,10 @@ A same-warehouse full-HU relocation updates the HU placement record and HU movem
 
 Exact serial tracking uses `inventory_serial_memberships`; a tenant/serial can have only one live position membership. Serial identity is not a generic Inventory Key column.
 
+### Retry safety
+
+Inventory posting commands carry a tenant-scoped idempotency key. A retry returns the already-posted transaction instead of applying the quantity delta a second time.
+
 ## Executable scenarios
 
 | Test | Invariant demonstrated |
@@ -91,6 +95,7 @@ Exact serial tracking uses `inventory_serial_memberships`; a tenant/serial can h
 | same-HU relocation | moving a whole HU does not rewrite contained position rows |
 | repack | moving part of stock HU A -> HU B is a real position split |
 | deadlock ordering | opposite concurrent transfers lock the same pair in deterministic order |
+| idempotent retry | repeating one logical allocation does not double-post it |
 
 ## Deliberate simplifications
 
