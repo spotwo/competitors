@@ -1,0 +1,35 @@
+id: putaway
+group: inbound
+label: Putaway
+status: adopted
+definition: Move received or relocated inventory to a selected storage location according to warehouse rules and constraints.
+purpose: Place inventory where it can be stored safely and retrieved efficiently.
+inputs: [receipt, inventory, handling-unit, candidate-locations]
+outputs: [warehouse-work, inventory-location-assignment]
+entities: [handling-unit, sku, inventory, location, warehouse-task]
+strategies: [directed-putaway, fixed-location, dynamic-location, rule-based, capacity-aware]
+related_capabilities: [receiving, inspection, storage, slotting]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: core
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: core
+    terminology: [direct put-away]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    level: core
+    terminology: [put-away]
+    evidence_refs: [infios-enterprise-capabilities-2026, infios-3pl-capabilities-2026]
+  - company_id: mecalux
+    level: core
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+  - company_id: odoo
+    level: observed
+    notes: Routes can move received products from receipt/input locations to storage locations.
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Putaway
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-enterprise-capabilities-2026, infios-3pl-capabilities-2026, mecalux-easy-wms-capabilities-2026, odoo-inventory-routes-2026]
