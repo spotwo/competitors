@@ -9,9 +9,9 @@ solution_layers: [erp, wms]
 deployment_models: [on-premise]
 industries: [retail, manufacturing, automotive, food-beverage, pharma, healthcare, industrial, wholesale]
 operating_environments: [distribution-center, manufacturing-warehouse, production-supply]
-capabilities: [receiving, putaway, storage, slotting, cross-docking, packing, shipping, labor-management, physical-inventory]
+capabilities: [receiving, putaway, storage, relocation, slotting, cross-docking, packing, shipping, labor-management, physical-inventory]
 products:
 - {id: ewm, name: SAP Extended Warehouse Management, categories: [wms]}
 status: active
 last_verified: '2026-08-18'
-evidence_refs: [sap-ewm-2026]
+evidence_refs: [sap-ewm-2026, sap-inventory-movement-2026, sap-physical-inventory-2026, sap-difference-analysis-2026]
