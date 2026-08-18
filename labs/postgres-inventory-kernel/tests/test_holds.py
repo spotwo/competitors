@@ -6,6 +6,7 @@ from decimal import Decimal
 import threading
 
 import psycopg
+import pytest
 
 import conftest as lab
 
@@ -227,23 +228,21 @@ def test_scope_allocation_hold_removes_capacity_without_changing_physical_stock(
         policy_id = create_policy(conn, code="QUALITY", blocks_allocation=True)
         apply_scope_hold(conn, policy_id=policy_id)
 
+    with lab.connect() as conn:
         state = availability(conn)
         physical = conn.execute(
             "SELECT physical_qty FROM kernel_lab.inventory_positions WHERE id = %s",
             (position_id,),
         ).fetchone()[0]
-
         assert physical == Decimal("10.000000")
         assert state[0] == Decimal("10.000000")
         assert state[4] == Decimal("0.000000")
         assert eligible(conn, position_id, "allocation") is False
         assert eligible(conn, position_id, "movement") is True
 
-        try:
+    with lab.connect(autocommit=True) as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
             create_reservation(conn, qty=1)
-            assert False, "reservation should not consume allocation-ineligible capacity"
-        except psycopg.errors.CheckViolation:
-            pass
 
 
 def test_movement_only_hold_does_not_remove_allocation_capacity_but_blocks_move():
@@ -253,6 +252,7 @@ def test_movement_only_hold_does_not_remove_allocation_capacity_but_blocks_move(
         policy_id = create_policy(conn, code="NO-MOVE", blocks_movement=True)
         apply_position_hold(conn, policy_id=policy_id, position_id=source)
 
+    with lab.connect() as conn:
         assert availability(conn)[4] == Decimal("10.000000")
         conn.execute(
             "SELECT kernel_lab.allocate_inventory_position(%s, %s, %s, %s, 2)",
@@ -261,14 +261,12 @@ def test_movement_only_hold_does_not_remove_allocation_capacity_but_blocks_move(
         assert eligible(conn, source, "allocation") is True
         assert eligible(conn, source, "movement") is False
 
-        try:
+    with lab.connect(autocommit=True) as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
             conn.execute(
                 "SELECT kernel_lab.transfer_inventory_quantity(%s, %s, %s, %s, %s, 1)",
                 (lab.new_id(), lab.TENANT, "blocked-move", source, target),
             )
-            assert False, "movement hold should reject source movement"
-        except psycopg.errors.CheckViolation:
-            pass
 
 
 def test_position_allocation_hold_excludes_only_that_position():
@@ -278,16 +276,15 @@ def test_position_allocation_hold_excludes_only_that_position():
         policy_id = create_policy(conn, code="ALLOC-BLOCK", blocks_allocation=True)
         apply_position_hold(conn, policy_id=policy_id, position_id=position_a)
 
+    with lab.connect() as conn:
         assert availability(conn)[4] == Decimal("4.000000")
 
-        try:
+    with lab.connect(autocommit=True) as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
             conn.execute(
                 "SELECT kernel_lab.allocate_inventory_position(%s, %s, %s, %s, 1)",
                 (lab.new_id(), lab.TENANT, "held-position", position_a),
             )
-            assert False, "held position should reject allocation"
-        except psycopg.errors.CheckViolation:
-            pass
 
     with lab.connect() as conn:
         conn.execute(
@@ -305,12 +302,8 @@ def test_position_allocation_hold_excludes_only_that_position():
 def test_multiple_holds_compose_action_restrictions_by_or():
     with lab.connect() as conn:
         position_id = lab.insert_position(conn, physical_qty=10)
-        allocation_policy = create_policy(
-            conn, code="ALLOC", blocks_allocation=True
-        )
-        shipping_policy = create_policy(
-            conn, code="SHIP", blocks_shipping=True
-        )
+        allocation_policy = create_policy(conn, code="ALLOC", blocks_allocation=True)
+        shipping_policy = create_policy(conn, code="SHIP", blocks_shipping=True)
         apply_position_hold(
             conn,
             policy_id=allocation_policy,
@@ -324,6 +317,7 @@ def test_multiple_holds_compose_action_restrictions_by_or():
             key="hold-ship",
         )
 
+    with lab.connect() as conn:
         assert eligible(conn, position_id, "allocation") is False
         assert eligible(conn, position_id, "shipping") is False
         assert eligible(conn, position_id, "movement") is True
@@ -336,6 +330,7 @@ def test_releasing_hold_restores_eligibility_without_changing_physical_quantity(
         policy_id = create_policy(conn, code="TEMP", blocks_allocation=True)
         hold_id, _, _ = apply_scope_hold(conn, policy_id=policy_id)
 
+    with lab.connect() as conn:
         assert availability(conn)[4] == Decimal("0.000000")
         transaction_id, returned = release_hold(conn, hold_id)
         assert returned == transaction_id
@@ -372,6 +367,7 @@ def test_expired_hold_is_retained_for_audit_but_does_not_block():
             expires_at=now - timedelta(hours=1),
         )
 
+    with lab.connect() as conn:
         assert availability(conn)[4] == Decimal("10.000000")
         assert eligible(conn, position_id, "allocation") is True
         count = conn.execute(
@@ -390,6 +386,7 @@ def test_existing_reservation_survives_new_position_hold_and_can_use_other_stock
         policy_id = create_policy(conn, code="LATE-HOLD", blocks_allocation=True)
         apply_position_hold(conn, policy_id=policy_id, position_id=position_a)
 
+    with lab.connect() as conn:
         remaining = conn.execute(
             "SELECT remaining_qty FROM kernel_lab.inventory_reservations WHERE id = %s",
             (reservation_id,),
@@ -397,7 +394,8 @@ def test_existing_reservation_survives_new_position_hold_and_can_use_other_stock
         assert remaining == Decimal("8.000000")
         assert availability(conn)[4] == Decimal("0.000000")
 
-        try:
+    with lab.connect(autocommit=True) as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
             create_allocation(
                 conn,
                 position_id=position_a,
@@ -405,9 +403,6 @@ def test_existing_reservation_survives_new_position_hold_and_can_use_other_stock
                 reservation_id=reservation_id,
                 key="allocate-held-a",
             )
-            assert False, "reservation must not bypass exact position hold"
-        except psycopg.errors.CheckViolation:
-            pass
 
     with lab.connect() as conn:
         create_allocation(
@@ -445,14 +440,12 @@ def test_full_hu_relocation_cannot_bypass_contained_movement_hold():
             position_id=position_id,
         )
 
-        try:
+    with lab.connect(autocommit=True) as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
             conn.execute(
                 "SELECT kernel_lab.relocate_handling_unit(%s, %s, %s, %s)",
                 (lab.new_id(), lab.TENANT, hu_id, lab.LOCATION_B),
             )
-            assert False, "whole-HU relocation must respect contained stock hold"
-        except psycopg.errors.CheckViolation:
-            pass
 
     with lab.connect() as conn:
         location = conn.execute(
@@ -503,17 +496,14 @@ def test_hold_apply_idempotency_replays_result_and_rejects_payload_collision():
     assert first == original_hold
     assert replay == original_hold
 
-    with lab.connect() as conn:
-        try:
+    with lab.connect(autocommit=True) as conn:
+        with pytest.raises(psycopg.errors.UniqueViolation):
             apply_scope_hold(
                 conn,
                 policy_id=policy_id,
                 reason="CUSTOMS",
                 key="hold-idem",
             )
-            assert False, "same idempotency key with another hold payload must fail"
-        except psycopg.errors.UniqueViolation:
-            pass
 
     with lab.connect() as conn:
         hold_count = conn.execute(
