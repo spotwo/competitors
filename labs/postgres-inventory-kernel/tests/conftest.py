@@ -91,6 +91,8 @@ def clean_database():
         conn.execute(
             """
             TRUNCATE TABLE
+              kernel_lab.inventory_count_results,
+              kernel_lab.inventory_allocation_consumptions,
               kernel_lab.warehouse_task_confirmations,
               kernel_lab.warehouse_task_exceptions,
               kernel_lab.warehouse_task_executions,
