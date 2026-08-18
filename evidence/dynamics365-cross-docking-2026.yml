@@ -1,0 +1,13 @@
+id: dynamics365-cross-docking-2026
+subject: cross-docking-workflow
+source_type: official-docs
+grade: A
+title: Planned cross-docking
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/planned-cross-docking
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 defines cross-docking as directing inbound or newly created inventory toward outbound staging or dock locations instead of normal storage.
+  - Cross-docking can skip regular inbound putaway and later outbound picking for inventory already linked to outbound demand.
+  - At inbound receipt the system can identify cross-dock need and create dedicated movement work for the required quantity.
+  - Cross-dock work is represented with Pick and Put work operations and uses location directives for outbound placement.
