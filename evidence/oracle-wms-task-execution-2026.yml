@@ -1,0 +1,12 @@
+id: oracle-wms-task-execution-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Task Execution - Oracle Warehouse Management
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/task-execution.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+  - Oracle WMS sends operational instructions to floor users through Tasks, including Picking tasks.
+  - Tasks expose priority, status, current location, next location, destination zone, assignment, hold, release and cancel controls.
+  - RF Execute Task presents available work in priority order and supports explicit user assignment or an unassigned task pool.
