@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LAB="$ROOT/labs/postgres-inventory-kernel"
 COMPOSE=(docker compose -f "$LAB/compose.yaml")
+PERF_PROFILE="${KERNEL_LAB_PERF_PROFILE:-smoke}"
 
 if [[ -n "${KERNEL_LAB_PORT:-}" ]]; then
   PORT="$KERNEL_LAB_PORT"
@@ -65,3 +66,8 @@ for migration in "$LAB"/sql/*.sql; do
 done
 
 python -m pytest -q "$LAB/tests"
+
+if [[ "$PERF_PROFILE" != "off" ]]; then
+  echo "Running PostgreSQL kernel performance profile: $PERF_PROFILE"
+  python "$LAB/benchmarks/run.py" --profile "$PERF_PROFILE"
+fi
