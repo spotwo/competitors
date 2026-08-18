@@ -1,0 +1,12 @@
+id: postgresql-uuid-v7-2026
+subject: postgresql-inventory-position
+source_type: official-docs
+grade: A
+title: PostgreSQL UUIDv7 generation functions
+url: https://www.postgresql.org/docs/current/functions-uuid.html
+publisher: PostgreSQL Global Development Group
+captured_at: 2026-08-18
+supports:
+  - Current PostgreSQL documentation includes UUIDv7 generation support through uuidv7().
+  - UUID values can be used as native uuid-typed identifiers without making the semantic stock key the table primary key.
+notes: ADR 0014 keeps UUIDv7 generation as an application-level choice; database-native generation can be evaluated for the target PostgreSQL version.
