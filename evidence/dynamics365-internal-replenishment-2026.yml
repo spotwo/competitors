@@ -1,0 +1,13 @@
+id: dynamics365-internal-replenishment-2026
+subject: replenishment-workflow
+source_type: official-docs
+grade: A
+title: Replenishment Overview - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/replenishment
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 supports wave-demand, min/max, load-demand and immediate replenishment strategies for warehouse-managed locations.
+  - Replenishment templates determine items, quantities and target locations while location directives determine target and source inventory locations.
+  - Work templates create replenishment work, typically with Pick and Put work lines.
+  - Demand replenishment can be linked to outbound, production, transfer-order and kanban demand.
