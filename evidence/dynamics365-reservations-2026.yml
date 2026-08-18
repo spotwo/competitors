@@ -1,0 +1,13 @@
+id: dynamics365-reservations-2026
+subject: inventory-commitment-model
+source_type: official-docs
+grade: A
+title: Reservations in Warehouse management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/reservations-in-warehouse-management
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 separates reservation granularity through a reservation hierarchy over physical inventory dimensions.
+  - Demand can be reserved above location so exact location or license plate selection is postponed until warehouse execution.
+  - The system tracks available physical, available ordered, reserved physical, and reserved ordered quantities at reservation-hierarchy levels.
+  - Availability is calculated from inventory quantities and reservation hierarchy constraints rather than stored as one independent mutable stock status.
