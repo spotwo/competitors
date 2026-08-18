@@ -1,0 +1,25 @@
+id: staging
+group: outbound
+label: Staging
+status: adopted
+definition: Temporarily position completed or partially completed outbound goods in a controlled area before loading or another downstream event.
+purpose: Synchronize warehouse completion with dock, trailer, route, and carrier readiness.
+inputs: [picked-or-packed-unit, shipment, dock-plan]
+outputs: [staged-unit, staging-confirmation]
+entities: [shipment, handling-unit, staging-location, dock-door]
+strategies: [door-based, route-based, load-based, sequence-based]
+related_capabilities: [picking, packing, loading, yard-management]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: observed
+    notes: Yard management material explicitly connects warehouse staging and loading activity with dock-door execution.
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: odoo
+    level: observed
+    notes: Multi-step outbound routes use packing/output locations before final delivery.
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Staging
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, odoo-inventory-routes-2026]
