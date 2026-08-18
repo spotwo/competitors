@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/capability.schema.json",
+  "title": "Warehouse Capability",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "group", "label", "status", "definition", "spotwo", "last_verified", "evidence_refs"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "group": {"enum": ["inbound", "storage", "inventory", "fulfillment", "outbound", "reverse", "cross-functional"]},
+    "label": {"type": "string", "minLength": 1},
+    "status": {"enum": ["adopted", "candidate", "observed", "needs-research"]},
+    "definition": {"type": "string", "minLength": 1},
+    "purpose": {"type": "string"},
+    "inputs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "outputs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "entities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "strategies": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "related_capabilities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "vendor_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["company_id", "level", "evidence_refs"],
+        "properties": {
+          "company_id": {"type": "string"},
+          "product_id": {"type": "string"},
+          "level": {"enum": ["core", "advanced", "module", "observed"]},
+          "terminology": {"type": "array", "items": {"type": "string"}},
+          "notes": {"type": "string"},
+          "evidence_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true}
+        }
+      }
+    },
+    "spotwo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_term", "status"],
+      "properties": {
+        "canonical_term": {"type": "string", "minLength": 1},
+        "status": {"enum": ["adopted", "candidate", "observed", "needs-research"]},
+        "notes": {"type": "string"}
+      }
+    },
+    "research_gaps": {"type": "array", "items": {"type": "string"}},
+    "last_verified": {"type": "string", "format": "date"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}
