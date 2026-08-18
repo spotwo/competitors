@@ -1,0 +1,155 @@
+version: 1
+profile:
+  id: spotwo-wms-operational-default
+  description: Default transport profile for operational WMS domain events across warehouse, on-premises, edge, and cloud deployments.
+  portable_contract:
+    delivery: at-least-once
+    event_identity: stable-event-id
+    ordering: no-global-order
+    consumer_rule: idempotent-by-event-id-and-version-aware
+  criteria:
+    - id: hybrid_onprem_edge_fit
+      weight: 20
+      description: Can run close to warehouse workloads and remain useful in private/on-premises or intermittently connected deployments.
+    - id: operational_simplicity
+      weight: 15
+      description: Small operational footprint and straightforward local development, deployment, and recovery.
+    - id: delivery_fit
+      weight: 15
+      description: Durable publish acknowledgement, retries, deduplication or idempotency support compatible with the Outbox contract.
+    - id: aggregate_ordering_fit
+      weight: 10
+      description: Can preserve or intentionally route per-aggregate ordering without requiring one global serialized stream.
+    - id: fanout_and_horizontal_scale
+      weight: 10
+      description: Supports multiple logical consumers and horizontal processing without coupling all consumers to one worker.
+    - id: replay_and_retention
+      weight: 10
+      description: Supports durable retention and replay suitable for projections, recovery, and integration catch-up.
+    - id: cloud_and_vendor_portability
+      weight: 10
+      description: Avoids unnecessary dependence on one application cloud and has a credible self-hosted, open protocol, or multi-cloud path.
+    - id: small_medium_cost_fit
+      weight: 10
+      description: Reasonable infrastructure or usage model for small and medium WMS installations without a large fixed platform floor.
+
+candidates:
+  - id: nats-jetstream
+    name: NATS JetStream
+    disposition: canonical-default
+    evidence_refs:
+      - nats-jetstream-delivery-2026
+      - nats-leafnodes-edge-2026
+    transport_mapping:
+      event_id: Nats-Msg-Id plus canonical envelope event_id
+      event_route: subject derived from stable event family/type, not aggregate identity
+      aggregate_identity: canonical envelope aggregate_type plus aggregate_id headers/data
+      aggregate_version: canonical envelope aggregate_version
+      producer_acceptance: JetStream publish acknowledgement
+      consumer_model: durable pull consumer with explicit acknowledgement
+    notes:
+      - Leaf Nodes and local JetStream islands make this the strongest fit for hybrid warehouse and edge operation.
+      - The portable kernel does not depend on JetStream exactly-once features; event_id and consumer Inbox remain authoritative retry protection.
+      - Strict per-aggregate processing order, where required, must be designed explicitly rather than inferred from global publish order.
+    scores:
+      hybrid_onprem_edge_fit: 5
+      operational_simplicity: 5
+      delivery_fit: 5
+      aggregate_ordering_fit: 4
+      fanout_and_horizontal_scale: 5
+      replay_and_retention: 4
+      cloud_and_vendor_portability: 5
+      small_medium_cost_fit: 5
+
+  - id: redpanda-kafka
+    name: Redpanda / Kafka API
+    disposition: secondary-streaming-profile
+    evidence_refs:
+      - redpanda-kafka-semantics-2026
+    transport_mapping:
+      event_id: canonical envelope event_id; producer idempotence is additional transport protection
+      event_route: topic by stable event family
+      aggregate_identity: record key = aggregate_type:aggregate_id
+      aggregate_version: canonical envelope aggregate_version
+      producer_acceptance: acks=all with idempotent producer
+      consumer_model: consumer groups over topic partitions
+    notes:
+      - Strongest candidate when replay, long retention, analytics integration, Kafka ecosystem, and very high stream throughput dominate.
+      - Partition keys provide a natural per-aggregate ordering lane.
+      - Operational and resource footprint is larger than the NATS default for small warehouse deployments.
+    scores:
+      hybrid_onprem_edge_fit: 4
+      operational_simplicity: 2
+      delivery_fit: 5
+      aggregate_ordering_fit: 5
+      fanout_and_horizontal_scale: 5
+      replay_and_retention: 5
+      cloud_and_vendor_portability: 4
+      small_medium_cost_fit: 2
+
+  - id: aws-sns-sqs-fifo
+    name: Amazon SNS FIFO + SQS FIFO
+    disposition: aws-native-profile
+    evidence_refs:
+      - aws-sns-sqs-fifo-2026
+    transport_mapping:
+      event_id: MessageDeduplicationId plus canonical envelope event_id
+      event_route: SNS FIFO topic with SQS FIFO queue per subscriber/workload
+      aggregate_identity: MessageGroupId = aggregate_type:aggregate_id
+      aggregate_version: canonical envelope aggregate_version
+      producer_acceptance: successful SNS Publish API response
+      consumer_model: SQS FIFO receive/visibility/delete
+    notes:
+      - Strong managed option for an AWS-native deployment and explicit FIFO message groups.
+      - Five-minute service deduplication is supplementary; Spotwo still retains stable event_id and consumer Inbox semantics.
+      - Cloud dependency makes it a poor canonical default for warehouse-local or disconnected operation.
+    scores:
+      hybrid_onprem_edge_fit: 1
+      operational_simplicity: 5
+      delivery_fit: 5
+      aggregate_ordering_fit: 5
+      fanout_and_horizontal_scale: 5
+      replay_and_retention: 2
+      cloud_and_vendor_portability: 1
+      small_medium_cost_fit: 4
+
+  - id: cloudflare-queues
+    name: Cloudflare Queues
+    disposition: cloudflare-worker-profile
+    evidence_refs:
+      - cloudflare-queues-semantics-2026
+    transport_mapping:
+      event_id: canonical envelope event_id used as application idempotency key
+      event_route: queue per workload/consumer boundary
+      aggregate_identity: canonical envelope aggregate_type plus aggregate_id
+      aggregate_version: canonical envelope aggregate_version
+      producer_acceptance: successful Queue send acknowledgement
+      consumer_model: Worker consumer or HTTP pull consumer with explicit acknowledgement/retry
+    notes:
+      - Excellent fit for Workers-native asynchronous jobs, batching, retry, and edge web workloads.
+      - No delivery-order guarantee means aggregate ordering must be handled entirely by the consumer/version contract.
+      - One logical queue does not provide Kafka/NATS-style durable fan-out; separate queues are needed for independent consumer workloads.
+    scores:
+      hybrid_onprem_edge_fit: 1
+      operational_simplicity: 5
+      delivery_fit: 4
+      aggregate_ordering_fit: 1
+      fanout_and_horizontal_scale: 2
+      replay_and_retention: 2
+      cloud_and_vendor_portability: 2
+      small_medium_cost_fit: 5
+
+decision:
+  canonical_default: nats-jetstream
+  score_method: weighted-average-1-to-5
+  required_margin_over_runner_up: 0.25
+  exceptions:
+    high_volume_streaming_and_data_platform: redpanda-kafka
+    aws_native_managed_messaging: aws-sns-sqs-fifo
+    cloudflare_workers_async_jobs: cloudflare-queues
+  kernel_boundary:
+    - Inventory and Work transactions never publish directly to a broker.
+    - Publisher Runtime remains transport-neutral and reads only committed Outbox rows.
+    - Stable event_id and consumer idempotency remain required regardless of broker deduplication guarantees.
+    - Consumers must not depend on global ordering.
+    - Broker-specific partition, subject, message-group, or retry configuration belongs to the adapter/deployment layer.

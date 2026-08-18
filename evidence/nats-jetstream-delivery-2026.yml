@@ -1,0 +1,13 @@
+id: nats-jetstream-delivery-2026
+subject: transport-selection
+source_type: official-docs
+grade: A
+title: NATS JetStream delivery and consumer semantics
+url: https://docs.nats.io/nats-concepts/jetstream
+publisher: NATS
+captured_at: '2026-08-18'
+supports:
+  - JetStream provides durable streams and acknowledged publication with at-least-once delivery as the base quality of service.
+  - Publication deduplication can use a unique message ID such as Nats-Msg-Id within a configured duplicate window.
+  - Consumers support explicit acknowledgements, redelivery, negative acknowledgements, pull-based horizontal consumption, and bounded pending acknowledgements.
+  - JetStream can combine publication deduplication and acknowledgement confirmation for stronger exactly-once-quality semantics, but Spotwo retains consumer idempotency as the portable kernel contract.
