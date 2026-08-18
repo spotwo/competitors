@@ -1,0 +1,10 @@
+id: allocation
+preferred_term: Allocation
+definition: Binding of demand to inventory at sufficient specificity for downstream warehouse execution or another inventory-consuming action.
+domain: [inventory, fulfillment, commitment]
+aliases: [inventory allocation, stock allocation]
+status: candidate
+spotwo_term: Allocation
+notes: Candidate Spotwo semantics separate warehouse source allocation from coarser Reservation, commercial allocation quotas, and worker/task assignment.
+last_verified: '2026-08-18'
+evidence_refs: [oracle-allocation-model-2026, dynamics365-reservations-2026]
