@@ -1,6 +1,6 @@
 # Version-Aware Projections
 
-Executable companion to ADR 0029, ADR 0030, and ADR 0031.
+Executable companion to ADR 0029, ADR 0030, ADR 0031, and ADR 0032.
 
 ## Concrete projection
 
@@ -20,6 +20,10 @@ It is a read model, not authoritative inventory state and not a complete availab
 Use the same stable logical identity for the runtime and projector:
 
 ```python
+from consumer_failure import (
+    DurableConsumerFailureLane,
+    PostgresConsumerFailureStore,
+)
 from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore
 from nats_consumer import NatsJetStreamPullSource
 from position_projection import InventoryPositionQuantityProjector
@@ -39,6 +43,9 @@ with NatsJetStreamPullSource(
         handler=InventoryPositionQuantityProjector(
             consumer_name=consumer_name,
         ),
+        failure_lane=DurableConsumerFailureLane(
+            store=PostgresConsumerFailureStore(database_url),
+        ),
     )
     runtime.run_once()
 ```
@@ -54,6 +61,8 @@ A different runtime and handler `consumer_name` fails the transaction because th
 | `inventory_position_projection_gaps` | queryable unresolved-gap summary |
 | `inventory_position_projection_control` | per-target serialization row and active rebuild fence |
 | `inventory_position_projection_rebuilds` | immutable rebuild plan, before/final evidence, disposition, and operator audit |
+| `domain_event_consumer_failures` | complete valid events deferred, quarantined, or resolved after handler failure |
+| `domain_event_consumer_failure_actions` | stable operator replay requests with prior quarantine evidence |
 | `domain_event_inbox.metadata.projection` | per-delivery applied, buffered, or stale decision evidence |
 
 Snapshot-seeded rows additionally preserve the bootstrap identity, exact seed quantities, artifact checksum, source/reference, operator, reason, and timestamps. PostgreSQL derives `cursor_source` as `empty`, `snapshot`, or `event`; a snapshot never receives a fake `last_event_id`.
@@ -65,7 +74,7 @@ Assume the current projection version is 7:
 | Incoming version | Result |
 |---|---|
 | 6 | commit an audited stale decision, no quantity mutation |
-| 7 with another event ID | conflict, rollback, no ACK |
+| 7 with another event ID | terminal conflict, rollback, durable quarantine before ACK when ADR 0032 is configured |
 | 8 | apply, then drain buffered 9, 10, and later contiguous versions |
 | 10 while 8 is missing | durably buffer version 10, then ACK |
 
@@ -186,7 +195,7 @@ KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_la
   --reason "repair verified Position projection"
 ```
 
-`prepare` activates a fence for only that consumer and Position. While it is active, the first handler transaction for a new event rolls back before Inbox commit, so JetStream is not ACKed. An already-recorded duplicate remains safe to ACK without running the handler. Other Positions remain independent in PostgreSQL, although broker consumer limits may still create head-of-line delivery effects.
+`prepare` activates a fence for only that consumer and Position. While it is active, the first handler transaction for a new event rolls back before Inbox commit. With ADR 0032 configured, the full event is committed as `deferred` and JetStream is then ACKed; retry proceeds locally after execute or cancel releases the fence. An already-recorded duplicate remains safe to ACK without running the handler. Other Positions remain independent in PostgreSQL.
 
 After reviewing the prepared audit row, execute the exact plan:
 
@@ -220,15 +229,15 @@ Rebuild never deletes Inbox receipts and never moves the cursor backward. A cras
 
 ### Invalid event contract
 
-Wrong event type, aggregate type, UUID identity, schema version, or delta shape raises before projection SQL. Inbox receipt rolls back and the broker is not ACKed.
+Wrong event type, aggregate type, UUID identity, schema version, or delta shape raises before projection SQL. Inbox receipt rolls back. A valid canonical envelope reaches ADR 0032 terminal quarantine as `invalid_event_contract`; an invalid outer envelope never enters the failure lane and remains unacknowledged.
 
 ### Quantity invariant violation
 
-Negative quantities or commitments exceeding physical quantity fail the PostgreSQL check constraint. Inbox, cursor, drained pending rows, and quantity changes all roll back together.
+Negative quantities or commitments exceeding physical quantity fail the PostgreSQL check constraint. Inbox, cursor, drained pending rows, and quantity changes all roll back together. The valid event is terminally quarantined before broker ACK when the failure lane is configured.
 
 ### Version conflict
 
-A different event claiming the current or an already-buffered version raises a uniqueness error. It is a producer or replay-contract defect, not a stale fact to ignore.
+A different event claiming the current or an already-buffered version raises a uniqueness error. It is classified as terminal `projection_version_conflict`, retained with its complete envelope in quarantine, and never converted into a stale fact to ignore.
 
 ### Permanent gap
 
@@ -236,7 +245,7 @@ Later versions remain in the pending table. Monitor `oldest_buffered_at` or the 
 
 ### Prepared rebuild fence
 
-A prepared rebuild deliberately stops only its exact Position target. Event receipt and projection mutation roll back together, so the message remains unacknowledged. Inspect `inventory_position_projection_rebuilds`, then execute or cancel the named operation. There is no automatic fence expiry.
+A prepared rebuild deliberately stops only its exact Position target. Event receipt and projection mutation roll back together. The failure lane classifies this as retryable `projection_rebuild_fence_active`, commits the complete event, and then ACKs the broker. Inspect `inventory_position_projection_rebuilds`, then execute or cancel the named operation; the local retry worker applies the event after release. There is no automatic fence expiry.
 
 ## Retention boundary
 
@@ -254,7 +263,9 @@ Producer Outbox retention does not define when these consumer records are safe t
 
 `tests/test_position_projection.py` proves producer versions, sequential application, buffering, draining, stale audit, conflict rejection, invariant rollback, and concurrent adjacent versions.
 
-`tests/test_nats_consumer.py` additionally proves the out-of-order flow and rebuild-fence redelivery through a real pinned JetStream server with server-confirmed ACKs.
+`tests/test_nats_consumer.py` additionally proves the out-of-order flow and rebuild-fence durable handoff through a real pinned JetStream server with server-confirmed ACKs and `max_deliver=1`.
+
+`tests/test_consumer_failures.py` proves retryable fence classification, terminal version-conflict quarantine, bounded local retry, payload-bound identity, and audited operator replay.
 
 `tests/test_projection_operations.py` proves verified snapshot import, payload-bound retry, post-snapshot ordering, bootstrap/event races, gap telemetry, and stable health alerts.
 

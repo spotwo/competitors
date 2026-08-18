@@ -51,7 +51,7 @@ For projection cursor `V` and incoming event version `E`:
 |---|---|---|---|
 | same `event_id` | Inbox duplicate, handler skipped | prior result remains | yes |
 | `E < V` | record audited `stale` outcome, do not change quantities | commit receipt and decision | yes |
-| `E = V`, different event ID | producer/version conflict | roll back | no |
+| `E = V`, different event ID | producer/version conflict | roll back | ADR 0032 quarantine before ACK when configured |
 | `E = V + 1` | apply delta and drain contiguous buffered versions | commit all effects | yes |
 | `E > V + 1` | copy full delta fact to durable pending buffer | commit receipt and buffer | yes |
 
@@ -69,7 +69,7 @@ This gives one serialization lane per logical consumer and Inventory Position wi
 
 One aggregate version belongs to one semantic event. A different event ID claiming the current or already-buffered version is not treated as a harmless duplicate.
 
-The transaction raises a uniqueness error, rolls back the new Inbox receipt, and leaves the broker message unacknowledged. Deployment `max_deliver`, advisories, and DLQ policy must make that conflict visible instead of retrying forever.
+The transaction raises a uniqueness error and rolls back the new Inbox receipt. ADR 0032 classifies it as terminal `projection_version_conflict`, persists the complete event in PostgreSQL quarantine, and only then ACKs the broker. Without that optional lane, the base runtime leaves the message unacknowledged for deployment `max_deliver` and advisory policy.
 
 ## Projection invariants
 
@@ -148,4 +148,4 @@ The PostgreSQL and pinned NATS lab proves:
 - a permanently missing version leaves later events buffered;
 - delta replay requires complete history or a verified snapshot cursor;
 - the projection covers Position quantities, not inventory identity dimensions, holds, eligibility, availability, or other read models;
-- conflict quarantine, bulk rebuild orchestration, automatic gap repair, and pending-event retention remain later operational slices.
+- bulk rebuild orchestration, automatic gap repair, pending-event retention, and quarantine review UI remain later operational slices.

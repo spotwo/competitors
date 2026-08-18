@@ -12,6 +12,8 @@ on:
       - 'bin/bootstrap-kernel-position-projection'
       - 'bin/inspect-kernel-projection-gaps'
       - 'bin/rebuild-kernel-position-projection'
+      - 'bin/run-kernel-position-projection-retries'
+      - 'bin/replay-kernel-consumer-failure'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -30,6 +32,7 @@ on:
       - 'decisions/domain/0029-version-aware-position-projection.md'
       - 'decisions/domain/0030-position-projection-snapshot-gap-health.md'
       - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
+      - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -51,6 +54,8 @@ on:
       - 'bin/bootstrap-kernel-position-projection'
       - 'bin/inspect-kernel-projection-gaps'
       - 'bin/rebuild-kernel-position-projection'
+      - 'bin/run-kernel-position-projection-retries'
+      - 'bin/replay-kernel-consumer-failure'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -69,6 +74,7 @@ on:
       - 'decisions/domain/0029-version-aware-position-projection.md'
       - 'decisions/domain/0030-position-projection-snapshot-gap-health.md'
       - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
+      - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -123,6 +129,8 @@ jobs:
             bin/bootstrap-kernel-position-projection \
             bin/inspect-kernel-projection-gaps \
             bin/rebuild-kernel-position-projection \
+            bin/run-kernel-position-projection-retries \
+            bin/replay-kernel-consumer-failure \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -141,6 +149,7 @@ jobs:
             decisions/domain/0029-version-aware-position-projection.md \
             decisions/domain/0030-position-projection-snapshot-gap-health.md \
             decisions/domain/0031-controlled-position-projection-rebuild.md \
+            decisions/domain/0032-consumer-failure-deferral-quarantine.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \

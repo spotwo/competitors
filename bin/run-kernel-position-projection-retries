@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import signal
+import socket
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from consumer_failure import (  # noqa: E402
+    ConsumerFailureRetryRuntime,
+    ConsumerRetryPolicy,
+    PostgresConsumerFailureStore,
+)
+from position_projection import InventoryPositionQuantityProjector  # noqa: E402
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Retry deferred Position projection consumer failures"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument("--consumer-name", required=True)
+    parser.add_argument(
+        "--worker-id",
+        default=f"{socket.gethostname()}:{os.getpid()}",
+    )
+    parser.add_argument("--batch-size", type=int, default=100)
+    parser.add_argument("--lease-seconds", type=int, default=30)
+    parser.add_argument("--retry-base-seconds", type=int, default=5)
+    parser.add_argument("--retry-max-seconds", type=int, default=300)
+    parser.add_argument("--retry-jitter-ratio", type=float, default=0.2)
+    parser.add_argument("--max-attempts", type=int, default=10)
+    parser.add_argument("--idle-sleep-seconds", type=float, default=1.0)
+    parser.add_argument("--once", action="store_true", help="process at most one batch")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+    if args.idle_sleep_seconds < 0:
+        raise SystemExit("--idle-sleep-seconds must be nonnegative")
+
+    stopping = False
+
+    def stop(_signum, _frame):
+        nonlocal stopping
+        stopping = True
+
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
+
+    runtime = ConsumerFailureRetryRuntime(
+        store=PostgresConsumerFailureStore(args.database_url),
+        consumer_name=args.consumer_name,
+        handler=InventoryPositionQuantityProjector(
+            consumer_name=args.consumer_name,
+        ),
+        worker_id=args.worker_id,
+        batch_size=args.batch_size,
+        lease_seconds=args.lease_seconds,
+        retry_policy=ConsumerRetryPolicy(
+            base_delay_seconds=args.retry_base_seconds,
+            max_delay_seconds=args.retry_max_seconds,
+            jitter_ratio=args.retry_jitter_ratio,
+            max_attempts=args.max_attempts,
+        ),
+    )
+
+    while not stopping:
+        result = runtime.run_once()
+        print(
+            json.dumps(
+                {
+                    "consumer_failure_retry_cycle": {
+                        "worker_id": args.worker_id,
+                        "consumer_name": args.consumer_name,
+                        "claimed": result.claimed,
+                        "resolved": result.resolved,
+                        "applied": result.applied,
+                        "duplicate": result.duplicate,
+                        "failed": result.failed,
+                        "deferred": result.deferred,
+                        "quarantined": result.quarantined,
+                        "stale_claim": result.stale_claim,
+                        "stale_failure": result.stale_failure,
+                    }
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            flush=True,
+        )
+        if args.once:
+            break
+        if result.claimed == 0 and args.idle_sleep_seconds:
+            time.sleep(args.idle_sleep_seconds)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
