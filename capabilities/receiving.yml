@@ -19,7 +19,7 @@ vendor_observations:
     level: core
     evidence_refs: [blue-yonder-wm-operations-2026]
   - company_id: infios
-    product_id: infios/warehouse-management
+    product_id: infios/wm
     level: core
     evidence_refs: [infios-wms-capabilities-2026]
   - company_id: mecalux
@@ -27,7 +27,7 @@ vendor_observations:
     level: core
     evidence_refs: [mecalux-easy-wms-capabilities-2026]
   - company_id: odoo
-    product_id: odoo/odoo-inventory
+    product_id: odoo/inventory
     level: observed
     terminology: [receiving, incoming shipments]
     evidence_refs: [odoo-inventory-routes-2026]
