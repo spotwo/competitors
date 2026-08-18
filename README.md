@@ -2,7 +2,7 @@
 
 Spotwo's local source of truth for intralogistics market and domain knowledge.
 
-This repository records competitors, products, capabilities, terminology, standards, market conventions, domain ontologies, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
+This repository records competitors, products, capabilities, workflow decompositions, terminology, standards, market conventions, domain ontologies, KPIs, integration patterns, claims, and the evidence behind them. Its purpose is not merely to track competitors, but to help Spotwo make consistent product, domain, UX, architecture, integration, and engineering decisions based on established industry practice.
 
 > Directory tree represents identity. Metadata represents classification.
 
@@ -15,9 +15,10 @@ This repository records competitors, products, capabilities, terminology, standa
 5. **Terminology is a product asset** - record standards, dominant market usage, aliases, and Spotwo decisions.
 6. **Domain model is evidence-driven** - vendor structures are observations, not automatic Spotwo architecture.
 7. **Capability is not implementation** - receiving, replenishment, picking, etc. are canonical capabilities; wave, batch, min/max, GTP, voice, and similar choices are strategies or implementation patterns where appropriate.
-8. **Time matters** - every researched fact has a verification or observation date.
-9. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
-10. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
+8. **Workflow is deeper than capability** - a workflow decomposes a capability into stages, objects, states, strategies, assignment rules, execution channels and exceptions.
+9. **Time matters** - every researched fact has a verification or observation date.
+10. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
+11. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
 
 ## Knowledge model
 
@@ -36,14 +37,20 @@ Evidence + Claims + Standards
  Capability / Ontology / KPI / Pattern
               |
               v
+          Workflow
+              |
+              v
         Spotwo Decision
 ```
+
+A capability answers **what operational outcome exists**. A workflow answers **how that capability becomes executable work**. Strategies and channels answer **which execution model is used**.
 
 ## Repository map
 
 ```text
 companies/       Vendor and product records
 capabilities/    Canonical warehouse capabilities, strategies and vendor observations
+workflows/       Deep capability decompositions: stages, objects, states, vendor mappings and exceptions
 claims/          Reusable factual assertions linked to evidence
 taxonomy/        Controlled vocabularies
 terminology/     Industry terms, aliases, usage, and Spotwo naming decisions
@@ -53,7 +60,7 @@ ontology/        Facility, location, inventory, handling-unit and process models
 kpis/            Warehouse/DC KPI registry
 integrations/    Integration and interoperability patterns
 decisions/       Spotwo ADR-style product/domain/UX decisions
-matrices/        Generated comparison, stats, domain and research views
+matrices/        Generated comparison, stats, domain, workflow and research views
 schema/          JSON Schema definitions
 templates/       Research and record templates
 scripts/         Validation, query, and generation tools
@@ -67,6 +74,21 @@ The repository intentionally does **not** treat `ROW -> RACK -> LEVEL -> BIN` as
 Handling-unit identity is also separated from standardized supply-chain identity. An internal Handling Unit may have an LPN and may have an SSCC, but those identifiers are not treated as synonyms. See `decisions/domain/0004-handling-unit-identifiers.md`.
 
 The process taxonomy currently has one canonical capability record for every defined warehouse process. Capability records distinguish the business capability from strategies such as batch/cluster/zone picking, min-max/order-based replenishment, wave versus waveless release, or human versus automated execution.
+
+The first deep workflow is `Picking`. Its candidate Spotwo spine is:
+
+```text
+Demand Ready
+  -> Release / Orchestration
+  -> Pick Work Creation
+  -> Assignment
+  -> Sequence / Route
+  -> Travel and Pick
+  -> Exception Resolution
+  -> Handoff
+```
+
+The canonical model uses `Pick Work Group -> Pick Task` instead of adopting a single vendor vocabulary. SAP `Warehouse Order -> Warehouse Task`, Dynamics `Work -> Work Line`, Oracle `Task -> Allocation`, NetSuite `Wave -> Pick Task`, and Infor `Assignment -> Pick Task` remain explicit mappings.
 
 ## Querying the knowledge base
 
@@ -83,6 +105,14 @@ python scripts/kb.py capability replenishment
 python scripts/kb.py capability picking --vendor blue-yonder
 python scripts/kb.py capability --group inbound
 python scripts/kb.py capability automation --json
+
+# Deep workflow decomposition
+python scripts/kb.py workflow
+python scripts/kb.py workflow picking
+python scripts/kb.py workflow picking --vendor sap
+python scripts/kb.py workflow picking --vendor oracle
+python scripts/kb.py workflow picking --strategy cluster
+python scripts/kb.py workflow picking --json
 
 # Industry language
 python scripts/kb.py term "clear height"
@@ -105,7 +135,7 @@ python scripts/kb.py integrations --protocol OPC
 
 # Claims and evidence
 python scripts/kb.py claims --subject clear-height
-python scripts/kb.py evidence --subject capability-knowledge-graph
+python scripts/kb.py evidence --subject picking-workflow
 python scripts/kb.py evidence --publisher GS1
 
 # Research backlog and live counts
@@ -141,7 +171,7 @@ When the market term differs from a formal standard, record both and create a de
 
 ## Validation
 
-Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, capability/vendor/product relationships, duplicate ontology/KPI/pattern IDs, and generated-view freshness.
+Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, capability/vendor/product relationships, workflow/company/capability relationships, nested workflow IDs, and generated-view freshness.
 
 ```bash
 python -m pip install -r requirements.txt
@@ -149,6 +179,7 @@ python scripts/validate.py
 python scripts/generate_matrices.py --check
 python scripts/generate_audit.py --check
 python scripts/generate_domain_views.py --check
+python scripts/generate_workflow_views.py --check
 ```
 
 Refresh generated views after editing canonical records:
@@ -157,4 +188,5 @@ Refresh generated views after editing canonical records:
 python scripts/generate_matrices.py
 python scripts/generate_audit.py
 python scripts/generate_domain_views.py
+python scripts/generate_workflow_views.py
 ```
