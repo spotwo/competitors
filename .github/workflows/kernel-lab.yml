@@ -6,6 +6,7 @@ on:
       - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
+      - 'bin/run-kernel-outbox-publisher'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -13,6 +14,8 @@ on:
       - 'decisions/domain/0018-golden-warehouse-scenarios.md'
       - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
       - 'decisions/domain/0020-wms-kernel-v0.1.md'
+      - 'decisions/domain/0021-transactional-outbox-domain-events.md'
+      - 'decisions/domain/0022-outbox-publisher-runtime.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -28,6 +31,7 @@ on:
       - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
+      - 'bin/run-kernel-outbox-publisher'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -35,6 +39,8 @@ on:
       - 'decisions/domain/0018-golden-warehouse-scenarios.md'
       - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
       - 'decisions/domain/0020-wms-kernel-v0.1.md'
+      - 'decisions/domain/0021-transactional-outbox-domain-events.md'
+      - 'decisions/domain/0022-outbox-publisher-runtime.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -83,6 +89,7 @@ jobs:
             kernel \
             labs/postgres-inventory-kernel \
             bin/check-kernel-lab \
+            bin/run-kernel-outbox-publisher \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -90,6 +97,8 @@ jobs:
             decisions/domain/0018-golden-warehouse-scenarios.md \
             decisions/domain/0019-postgresql-performance-contention-lab.md \
             decisions/domain/0020-wms-kernel-v0.1.md \
+            decisions/domain/0021-transactional-outbox-domain-events.md \
+            decisions/domain/0022-outbox-publisher-runtime.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
