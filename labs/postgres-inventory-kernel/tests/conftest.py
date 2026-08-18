@@ -101,6 +101,8 @@ def clean_database():
               kernel_lab.inventory_position_projection_rebuilds,
               kernel_lab.inventory_position_projection_pending,
               kernel_lab.inventory_position_quantity_projection,
+              kernel_lab.domain_event_consumer_failure_action_archive,
+              kernel_lab.domain_event_consumer_failure_archive,
               kernel_lab.domain_event_consumer_failure_actions,
               kernel_lab.domain_event_consumer_failures,
               kernel_lab.domain_event_inbox,

@@ -1,6 +1,6 @@
 # Inbox Consumer Runtime
 
-Executable companion to ADR 0028, ADR 0032, and ADR 0033.
+Executable companion to ADR 0028, ADR 0032, ADR 0033, and ADR 0034.
 
 ## Boundary
 
@@ -42,6 +42,12 @@ It does not make arbitrary network side effects exactly-once.
 - `ConsumerFailureTelemetrySnapshot` - fail-closed state, quarantine-kind, attempt, and age invariants;
 - `ConsumerFailureAlertPolicy` - stable quarantine, backlog, and ready-age alerts;
 - bounded JSON data and Prometheus exposition without event or error labels.
+
+`consumer_failure_retention.py` provides:
+
+- `ConsumerFailureRetentionPolicy` - bounded live-history window and batch size;
+- `PostgresConsumerFailureArchiveStore` - one transactional, consumer-scoped archive batch;
+- `ConsumerFailureArchiveBatch` - archive run identity and reconciled failure/action counts.
 
 `nats_consumer.py` provides `NatsJetStreamPullSource`, which binds to one existing durable pull consumer and confirms ACK with `ack_sync`.
 
@@ -191,6 +197,21 @@ Add `--format prometheus` for scraping or `--check` for monitoring exit codes. T
 
 Default alert starting points are any quarantine entry as critical, backlog at 100/1,000 warning/critical, and oldest ready age at 300/1,800 seconds. These are deployment inputs, not kernel SLOs. See `OBSERVABILITY.md` for the full metric contract.
 
+### Resolved failure archive
+
+Archive old resolved history independently for each stable logical consumer:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/archive-kernel-consumer-failures \
+  --consumer-name inventory-position-quantity-projector \
+  --pretty
+```
+
+Eligibility requires `status = 'resolved'`, `resolved_at` before the cutoff, and a matching Inbox receipt. Recent resolved rows, unresolved rows, and resolved rows without Inbox evidence remain live. The complete failure and replay-action history moves in one transaction while the Inbox receipt remains unchanged.
+
+Exact retries of an archived `replay_id` still return `duplicate`; changed reuse fails closed. The command runs one bounded parent-failure batch and never loops inside the retry worker. See `RETENTION.md` for scheduling, controlled cutoffs, verification, and deferred purge boundaries.
+
 ### Commit succeeds, ACK fails
 
 The Inbox receipt and effect remain committed. JetStream may redeliver. The next transaction sees the duplicate receipt, skips the handler, commits, and retries `ack_sync`.
@@ -216,7 +237,7 @@ The generic runtime does not silently discard gaps or serialize all aggregates g
 
 ADR 0029 defines one concrete policy for `inventory.position.changed`: a per-Position PostgreSQL cursor applies the next version, audits lower versions as stale, rejects same-version conflicts, and durably buffers gaps before ACK. See `PROJECTIONS.md` for composition, inspection, bootstrap, and failure behavior.
 
-## Retention
+## Inbox retention
 
 Keep Inbox receipts at least as long as the same logical consumer can receive or replay the corresponding broker messages. Producer Outbox archive age does not determine this window.
 
@@ -239,6 +260,8 @@ Deleting an Inbox receipt explicitly removes its deduplication protection. Treat
 `tests/test_consumer_failures.py` proves classification, payload binding, deferred retry, terminal quarantine, attempt exhaustion, exclusive claims, and stable audited replay.
 
 `tests/test_consumer_failure_telemetry.py` proves exclusive state classification, resolved-row exclusion, scoped/global aggregation, quarantine and attempt partitions, deterministic alerts, and bounded-cardinality export.
+
+`tests/test_consumer_failure_retention.py` proves consumer-scoped eligibility, preserved Inbox evidence, complete failure/action archival, payload-bound replay IDs after archival, disjoint concurrent batches, transactional rollback, and bounded inputs.
 
 `tests/test_nats_consumer.py` proves against the pinned real server:
 
