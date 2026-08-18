@@ -1,0 +1,65 @@
+id: packing
+capability_id: packing
+title: Packing Workflow
+status: candidate
+definition: Cross-vendor decomposition of how picked inventory is verified, grouped into outbound containers, closed, labeled and made ready for shipment.
+stages:
+  - {id: pack-ready, label: Pack Ready, purpose: Establish picked inventory or handling units eligible for packing.}
+  - {id: containerization, label: Container Selection, purpose: Create or select the outbound container or packing unit.}
+  - {id: item-pack, label: Pack Items, purpose: Move and confirm picked inventory into the outbound container.}
+  - {id: verification, label: Pack Verification, purpose: Validate item quantity lot serial container and order constraints.}
+  - {id: close-container, label: Close Container, purpose: Mark the outbound container complete for normal downstream handling.}
+  - {id: labeling, label: Label and Documents, purpose: Produce required container label and packing documentation.}
+  - {id: shipment-handoff, label: Shipping Handoff, purpose: Make the packed container available to load assignment staging and shipping.}
+objects:
+  - {id: pack-demand, term: Pack Demand, role: Picked order or shipment inventory requiring packing.}
+  - {id: packing-station, term: Packing Station, role: Operational location or context where packing is executed.}
+  - {id: outbound-container, term: Outbound Container, role: Carton tote pallet or outbound LPN containing packed inventory.}
+  - {id: packed-item, term: Packed Item, role: Inventory quantity and identity confirmed into a container.}
+  - {id: pack-confirmation, term: Pack Confirmation, role: Evidence that inventory was packed into the intended container.}
+  - {id: shipping-label, term: Shipping Label, role: Carrier or warehouse label identifying the outbound container.}
+  - {id: packing-document, term: Packing Document, role: Packing list or related document produced for downstream shipment.}
+states:
+  - {id: waiting, label: Waiting, meaning: Inventory is ready but packing has not started.}
+  - {id: in-progress, label: In Progress, meaning: Packing activity is active.}
+  - {id: container-open, label: Container Open, meaning: Container can accept or remove contents.}
+  - {id: verification-pending, label: Verification Pending, meaning: Container contents require validation before close.}
+  - {id: packed, label: Packed, meaning: Container is closed and ready for downstream shipping operations., terminal: true}
+  - {id: exception, label: Exception, meaning: Packing cannot complete normally.}
+  - {id: cancelled, label: Cancelled, meaning: Packing work has been invalidated., terminal: true}
+strategies:
+  - {id: packing-work, category: work-creation, label: Packing Work, definition: Represent packing as warehouse work generated when picked inventory reaches a packing location., status: adopted, evidence_refs: [dynamics-packing-work-2026]}
+  - {id: split-container, category: containerization, label: Split Container, definition: Divide packed inventory across multiple outbound containers., status: observed, evidence_refs: [oracle-wms-packing-2026]}
+  - {id: combine-container, category: containerization, label: Combine Containers, definition: Merge eligible outbound container contents during packing., status: observed, evidence_refs: [oracle-wms-packing-2026]}
+  - {id: substitution, category: execution, label: Packing Substitution, definition: Substitute eligible inventory while completing outbound packing., status: observed, evidence_refs: [oracle-wms-packing-2026]}
+  - {id: partial-shipment-pack, category: shipment, label: Partial Shipment Packing, definition: Close and ship packed containers even while other load inventory remains unpacked when policy allows., status: adopted, evidence_refs: [dynamics-packing-work-2026]}
+exceptions:
+  - {id: verification-failure, label: Pack Verification Failure, trigger: Item quantity lot serial or container validation fails., outcomes: [keep-container-open, correct-or-escalate], status: candidate, evidence_refs: [dynamics-packing-work-2026]}
+  - {id: reopen-container, label: Reopen Container, trigger: A previously closed container must be modified., outcomes: [reopen, modify-contents, reclose], status: observed, evidence_refs: [dynamics-packing-work-2026]}
+vendor_models:
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {work: Packing Work, container: Container, completion: Close Container}
+    workflow: [inventory-to-packing-location, packing-work, pack, close-container, confirm-and-transfer]
+    strategies: [packing-work, partial-shipment-pack]
+    evidence_refs: [dynamics-packing-work-2026]
+  - company_id: oracle
+    product_id: oracle/warehouse-management-cloud
+    terminology: {container: OBLPN, transaction: Pack OBLPN, status: Packed}
+    workflow: [picked-inventory, outbound-lpn, pack, optional-split-combine-substitute, packed-status]
+    strategies: [split-container, combine-container, substitution]
+    execution_channels: [rf, api]
+    evidence_refs: [oracle-wms-packing-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [pack-ready, containerization, item-pack, verification, close-container, labeling, shipment-handoff]
+  canonical_objects: [pack-demand, packing-station, outbound-container, packed-item, pack-confirmation, shipping-label, packing-document]
+  task_states: [waiting, in-progress, container-open, verification-pending, packed, exception, cancelled]
+  commands: [start-packing, create-outbound-container, pack-item, verify-container, close-container, reopen-container, print-shipping-label]
+  events: [packing-started, outbound-container-created, item-packed, container-verified, container-packed, container-reopened, shipping-label-produced]
+  notes: Packed means container preparation is complete; it must not imply shipped or carrier handoff.
+research_gaps:
+  - Compare cartonization recommendation and carrier-service selection across additional WMS products.
+  - Separate packing station UX from packing domain semantics.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics-packing-work-2026, oracle-wms-packing-2026]
