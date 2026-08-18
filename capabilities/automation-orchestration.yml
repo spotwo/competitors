@@ -1,0 +1,34 @@
+id: automation-orchestration
+group: cross-functional
+label: Automation Orchestration
+status: adopted
+definition: Coordinate warehouse work across people, robots, automated storage, conveyors, and control systems while respecting priority and dependency constraints.
+purpose: Present one execution model above heterogeneous automation and human resources.
+inputs: [warehouse-work, resource-state, automation-state, priority]
+outputs: [task-assignment, automation-request, reprioritized-work]
+entities: [warehouse-task, worker, robot, conveyor, asrs, equipment]
+strategies: [wes-orchestration, vendor-agnostic-robotics, dependency-aware, dynamic-prioritization]
+related_capabilities: [waveless, replenishment, picking, sortation, labor-management]
+vendor_observations:
+  - company_id: manhattan-associates
+    level: advanced
+    notes: ActiveWarehouse describes unified execution across inventory, labor and automation.
+    evidence_refs: [manhattan-activewarehouse-capabilities-2026]
+  - company_id: blue-yonder
+    level: advanced
+    notes: WES orchestrates human and machine workflows with dynamic priorities and dependencies.
+    evidence_refs: [blue-yonder-wes-2026]
+  - company_id: infios
+    level: core
+    notes: Enterprise WMS describes coordination across people, robotics, automation and systems.
+    evidence_refs: [infios-enterprise-capabilities-2026]
+  - company_id: mecalux
+    level: core
+    notes: Easy WMS integrates with AS/RS, pick-to-light, AGV, AMR and robotic systems.
+    evidence_refs: [mecalux-easy-wms-capabilities-2026]
+spotwo:
+  canonical_term: Automation Orchestration
+  status: adopted
+  notes: Keep orchestration distinct from WCS/machine control, which owns lower-level equipment execution.
+last_verified: 2026-08-18
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wes-2026, infios-enterprise-capabilities-2026, mecalux-easy-wms-capabilities-2026]
