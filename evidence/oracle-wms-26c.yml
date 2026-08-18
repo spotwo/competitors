@@ -1,0 +1,13 @@
+id: oracle-wms-26c
+subject: oracle
+source_type: official-docs
+grade: A
+title: Oracle Warehouse Management - Release 26C
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26c/index.html
+publisher: Oracle
+captured_at: '2026-08-18'
+supports:
+- Oracle Warehouse Management Cloud
+- omnichannel warehouse functionality
+- MHE configuration
+- integration with inventory and transportation management

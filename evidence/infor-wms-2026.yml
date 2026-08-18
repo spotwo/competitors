@@ -1,0 +1,17 @@
+id: infor-wms-2026
+subject: infor
+source_type: official-product-page
+grade: B
+title: Warehouse Management System
+url: https://www.infor.com/solutions/scm/warehouse-management-system
+publisher: Infor
+captured_at: '2026-08-18'
+supports:
+- Infor WMS
+- cloud WMS
+- receiving and put-away
+- pick, pack and ship
+- dynamic replenishment
+- labor management
+- 3PL billing
+- automation integration

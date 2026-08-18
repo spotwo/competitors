@@ -1,0 +1,16 @@
+id: epg-lfs-modules-2026
+subject: epg
+source_type: official-product-page
+grade: B
+title: LFS Modules
+url: https://epg.com/us/supply-chain-solutions/warehouse-management-system/wms-modules/
+publisher: EPG
+captured_at: '2026-08-18'
+supports:
+- starter configuration for smaller warehouses
+- bin assignment
+- putaway
+- picking
+- packing
+- transport control
+- KPIs

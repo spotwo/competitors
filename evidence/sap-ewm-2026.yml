@@ -1,0 +1,13 @@
+id: sap-ewm-2026
+subject: sap
+source_type: official-docs
+grade: A
+title: Extended Warehouse Management (EWM)
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/677f0a4e71d7487ebb70683014761789/e0cecb53ad377114e10000000a174cb4.html
+publisher: SAP
+captured_at: '2026-08-18'
+supports:
+- SAP EWM product
+- warehouse stock down to storage bin
+- goods movement processing
+- warehouse process support
