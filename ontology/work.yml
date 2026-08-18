@@ -1,0 +1,62 @@
+id: work
+title: Warehouse Work Execution Ontology
+kind: work
+status: candidate
+description: Canonical execution vocabulary separating warehouse work packages, executable tasks, assignment, execution attempts, confirmations, exceptions, and channels from business processes and inventory movements.
+entities:
+  - id: warehouse-work
+    term: Warehouse Work
+    definition: Executable operational intent owned by the warehouse execution layer, distinct from the business document or process that created it.
+    attributes: [capability, reason, priority, state, due-at, domain-reference, resource-requirements]
+  - id: warehouse-task
+    term: Warehouse Task
+    definition: Ordered executable operation within Warehouse Work; it carries task-specific execution context without replacing the capability-specific domain object.
+    attributes: [sequence, operation, state, planned-quantity, source-context, destination-context, confirmation-requirements]
+  - id: work-assignment
+    term: Work Assignment
+    definition: Time-bounded binding between executable Warehouse Work and the human, equipment, team, or automation resource responsible for executing it.
+    attributes: [resource-kind, resource-id, assignment-method, state, assigned-at, released-at]
+  - id: execution-resource
+    term: Execution Resource
+    definition: Human, equipment, team, or automation identity that may receive or claim warehouse work when eligible.
+  - id: task-execution
+    term: Task Execution
+    definition: One concrete execution attempt of a Warehouse Task by the currently assigned resource through an execution channel.
+    attributes: [channel, state, started-at, completed-at]
+  - id: execution-channel
+    term: Execution Channel
+    definition: Interface or adapter through which a task is executed, such as RF, mobile, voice, light-directed workstation, or automation.
+    examples: [rf, mobile, voice, light-directed, workstation, automation]
+  - id: task-confirmation
+    term: Task Confirmation
+    definition: Immutable record of the actual outcome of a task execution, including actual quantity or a capability-specific result reference where applicable.
+    attributes: [outcome, actual-quantity, domain-result-reference, recorded-at]
+  - id: task-exception
+    term: Task Exception
+    definition: First-class blocked execution outcome with reason, evidence, state, and an explicit resolution path.
+    attributes: [code, details, state, resolution, opened-at, resolved-at]
+  - id: confirmation-requirement
+    term: Confirmation Requirement
+    definition: Requirement that must be satisfied before a task can be considered successfully confirmed, including capability-owned domain consequences when required.
+relationships:
+  - {subject: warehouse-work, predicate: contains, object: warehouse-task}
+  - {subject: warehouse-work, predicate: has-current, object: work-assignment}
+  - {subject: work-assignment, predicate: binds, object: execution-resource}
+  - {subject: warehouse-task, predicate: executed-through, object: task-execution}
+  - {subject: task-execution, predicate: uses, object: execution-channel}
+  - {subject: task-execution, predicate: produces, object: task-confirmation}
+  - {subject: task-execution, predicate: may-produce, object: task-exception}
+  - {subject: warehouse-task, predicate: constrained-by, object: confirmation-requirement}
+  - {subject: warehouse-work, predicate: executes-capability, object: picking}
+  - {subject: warehouse-work, predicate: executes-capability, object: putaway}
+  - {subject: warehouse-work, predicate: executes-capability, object: replenishment}
+  - {subject: warehouse-work, predicate: executes-capability, object: relocation}
+  - {subject: warehouse-work, predicate: executes-capability, object: cycle-counting}
+  - {subject: warehouse-work, predicate: executes-capability, object: loading}
+research_gaps:
+  - Validate whether one active assignment per Warehouse Work is sufficient for multi-resource, team, and automation execution.
+  - Define resource eligibility and qualification contracts without coupling the work engine to one labor-management model.
+  - Define atomic integration between generic task confirmation and capability-owned effects such as inventory postings, count results, packing, and loading confirmations.
+  - Evaluate whether long-running work requires task dependency graphs beyond simple ordered sequences.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-warehouse-work-2026, sap-ewm-warehouse-order-work-package-2026, oracle-wms-task-execution-2026, infor-directed-task-execution-2026]
