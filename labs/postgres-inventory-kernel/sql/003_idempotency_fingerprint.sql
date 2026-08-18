@@ -1,5 +1,7 @@
 BEGIN;
 
+SET LOCAL search_path = kernel_lab, pg_catalog, pg_temp;
+
 ALTER TABLE kernel_lab.inventory_transactions
   ADD COLUMN request_fingerprint text NOT NULL;
 
@@ -104,8 +106,8 @@ DECLARE
   v_existing_fingerprint text;
   v_request_fingerprint text;
   v_locked_count integer;
-  v_source inventory_positions%ROWTYPE;
-  v_target inventory_positions%ROWTYPE;
+  v_source kernel_lab.inventory_positions%ROWTYPE;
+  v_target kernel_lab.inventory_positions%ROWTYPE;
 BEGIN
   IF p_qty <= 0 THEN
     RAISE EXCEPTION 'movement quantity must be positive'
