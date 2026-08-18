@@ -1,0 +1,12 @@
+id: dynamics365-onhand-availability-2026
+subject: inventory-commitment-model
+source_type: official-docs
+grade: A
+title: Inventory on-hand list
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/inventory/inventory-on-hand-list
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 distinguishes physical inventory, physically reserved quantity, available physical quantity, ordered inventory, ordered reservations, and total available quantity.
+  - Available physical is calculated as physical inventory minus physical reserved quantity.
+  - Available for reservation may include or exclude expected receipts depending on inventory reservation policy.
