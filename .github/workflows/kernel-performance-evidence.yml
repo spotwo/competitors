@@ -1,9 +1,6 @@
 name: PostgreSQL kernel performance evidence
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/kernel-performance-evidence.yml'
   workflow_dispatch:
 
 concurrency:
