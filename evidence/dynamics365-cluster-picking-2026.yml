@@ -1,0 +1,12 @@
+id: dynamics365-cluster-picking-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Cluster Position Full - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/cluster-position-full
+publisher: Microsoft
+captured_at: '2026-08-18'
+supports:
+  - Dynamics 365 supports cluster picking where multiple work IDs are executed through cluster positions.
+  - Cluster profiles define positions and break rules while mobile-device work drives execution.
+  - Cluster picking uses explicit containers or positions to keep multiple orders separated during one picking trip.
