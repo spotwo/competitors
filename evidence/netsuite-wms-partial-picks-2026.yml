@@ -1,0 +1,12 @@
+id: netsuite-wms-partial-picks-2026
+subject: picking-workflow
+source_type: official-docs
+grade: A
+title: Marking Partial and Zero Picks Done Through the App
+url: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_0123020409.html
+publisher: Oracle NetSuite
+captured_at: '2026-08-18'
+supports:
+  - NetSuite WMS explicitly models full, partial and zero-quantity pick outcomes on pick tasks.
+  - Partially picked work can proceed through staging, pick-carton assignment and label printing before task completion.
+  - Pick-task lines can be explicitly marked done after partial or zero picks, making exception outcome distinct from the physical pick action.
