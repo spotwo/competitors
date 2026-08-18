@@ -4,10 +4,16 @@
 
 | Term | Status | Spotwo term | Aliases | Evidence |
 |---|---|---|---|---:|
-| Clear Height | needs-research |  | clear ceiling height, usable height, clear warehouse height | 0 |
+| Automated Guided Vehicle | adopted | Automated Guided Vehicle (AGV) | AGV | 1 |
+| Automated Storage and Retrieval System | adopted | Automated Storage and Retrieval System (AS/RS) | AS/RS, ASRS | 2 |
+| Autonomous Mobile Robot | adopted | Autonomous Mobile Robot (AMR) | AMR | 1 |
+| Clear Height | candidate | Clear Height | clear ceiling height, usable height, clear warehouse height | 4 |
 | Cross-docking | adopted | Cross-docking | cross docking | 3 |
 | Cycle Counting | adopted | Cycle Counting | cycle count | 2 |
+| Dock Door | adopted | Dock Door | loading dock door, dock high door | 2 |
+| Driverless Industrial Truck | adopted | Driverless Industrial Truck | driverless truck | 2 |
 | Global Location Number | adopted | GLN | GLN | 1 |
+| Industrial Storage Rack | adopted | Storage Rack | storage rack, rack | 1 |
 | Intralogistics | adopted | Intralogistics | internal logistics | 1 |
 | License Plate Number | observed |  | LPN, license plate | 2 |
 | Logistic Unit | adopted | Logistic Unit | logistics unit | 1 |
@@ -24,6 +30,7 @@
 | Storage Bin | adopted | Storage Bin | bin, bin location, storage location | 2 |
 | Warehouse Control System | adopted | Warehouse Control System (WCS) | WCS | 2 |
 | Warehouse Execution System | adopted | Warehouse Execution System (WES) | WES | 3 |
+| Warehouse Location | adopted | Warehouse Location | location, storage location | 3 |
 | Warehouse Management System | adopted | Warehouse Management System (WMS) | WMS, warehouse management software | 2 |
 | Warehouse Order | observed |  | work package | 1 |
 | Warehouse Task | observed | Warehouse Task | task | 1 |
