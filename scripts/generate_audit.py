@@ -21,8 +21,7 @@ def stats_markdown() -> str:
     companies = records("companies/*/company.yml")
     products = sum(len(c.get("products", [])) for c in companies)
     ontologies = records("ontology/*.yml")
-    kpis = sum(len(r.get("metrics", [])) for r in records("kpis/*.yml"))
-    integrations = sum(len(r.get("patterns", [])) for r in records("integrations/*.yml"))
+    capability_records = records("capabilities/*.yml")
     metrics = [
         ("Companies", len(companies)),
         ("Products", products),
@@ -33,8 +32,10 @@ def stats_markdown() -> str:
         ("Taxonomy vocabularies", len(list(ROOT.glob("taxonomy/*.yml")))),
         ("Ontologies", len(ontologies)),
         ("Ontology entities", sum(len(o.get("entities", [])) for o in ontologies)),
-        ("KPI metrics", kpis),
-        ("Integration patterns", integrations),
+        ("KPI metrics", sum(len(r.get("metrics", [])) for r in records("kpis/*.yml"))),
+        ("Integration patterns", sum(len(r.get("patterns", [])) for r in records("integrations/*.yml"))),
+        ("Capability records", len(capability_records)),
+        ("Vendor capability observations", sum(len(c.get("vendor_observations", [])) for c in capability_records)),
     ]
     lines = ["# Knowledge Base Stats", "", "> Generated from canonical records. Do not edit by hand.", "", "| Metric | Count |", "|---|---:|"]
     lines.extend(f"| {name} | {count} |" for name, count in metrics)
@@ -50,7 +51,13 @@ def gaps_markdown() -> str:
     for term in records("terminology/*.yml"):
         if term.get("status") in {"candidate", "observed", "needs-research"}:
             term_gaps.append((term["preferred_term"], term["status"], len(term.get("evidence_refs", []))))
-    lines = ["# Research Gaps", "", "> Generated from explicit company gaps and non-adopted terminology statuses. Do not edit by hand.", "", "## Company gaps", "", "| Company | Gap |", "|---|---|"]
+    capability_gaps = []
+    for capability in records("capabilities/*.yml"):
+        if capability.get("status") in {"candidate", "observed", "needs-research"} or not capability.get("evidence_refs"):
+            capability_gaps.append((capability["label"], capability["status"], len(capability.get("vendor_observations", [])), len(capability.get("evidence_refs", []))))
+        for gap in capability.get("research_gaps", []) or []:
+            capability_gaps.append((capability["label"] + " - " + gap, "research", len(capability.get("vendor_observations", [])), len(capability.get("evidence_refs", []))))
+    lines = ["# Research Gaps", "", "> Generated from explicit research gaps and non-adopted records. Do not edit by hand.", "", "## Company gaps", "", "| Company | Gap |", "|---|---|"]
     if company_gaps:
         lines.extend(f"| {company} | {gap} |" for company, gap in sorted(company_gaps))
     else:
@@ -60,6 +67,11 @@ def gaps_markdown() -> str:
         lines.extend(f"| {term} | {status} | {count} |" for term, status, count in sorted(term_gaps))
     else:
         lines.append("| - | None | 0 |")
+    lines.extend(["", "## Capability research", "", "| Capability / gap | Status | Vendor observations | Evidence refs |", "|---|---|---:|---:|"])
+    if capability_gaps:
+        lines.extend(f"| {label} | {status} | {vendors} | {evidence} |" for label, status, vendors, evidence in sorted(capability_gaps))
+    else:
+        lines.append("| - | None | 0 | 0 |")
     return "\n".join(lines) + "\n"
 
 
