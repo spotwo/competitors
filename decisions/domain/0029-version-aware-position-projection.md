@@ -99,7 +99,7 @@ Delta projection bootstrap must start from version 1 and replay every version, o
 
 This slice does not invent a snapshot from the first event it sees. If the first retained event is version 40, it remains buffered with expected version 1. Silently assuming versions 1 through 39 were zero would create a plausible but false quantity view.
 
-Inbox receipts, pending events, and the projection cursor form one rebuild boundary. A restrictive foreign key blocks deletion of an Inbox receipt while its event is pending. Deleting only one part is unsafe. Destructive rebuild and snapshot-import tooling remain a separate operational slice.
+Inbox receipts, pending events, and the projection cursor form one rebuild boundary. A restrictive foreign key blocks deletion of an Inbox receipt while its event is pending. Deleting only one part is unsafe. ADR 0030 adds non-destructive snapshot import for an absent cursor; destructive rebuild remains a separate operational slice.
 
 ## Gap observability
 
@@ -115,7 +115,7 @@ pending_count
 oldest_buffered_at
 ```
 
-This makes unresolved holes queryable without interpreting broker state. Alert thresholds and automatic repair remain deployment policy.
+This makes unresolved holes queryable without interpreting broker state. ADR 0030 adds configurable aggregate health thresholds; automatic repair remains a separate deployment policy.
 
 ## Executable invariants
 
@@ -148,4 +148,4 @@ The PostgreSQL and pinned NATS lab proves:
 - a permanently missing version leaves later events buffered;
 - delta replay requires complete history or a verified snapshot cursor;
 - the projection covers Position quantities, not inventory identity dimensions, holds, eligibility, availability, or other read models;
-- conflict quarantine, snapshot import, rebuild automation, gap alert thresholds, and pending-event retention remain later operational slices.
+- conflict quarantine, destructive rebuild automation, automatic gap repair, and pending-event retention remain later operational slices.

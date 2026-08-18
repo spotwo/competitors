@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0029.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0030.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -218,6 +218,9 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | ordered Position projection | quantity deltas apply once in monotonic aggregate-version order |
 | durable version-gap recovery | out-of-order facts commit to PostgreSQL before ACK and drain when gaps close |
 | stale and conflict policy | lower versions are audited; competing events for one version fail closed |
+| verified projection snapshot | an absent cursor can start from exact quantities and aggregate version without a fake event |
+| snapshot retry safety | stable bootstrap identity is payload-bound and cannot reset a progressed projection |
+| projection gap health | aggregate age/count signals render as bounded JSON or Prometheus alerts |
 
 ## Deliberate simplifications
 
@@ -246,7 +249,7 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - row-level security / tenant policies;
 - physical archive partitioning, cold export, and destructive purge;
 - consumer poison-message quarantine, DLQ review, and Inbox cleanup;
-- snapshot bootstrap, destructive rebuild tooling, and gap-repair automation;
+- destructive projection rebuild tooling, consumer fencing, and gap-repair automation;
 - version-aware projection handlers beyond the concrete Position quantity view;
 - catch-weight dual quantities;
 - production UUIDv7 generation policy;
@@ -274,5 +277,6 @@ The conceptual decisions are:
 - `decisions/domain/0027-outbox-retention-archive.md`
 - `decisions/domain/0028-inbox-consumer-runtime.md`
 - `decisions/domain/0029-version-aware-position-projection.md`
+- `decisions/domain/0030-position-projection-snapshot-gap-health.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.

@@ -1,6 +1,6 @@
 # Version-Aware Projections
 
-Executable companion to ADR 0029.
+Executable companion to ADR 0029 and ADR 0030.
 
 ## Concrete projection
 
@@ -54,6 +54,8 @@ A different runtime and handler `consumer_name` fails the transaction because th
 | `inventory_position_projection_gaps` | queryable unresolved-gap summary |
 | `domain_event_inbox.metadata.projection` | per-delivery applied, buffered, or stale decision evidence |
 
+Snapshot-seeded rows additionally preserve the bootstrap identity, exact seed quantities, artifact checksum, source/reference, operator, reason, and timestamps. PostgreSQL derives `cursor_source` as `empty`, `snapshot`, or `event`; a snapshot never receives a fake `last_event_id`.
+
 ## Processing policy
 
 Assume the current projection version is 7:
@@ -84,6 +86,17 @@ ORDER BY oldest_buffered_at;
 
 No row means no currently buffered gap for that Position and consumer. It does not prove the consumer is caught up with the broker.
 
+Use the read-only health interface for monitoring:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/inspect-kernel-projection-gaps \
+  --consumer-name inventory-position-quantity-projector \
+  --format prometheus --check
+```
+
+The default policy warns when the oldest gap reaches 300 seconds or pending events reach 100, and becomes critical at 1,800 seconds or 1,000 pending events. These are deployment starting points, not kernel SLOs.
+
 ## Inbox outcome inspection
 
 ```sql
@@ -105,7 +118,37 @@ This is a delta projection. Start with one of two controlled modes:
 1. empty cursor plus complete replay beginning at aggregate version 1;
 2. verified quantity snapshot plus its exact aggregate version cursor.
 
-The lab implements the first mode. It intentionally does not create a fake zero baseline at an arbitrary retained version.
+The lab implements both modes. It intentionally does not create a fake zero baseline at an arbitrary retained version.
+
+Snapshot bootstrap accepts exactly one verified JSON artifact:
+
+```json
+{
+  "position_id": "018f0000-0000-7000-8000-000000000001",
+  "aggregate_version": 40,
+  "physical_qty": "100.000000",
+  "reserved_qty": "20.000000",
+  "allocated_qty": "10.000000",
+  "source": "authoritative-inventory-export",
+  "reference": "snapshot-2026-08-18T20:00:00Z",
+  "recorded_at": "2026-08-18T20:00:00+00:00"
+}
+```
+
+Import it with a stable bootstrap command identity:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  bin/bootstrap-kernel-position-projection position-snapshot.json \
+  --bootstrap-id 018f0000-0000-7000-8000-000000000002 \
+  --consumer-name inventory-position-quantity-projector \
+  --operator operator@example.com \
+  --reason "initial projection seed"
+```
+
+The importer stores the SHA-256 of the exact file bytes. An exact retry returns `duplicate`; changed input under the same bootstrap ID fails. The command has no replace flag and rejects a cursor already created by either an event or another bootstrap.
+
+After a version-40 snapshot, event version 40 is audited as stale, version 41 applies, and a higher version remains durably buffered until version 41 arrives.
 
 ## Failure behavior
 
@@ -123,7 +166,7 @@ A different event claiming the current or an already-buffered version raises a u
 
 ### Permanent gap
 
-Later versions remain in the pending table. Monitor `oldest_buffered_at`; do not delete them to make a dashboard green. Repair requires the missing event, a verified snapshot, or an explicit rebuild policy.
+Later versions remain in the pending table. Monitor `oldest_buffered_at` or the aggregate health command; do not delete them to make a dashboard green. Repair requires the missing event or a separately fenced and audited rebuild. Non-destructive bootstrap cannot overwrite the existing gap cursor.
 
 ## Retention boundary
 
@@ -142,3 +185,5 @@ Producer Outbox retention does not define when these consumer records are safe t
 `tests/test_position_projection.py` proves producer versions, sequential application, buffering, draining, stale audit, conflict rejection, invariant rollback, and concurrent adjacent versions.
 
 `tests/test_nats_consumer.py` additionally proves the out-of-order flow through a real pinned JetStream server and server-confirmed ACKs.
+
+`tests/test_projection_operations.py` proves verified snapshot import, payload-bound retry, post-snapshot ordering, bootstrap/event races, gap telemetry, and stable health alerts.
