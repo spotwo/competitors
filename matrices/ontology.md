@@ -9,5 +9,6 @@
 | Inventory Movement Ontology | movement | candidate | 11 | 9 |
 | Inventory Transaction and Position Ontology | transaction | candidate | 17 | 15 |
 | Inventory Ontology | inventory | candidate | 18 | 9 |
-| Warehouse Process Ontology | process | candidate | 18 | 5 |
+| Warehouse Process Ontology | process | candidate | 17 | 5 |
 | Storage Location Ontology | storage-location | candidate | 9 | 4 |
+| Warehouse Work Execution Ontology | work | candidate | 9 | 4 |
