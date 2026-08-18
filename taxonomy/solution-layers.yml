@@ -1,0 +1,34 @@
+version: 1
+values:
+- id: erp
+  label: ERP
+- id: oms
+  label: Order Management System
+- id: wms
+  label: Warehouse Management System
+- id: wes
+  label: Warehouse Execution System
+- id: wcs
+  label: Warehouse Control System
+- id: mfs
+  label: Material Flow System
+- id: machine-control
+  label: Machine / PLC control
+- id: tms
+  label: Transportation Management System
+- id: yms
+  label: Yard Management System
+- id: lms
+  label: Labor Management System
+- id: mes
+  label: Manufacturing Execution System
+- id: cmms
+  label: Computerized Maintenance Management System
+- id: aps
+  label: Advanced Planning and Scheduling
+- id: dom
+  label: Distributed Order Management
+- id: robotics-orchestration
+  label: Robotics orchestration
+- id: analytics
+  label: Analytics / control tower

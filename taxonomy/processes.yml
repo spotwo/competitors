@@ -1,0 +1,83 @@
+version: 1
+values:
+- id: receiving
+  group: inbound
+  label: Receiving
+- id: unloading
+  group: inbound
+  label: Unloading
+- id: inspection
+  group: inbound
+  label: Inspection / quality control
+- id: identification
+  group: inbound
+  label: Identification / labeling
+- id: putaway
+  group: inbound
+  label: Putaway
+- id: cross-docking
+  group: inbound
+  label: Cross-docking
+- id: storage
+  group: storage
+  label: Storage
+- id: relocation
+  group: storage
+  label: Relocation
+- id: replenishment
+  group: storage
+  label: Replenishment
+- id: slotting
+  group: storage
+  label: Slotting
+- id: cycle-counting
+  group: inventory
+  label: Cycle counting
+- id: physical-inventory
+  group: inventory
+  label: Physical inventory
+- id: allocation
+  group: fulfillment
+  label: Allocation
+- id: waving
+  group: fulfillment
+  label: Wave planning / release
+- id: waveless
+  group: fulfillment
+  label: Waveless / continuous release
+- id: picking
+  group: fulfillment
+  label: Picking
+- id: consolidation
+  group: fulfillment
+  label: Consolidation
+- id: packing
+  group: fulfillment
+  label: Packing
+- id: sortation
+  group: fulfillment
+  label: Sortation
+- id: staging
+  group: outbound
+  label: Staging
+- id: loading
+  group: outbound
+  label: Loading
+- id: shipping
+  group: outbound
+  label: Shipping
+- id: returns
+  group: reverse
+  label: Returns
+- id: labor-management
+  group: cross-functional
+  label: Labor management
+- id: yard-management
+  group: cross-functional
+  label: Yard management
+- id: automation-orchestration
+  group: cross-functional
+  label: Automation orchestration
+- id: billing
+  group: cross-functional
+  label: 3PL billing

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/authority.schema.json",
+  "title": "Authority Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "authority_type", "scope", "jurisdictions", "website", "last_verified", "evidence_refs"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "name": {"type": "string", "minLength": 1},
+    "authority_type": {"enum": ["standards-body", "regulator", "industry-association", "industry-guide", "consortium"]},
+    "scope": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "jurisdictions": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "website": {"type": "string", "format": "uri"},
+    "notes": {"type": "string"},
+    "last_verified": {"type": "string", "format": "date"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true}
+  }
+}

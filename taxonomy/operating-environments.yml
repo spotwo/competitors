@@ -1,0 +1,22 @@
+version: 1
+values:
+- id: distribution-center
+  label: Distribution center
+- id: fulfillment-center
+  label: Fulfillment center
+- id: manufacturing-warehouse
+  label: Manufacturing warehouse
+- id: production-supply
+  label: Production supply / line-side logistics
+- id: 3pl
+  label: Third-party logistics
+- id: retail-backroom
+  label: Retail backroom / store logistics
+- id: postal-parcel
+  label: Postal and parcel
+- id: service-parts
+  label: Service parts
+- id: cold-storage
+  label: Cold storage
+- id: dark-store
+  label: Dark store / micro-fulfillment

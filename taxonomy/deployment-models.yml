@@ -1,0 +1,12 @@
+version: 1
+values:
+- id: saas
+  label: SaaS
+- id: cloud
+  label: Cloud hosted
+- id: on-premise
+  label: On-premise
+- id: hybrid
+  label: Hybrid
+- id: managed
+  label: Managed service

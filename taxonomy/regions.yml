@@ -1,0 +1,22 @@
+version: 1
+values:
+- id: north-america
+  label: North America
+- id: latam
+  label: Latin America
+- id: europe
+  label: Europe
+- id: mena
+  label: Middle East and North Africa
+- id: sub-saharan-africa
+  label: Sub-Saharan Africa
+- id: south-asia
+  label: South Asia
+- id: east-asia
+  label: East Asia
+- id: southeast-asia
+  label: Southeast Asia
+- id: oceania
+  label: Oceania
+- id: global
+  label: Global

@@ -1,0 +1,14 @@
+version: 1
+values:
+- id: A
+  label: Official documentation / standard / regulation
+- id: B
+  label: Official vendor presentation, product page, demo, or release note
+- id: C
+  label: Official customer case study
+- id: D
+  label: Analyst or reputable industry publication
+- id: E
+  label: Reseller / integrator material
+- id: F
+  label: Review, forum, social post, or unverified secondary source

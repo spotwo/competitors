@@ -1,0 +1,36 @@
+version: 1
+values:
+- id: retail
+  label: Retail
+- id: ecommerce
+  label: E-commerce
+- id: 3pl
+  label: 3PL / logistics services
+- id: manufacturing
+  label: Manufacturing
+- id: automotive
+  label: Automotive
+- id: food-beverage
+  label: Food & beverage
+- id: pharma
+  label: Pharmaceutical
+- id: healthcare
+  label: Healthcare
+- id: fashion
+  label: Fashion / apparel
+- id: electronics
+  label: Electronics
+- id: industrial
+  label: Industrial distribution
+- id: wholesale
+  label: Wholesale / distribution
+- id: fmcg
+  label: FMCG / CPG
+- id: chemicals
+  label: Chemicals
+- id: cold-chain
+  label: Cold chain
+- id: postal-parcel
+  label: Postal / parcel
+- id: spare-parts
+  label: Spare parts

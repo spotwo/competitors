@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/term.schema.json",
+  "title": "Terminology Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "preferred_term", "definition", "domain", "aliases", "status", "last_verified", "evidence_refs"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "preferred_term": {"type": "string", "minLength": 1},
+    "definition": {"type": "string", "minLength": 1},
+    "domain": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "aliases": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "status": {"enum": ["adopted", "candidate", "observed", "deprecated", "needs-research"]},
+    "spotwo_term": {"type": ["string", "null"]},
+    "notes": {"type": "string"},
+    "last_verified": {"type": "string", "format": "date"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}

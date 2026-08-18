@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schemas/evidence.schema.json",
+  "title": "Evidence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "subject", "source_type", "grade", "title", "url", "publisher", "captured_at", "supports"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "subject": {"type": "string", "minLength": 1},
+    "source_type": {"enum": ["official-docs", "official-product-page", "official-release", "official-case-study", "standard", "regulation", "association-guide", "analyst", "integrator", "review", "forum", "other"]},
+    "grade": {"enum": ["A", "B", "C", "D", "E", "F"]},
+    "title": {"type": "string", "minLength": 1},
+    "url": {"type": "string", "format": "uri"},
+    "publisher": {"type": "string", "minLength": 1},
+    "captured_at": {"type": "string", "format": "date"},
+    "supports": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "notes": {"type": "string"}
+  }
+}

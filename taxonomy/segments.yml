@@ -1,0 +1,12 @@
+version: 1
+values:
+- id: micro
+  label: Micro business
+- id: smb
+  label: Small and medium business
+- id: mid-market
+  label: Mid-market
+- id: enterprise
+  label: Enterprise
+- id: large-enterprise
+  label: Large enterprise
