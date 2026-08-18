@@ -242,13 +242,15 @@ def main() -> int:
     ontology_entity_count = 0
     for path in sorted(ROOT.glob("ontology/*.yml")):
         data = load_yaml(path)
-        seen: set[str] = set()
-        for entity in data.get("entities", []) or []:
-            entity_id = entity["id"]
-            if entity_id in seen:
-                errors.append(f"{path.relative_to(ROOT)}: duplicate ontology entity {entity_id!r}")
-            seen.add(entity_id)
-        ontology_entity_count += len(seen)
+        entity_ids = check_unique_nested_ids(path, data.get("entities", []), "ontology entity", errors)
+        for relationship in data.get("relationships", []) or []:
+            subject = relationship.get("subject")
+            object_id = relationship.get("object")
+            if subject not in entity_ids:
+                errors.append(f"{path.relative_to(ROOT)}: ontology relationship unresolved subject {subject!r}")
+            if object_id not in entity_ids:
+                errors.append(f"{path.relative_to(ROOT)}: ontology relationship unresolved object {object_id!r}")
+        ontology_entity_count += len(entity_ids)
 
     kpi_ids: set[str] = set()
     for path in sorted(ROOT.glob("kpis/*.yml")):
