@@ -1,0 +1,12 @@
+id: sap-ewm-warehouse-order-work-package-2026
+subject: warehouse-work
+source_type: official-docs
+grade: A
+title: Warehouse Order Creation - SAP EWM
+url: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE/9832125c23154a179bfa1784cdc9577a/48890776d2b21b5ae10000000a42189c.html
+publisher: SAP
+captured_at: 2026-08-18
+supports:
+  - Groups executable Warehouse Tasks into Warehouse Orders as work packages.
+  - Assigns Warehouse Orders to warehouse workers through resource management.
+  - Supports a two-level execution model in which a work package and its executable task children are distinct concepts.
