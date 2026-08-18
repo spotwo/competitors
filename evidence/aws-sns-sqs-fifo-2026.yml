@@ -1,0 +1,14 @@
+id: aws-sns-sqs-fifo-2026
+subject: transport-selection
+source_type: official-docs
+grade: A
+title: Amazon SNS FIFO and SQS FIFO messaging semantics
+url: https://docs.aws.amazon.com/sns/latest/dg/fifo-message-delivery.html
+publisher: Amazon Web Services
+captured_at: '2026-08-18'
+supports:
+  - SNS FIFO topics can fan out ordered messages to SQS FIFO queues for AWS-native event distribution.
+  - FIFO ordering is scoped through message groups, so Spotwo aggregate identity can map naturally to a MessageGroupId.
+  - SNS and SQS FIFO support message deduplication using explicit deduplication IDs with a five-minute deduplication interval.
+  - SQS FIFO consumers use queue visibility and delete semantics, while SNS provides managed fan-out to subscribed queues.
+  - The service is fully managed and request-priced, but it is AWS-specific and does not provide an on-premises warehouse broker runtime.
