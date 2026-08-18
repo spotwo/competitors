@@ -25,13 +25,13 @@ bash bin/check-kernel-lab
 The command:
 
 1. installs the pinned lab Python dependencies;
-2. starts an isolated PostgreSQL container on port `55432` by default;
+2. selects a free localhost port and starts an isolated PostgreSQL container there;
 3. waits for two consecutive SQL readiness probes through the migration execution path;
 4. applies every `sql/*.sql` migration in lexical order with `ON_ERROR_STOP=1`;
 5. runs the concurrency/invariant tests;
 6. destroys the lab database volume on exit.
 
-Override the host port when needed:
+Pin the host port explicitly when needed:
 
 ```bash
 KERNEL_LAB_PORT=65432 bash bin/check-kernel-lab
