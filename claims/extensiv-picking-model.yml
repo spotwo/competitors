@@ -1,0 +1,14 @@
+id: extensiv-picking-model
+subject_type: company
+subject: extensiv
+predicate: picking-model
+value:
+  release: [optional-wave]
+  work_group: pick-job
+  grouping: [single-order, batch, multi-order, pick-to-bin]
+  routing: [configured-pick-path]
+  assignment: [picker-delegation]
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [extensiv-picking-model-2026]
