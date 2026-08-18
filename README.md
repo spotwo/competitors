@@ -14,9 +14,10 @@ This repository records competitors, products, capabilities, terminology, standa
 4. **One entity, many facets** - geography, segment, industry, solution layer, and deployment model are metadata, not directory nesting.
 5. **Terminology is a product asset** - record standards, dominant market usage, aliases, and Spotwo decisions.
 6. **Domain model is evidence-driven** - vendor structures are observations, not automatic Spotwo architecture.
-7. **Time matters** - every researched fact has a verification or observation date.
-8. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
-9. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
+7. **Capability is not implementation** - receiving, replenishment, picking, etc. are canonical capabilities; wave, batch, min/max, GTP, voice, and similar choices are strategies or implementation patterns where appropriate.
+8. **Time matters** - every researched fact has a verification or observation date.
+9. **Confidence is explicit** - official documentation is stronger evidence than reviews or forum posts.
+10. **Unknown beats invented** - unresolved facts belong in `research_gaps`.
 
 ## Knowledge model
 
@@ -32,7 +33,7 @@ Company / Product / Term / Authority
 Evidence + Claims + Standards
               |
               v
-      Ontology / KPI / Pattern
+ Capability / Ontology / KPI / Pattern
               |
               v
         Spotwo Decision
@@ -42,6 +43,7 @@ Evidence + Claims + Standards
 
 ```text
 companies/       Vendor and product records
+capabilities/    Canonical warehouse capabilities, strategies and vendor observations
 claims/          Reusable factual assertions linked to evidence
 taxonomy/        Controlled vocabularies
 terminology/     Industry terms, aliases, usage, and Spotwo naming decisions
@@ -64,6 +66,8 @@ The repository intentionally does **not** treat `ROW -> RACK -> LEVEL -> BIN` as
 
 Handling-unit identity is also separated from standardized supply-chain identity. An internal Handling Unit may have an LPN and may have an SSCC, but those identifiers are not treated as synonyms. See `decisions/domain/0004-handling-unit-identifiers.md`.
 
+The process taxonomy currently has one canonical capability record for every defined warehouse process. Capability records distinguish the business capability from strategies such as batch/cluster/zone picking, min-max/order-based replenishment, wave versus waveless release, or human versus automated execution.
+
 ## Querying the knowledge base
 
 ```bash
@@ -72,6 +76,13 @@ python scripts/kb.py vendors --segment smb --market europe --layer wms
 python scripts/kb.py vendors --country UA
 python scripts/kb.py vendors --layer wes --deployment cloud
 python scripts/kb.py vendors --capability picking
+
+# Capability graph
+python scripts/kb.py capability
+python scripts/kb.py capability replenishment
+python scripts/kb.py capability picking --vendor blue-yonder
+python scripts/kb.py capability --group inbound
+python scripts/kb.py capability automation --json
 
 # Industry language
 python scripts/kb.py term "clear height"
@@ -94,7 +105,7 @@ python scripts/kb.py integrations --protocol OPC
 
 # Claims and evidence
 python scripts/kb.py claims --subject clear-height
-python scripts/kb.py evidence --subject storage-location-ontology
+python scripts/kb.py evidence --subject capability-knowledge-graph
 python scripts/kb.py evidence --publisher GS1
 
 # Research backlog and live counts
@@ -130,7 +141,7 @@ When the market term differs from a formal standard, record both and create a de
 
 ## Validation
 
-Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, duplicate ontology/KPI/pattern IDs, and generated-view freshness.
+Canonical records are validated in CI against JSON Schema, controlled taxonomies, evidence references, parent relationships, claim subjects, capability/vendor/product relationships, duplicate ontology/KPI/pattern IDs, and generated-view freshness.
 
 ```bash
 python -m pip install -r requirements.txt
