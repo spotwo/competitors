@@ -1,6 +1,6 @@
 # Outbox Publisher Runtime
 
-Executable companion to ADR 0021 through ADR 0026.
+Executable companion to ADR 0021 through ADR 0027.
 
 ## Boundary
 
@@ -159,6 +159,21 @@ Replay records the prior error, quarantine reason, and attempt count in `domain_
 
 See `OBSERVABILITY.md` for the exact state invariant, metric names, thresholds, exit codes, and operator response.
 
+## Retention and archive
+
+Published events remain in the live Outbox for a deployment-configured grace period, then move through `archive_published_domain_events()` in transactions capped at 1,000 events. Ready, delayed, leased, and quarantined events are never eligible.
+
+The default operator command archives one batch older than 30 days:
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/kernel_lab \
+  python bin/archive-kernel-outbox --retention-days 30 --batch-size 1000
+```
+
+The immutable `domain_event_idempotency_keys` registry preserves stable `event_id` and payload binding after a live row moves. Exact producer retries therefore remain idempotent, and changed payload under an old key remains rejected. Replay audit rows move transactionally with the published event.
+
+The command runs one bounded batch. Scheduling remains outside the publisher process so a retention failure cannot stop publication. See `RETENTION.md` for concurrency, failure, and verification procedures.
+
 ## Executable tests
 
 `tests/test_publisher_runtime.py` proves:
@@ -182,6 +197,15 @@ See `OBSERVABILITY.md` for the exact state invariant, metric names, thresholds, 
 5. quarantine, backlog, and ready-age alerts are deterministic;
 6. JSON and Prometheus representations preserve the same snapshot.
 
+`tests/test_outbox_retention.py` proves:
+
+1. archive eligibility requires confirmed publication older than the cutoff;
+2. all unpublished states and recent publications remain live;
+3. event envelope, delivery history, and replay audit survive the move;
+4. producer dedupe and idempotent ACK survive archive;
+5. parallel archive workers receive disjoint bounded batches;
+6. copy failure rolls back before live deletion.
+
 `tests/test_nats_transport.py` additionally proves against a real pinned NATS server:
 
 1. JetStream PUB ACK precedes Outbox ACK;
@@ -195,7 +219,7 @@ See `OBSERVABILITY.md` for the exact state invariant, metric names, thresholds, 
 
 The runtime intentionally does not yet hide these choices behind defaults:
 
-- outbox retention and archival;
+- physical archive partitioning, cold export, restore verification, and purge;
 - bulk quarantine review/replay tooling;
 - async/bulk broker APIs;
 - OpenTelemetry publisher spans and hosted exporter integration;
