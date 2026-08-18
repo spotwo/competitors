@@ -1,0 +1,22 @@
+id: cycle-counting
+group: inventory
+label: Cycle Counting
+status: adopted
+definition: Count selected inventory or locations on a recurring basis without requiring a full warehouse shutdown.
+purpose: Maintain inventory accuracy continuously and investigate discrepancies early.
+inputs: [inventory, count-policy, location-selection]
+outputs: [count-result, discrepancy, inventory-adjustment]
+entities: [inventory, location, sku, lot, serial, count-task]
+strategies: [abc-cycle, scheduled, threshold-triggered, exception-triggered, blind-count]
+related_capabilities: [storage, physical-inventory]
+vendor_observations:
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-3pl-capabilities-2026]
+spotwo:
+  canonical_term: Cycle Counting
+  status: adopted
+research_gaps:
+  - Sample count policy terminology across enterprise and SMB WMS products.
+last_verified: 2026-08-18
+evidence_refs: [infios-3pl-capabilities-2026]
