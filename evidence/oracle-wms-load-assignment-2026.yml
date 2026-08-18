@@ -1,0 +1,12 @@
+id: oracle-wms-load-assignment-2026
+subject: shipping-workflow
+source_type: official-docs
+grade: A
+title: Load Assignment
+url: https://docs.oracle.com/en/cloud/saas/warehouse-management/25d/owmol/caveats.html
+publisher: Oracle
+captured_at: 2026-08-18
+supports:
+  - Packed outbound LPNs can be assigned to outbound loads automatically or manually.
+  - Automatic load assignment can occur when an outbound LPN becomes Packed.
+  - Load assignment and packing completion are related but distinct outbound states.
