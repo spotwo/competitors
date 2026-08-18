@@ -7,6 +7,7 @@ on:
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
       - 'bin/run-kernel-outbox-publisher'
+      - 'bin/inspect-kernel-outbox'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -19,6 +20,7 @@ on:
       - 'decisions/domain/0023-domain-event-transport-selection.md'
       - 'decisions/domain/0024-nats-jetstream-transport-adapter.md'
       - 'decisions/domain/0025-outbox-retry-quarantine.md'
+      - 'decisions/domain/0026-outbox-operational-telemetry.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -35,6 +37,7 @@ on:
       - 'labs/postgres-inventory-kernel/**'
       - 'bin/check-kernel-lab'
       - 'bin/run-kernel-outbox-publisher'
+      - 'bin/inspect-kernel-outbox'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -47,6 +50,7 @@ on:
       - 'decisions/domain/0023-domain-event-transport-selection.md'
       - 'decisions/domain/0024-nats-jetstream-transport-adapter.md'
       - 'decisions/domain/0025-outbox-retry-quarantine.md'
+      - 'decisions/domain/0026-outbox-operational-telemetry.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -96,6 +100,7 @@ jobs:
             labs/postgres-inventory-kernel \
             bin/check-kernel-lab \
             bin/run-kernel-outbox-publisher \
+            bin/inspect-kernel-outbox \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -108,6 +113,7 @@ jobs:
             decisions/domain/0023-domain-event-transport-selection.md \
             decisions/domain/0024-nats-jetstream-transport-adapter.md \
             decisions/domain/0025-outbox-retry-quarantine.md \
+            decisions/domain/0026-outbox-operational-telemetry.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
