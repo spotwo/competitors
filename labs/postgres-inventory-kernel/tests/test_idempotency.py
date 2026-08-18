@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+import psycopg
+import pytest
+
 import conftest as lab
 
 
@@ -41,3 +44,33 @@ def test_allocation_retry_returns_original_transaction_without_double_post():
     assert allocated == Decimal("4.000000")
     assert transactions == 1
     assert legs == 1
+
+
+def test_same_idempotency_key_with_different_payload_is_rejected():
+    with lab.connect() as conn:
+        position_id = lab.insert_position(conn, physical_qty=10)
+
+    with lab.connect() as conn:
+        conn.execute(
+            "SELECT kernel_lab.allocate_inventory_position(%s, %s, 'payload-bound-allocation', %s, 4)",
+            (lab.new_id(), lab.TENANT, position_id),
+        )
+
+    with pytest.raises(psycopg.errors.UniqueViolation):
+        with lab.connect() as conn:
+            conn.execute(
+                "SELECT kernel_lab.allocate_inventory_position(%s, %s, 'payload-bound-allocation', %s, 5)",
+                (lab.new_id(), lab.TENANT, position_id),
+            )
+
+    with lab.connect() as conn:
+        allocated = conn.execute(
+            "SELECT allocated_qty FROM kernel_lab.inventory_positions WHERE id = %s",
+            (position_id,),
+        ).fetchone()[0]
+        transactions = conn.execute(
+            "SELECT count(*) FROM kernel_lab.inventory_transactions WHERE idempotency_key = 'payload-bound-allocation'"
+        ).fetchone()[0]
+
+    assert allocated == Decimal("4.000000")
+    assert transactions == 1
