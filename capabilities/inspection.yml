@@ -1,0 +1,29 @@
+id: inspection
+group: inbound
+label: Inspection / Quality Control
+status: adopted
+definition: Check received or stored goods for quantity, condition, quality, compliance, or damage before releasing them to downstream warehouse processes.
+purpose: Prevent nonconforming inventory from entering unrestricted stock or fulfilment flows.
+inputs: [receipt, inventory, inspection-rule]
+outputs: [inspection-result, inventory-status, exception]
+entities: [receipt, sku, lot, serial, inventory, quality-status]
+strategies: [inline-inspection, exception-based, quarantine]
+related_capabilities: [receiving, identification, putaway]
+vendor_observations:
+  - company_id: blue-yonder
+    level: core
+    terminology: [in-line quality assessments]
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    level: module
+    terminology: [Inspection]
+    evidence_refs: [infios-wms-capabilities-2026]
+  - company_id: odoo
+    level: observed
+    notes: Configurable routes can direct received inventory through a quality-control area before storage.
+    evidence_refs: [odoo-inventory-routes-2026]
+spotwo:
+  canonical_term: Inspection
+  status: adopted
+last_verified: 2026-08-18
+evidence_refs: [blue-yonder-wm-operations-2026, infios-wms-capabilities-2026, odoo-inventory-routes-2026]
