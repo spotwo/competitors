@@ -1,6 +1,6 @@
 # Research Gaps
 
-> Generated from explicit `research_gaps` and non-adopted terminology statuses. Do not edit by hand.
+> Generated from explicit research gaps and non-adopted records. Do not edit by hand.
 
 ## Company gaps
 
@@ -40,3 +40,26 @@
 | Material Flow System | observed | 2 |
 | Warehouse Order | observed | 1 |
 | Warehouse Task | observed | 1 |
+
+## Capability research
+
+| Capability / gap | Status | Vendor observations | Evidence refs |
+|---|---|---:|---:|
+| 3PL Billing - Compare activity, storage, recurring, minimum, and VAS billing models across 3PL-first WMS vendors. | research | 1 | 1 |
+| Allocation - Separate inventory allocation, order allocation, reservation, and WES task assignment terminology. | research | 1 | 1 |
+| Consolidation | candidate | 1 | 1 |
+| Consolidation - Sample explicit consolidation objects and workstations across enterprise WMS products. | research | 1 | 1 |
+| Cross-docking - Compare pre-allocated versus opportunistic cross-dock terminology across additional WMS products. | research | 2 | 2 |
+| Cycle Counting - Sample count policy terminology across enterprise and SMB WMS products. | research | 1 | 1 |
+| Identification / Labeling | candidate | 0 | 0 |
+| Identification / Labeling - Separate identification, labeling, serialization, and handling-unit creation into subcapabilities after broader vendor sampling. | research | 0 | 0 |
+| Physical Inventory | adopted | 0 | 0 |
+| Physical Inventory - Map freeze, snapshot, recount, and approval workflows across vendors. | research | 0 | 0 |
+| Relocation | candidate | 0 | 0 |
+| Relocation - Compare vendor terms such as relocate, transfer, move, internal transfer, and bin-to-bin transfer. | research | 0 | 0 |
+| Sortation | candidate | 1 | 1 |
+| Sortation - Separate software routing logic from physical sorter control in WES/WCS products. | research | 1 | 1 |
+| Unloading | candidate | 0 | 0 |
+| Unloading - Sample WMS and YMS products to determine whether unloading is modeled as a first-class task, a dock activity, or only a physical operation. | research | 0 | 0 |
+| Waveless / Continuous Release | candidate | 1 | 1 |
+| Waveless / Continuous Release - Determine whether continuous release, waveless, order streaming, and dynamic release should be aliases or distinct strategies. | research | 1 | 1 |
