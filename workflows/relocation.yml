@@ -1,0 +1,145 @@
+id: relocation
+capability_id: relocation
+title: Internal Relocation Workflow
+status: candidate
+definition: A cross-vendor decomposition of ad-hoc or policy-directed inventory movement between internal warehouse locations where the primary intent is storage correction, balancing, consolidation, quality follow-up, or operational reorganization rather than direct customer or production fulfilment.
+stages:
+  - id: relocation-need
+    label: Relocation Need
+    purpose: Establish why inventory should move and which stock or handling unit is in scope.
+    inputs: [inventory-position, movement-reason]
+    outputs: [relocation-intent]
+  - id: source-identification
+    label: Source Identification
+    purpose: Identify the current inventory source using location handling-unit item lot or other inventory dimensions.
+    inputs: [relocation-intent]
+    outputs: [source-inventory, source-context]
+  - id: destination-selection
+    label: Destination Selection
+    purpose: Determine or accept the internal target location and validate that it can receive the inventory.
+    inputs: [source-inventory, relocation-policy]
+    outputs: [destination-context]
+  - id: movement-work-creation
+    label: Movement Work Creation
+    purpose: Create generic warehouse movement work when execution should be queued directed or deferred.
+    inputs: [source-context, destination-context, movement-quantity]
+    outputs: [movement-work]
+  - id: execution
+    label: Move Inventory
+    purpose: Physically move full or partial inventory from source to destination.
+    inputs: [movement-work, source-inventory]
+    outputs: [movement-confirmation]
+  - id: inventory-update
+    label: Inventory Context Update
+    purpose: Apply confirmed source destination quantity and handling-unit changes to inventory records.
+    inputs: [movement-confirmation]
+    outputs: [updated-inventory-position]
+  - id: close
+    label: Relocation Close
+    purpose: Close the relocation intent and preserve residual need or exceptions when movement was partial.
+    inputs: [updated-inventory-position]
+    outputs: [closed-relocation, residual-movement-need]
+objects:
+  - {id: relocation-intent, term: Relocation Intent, role: Reason and inventory scope for an internal warehouse move.}
+  - {id: relocation-policy, term: Relocation Policy, role: Rules controlling eligible destinations and whether movement is worker-selected or system-directed.}
+  - {id: source-inventory, term: Source Inventory, role: Inventory selected for relocation.}
+  - {id: source-context, term: Source Inventory Context, role: Current warehouse location handling-unit and inventory dimensions.}
+  - {id: destination-context, term: Destination Inventory Context, role: Target warehouse location and resulting inventory dimensions.}
+  - {id: movement-quantity, term: Movement Quantity, role: Requested and actual quantity to relocate.}
+  - {id: movement-work, term: Movement Work, role: Executable generic warehouse work for the relocation.}
+  - {id: movement-confirmation, term: Movement Confirmation, role: Actual source destination quantity and handling-unit outcome.}
+  - {id: residual-movement-need, term: Residual Movement Need, role: Remaining relocation requirement after a partial move or exception.}
+states:
+  - {id: planned, label: Planned, meaning: Relocation intent exists but movement is not yet executable.}
+  - {id: released, label: Released, meaning: Movement work is available for execution.}
+  - {id: in-progress, label: In Progress, meaning: Physical inventory movement has started.}
+  - {id: partially-completed, label: Partially Completed, meaning: Some requested quantity moved while residual need remains.}
+  - {id: completed, label: Completed, meaning: Relocation intent has been fully satisfied., terminal: true}
+  - {id: cancelled, label: Cancelled, meaning: Relocation is no longer valid., terminal: true}
+  - {id: exception, label: Exception, meaning: Source destination quantity reservation or identity rules prevent normal completion.}
+strategies:
+  - id: worker-directed
+    category: destination-selection
+    label: Worker-Directed Movement
+    definition: Worker chooses what inventory to move and the destination location during mobile execution.
+    status: adopted
+    evidence_refs: [dynamics365-inventory-movement-2026, infor-inventory-movement-2026]
+  - id: system-directed
+    category: destination-selection
+    label: System-Directed Movement
+    definition: System determines the target location using templates directives or warehouse rules.
+    status: adopted
+    evidence_refs: [dynamics365-inventory-movement-2026]
+  - id: full-handling-unit
+    category: execution
+    label: Full Handling-Unit Movement
+    definition: Move an entire pallet license plate or handling unit without splitting its content.
+    status: adopted
+    evidence_refs: [dynamics365-inventory-movement-2026, sap-inventory-movement-2026]
+  - id: partial-inventory
+    category: execution
+    label: Partial Inventory Movement
+    definition: Move only part of inventory from a source handling unit or location, optionally creating a new handling-unit identity.
+    status: adopted
+    evidence_refs: [dynamics365-inventory-movement-2026, infor-inventory-movement-2026]
+  - id: ad-hoc
+    category: trigger
+    label: Ad-Hoc Movement
+    definition: Create and execute movement directly in response to an operational need without a prior process document.
+    status: adopted
+    evidence_refs: [sap-inventory-movement-2026, dynamics365-inventory-movement-2026]
+exceptions:
+  - id: destination-invalid
+    label: Invalid Destination
+    trigger: Target location is not eligible for the inventory or cannot receive the requested quantity.
+    outcomes: [select-alternate-destination, hold-movement]
+    status: candidate
+    evidence_refs: [dynamics365-inventory-movement-2026]
+  - id: reserved-inventory-conflict
+    label: Reserved Inventory Conflict
+    trigger: Movement would invalidate or conflict with existing reservation or warehouse work bindings.
+    outcomes: [reject-movement, re-reserve, update-associated-work, supervisor-override]
+    status: observed
+    evidence_refs: [dynamics365-reservations-2026]
+  - id: partial-move
+    label: Partial Move
+    trigger: Actual moved quantity is less than requested quantity.
+    outcomes: [confirm-actual, preserve-residual-movement-need, create-or-update-handling-unit]
+    status: adopted
+    evidence_refs: [infor-inventory-movement-2026]
+vendor_models:
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    terminology: {manual_flow: Movement, directed_flow: Movement by Template, execution: Warehouse Work}
+    workflow: [select-source, choose-or-direct-destination, optional-work-creation, mobile-move, inventory-update]
+    strategies: [worker-directed, system-directed, full-lp, partial-quantity]
+    execution_channels: [warehouse-management-mobile-app]
+    evidence_refs: [dynamics365-inventory-movement-2026]
+  - company_id: sap
+    product_id: sap/ewm
+    terminology: {task: Warehouse Task, internal_transfer: Internal Stock Transfer, ad_hoc_product: Move Product, ad_hoc_hu: Move Handling Unit}
+    workflow: [movement-intent, warehouse-task-or-ad-hoc-move, execution, warehouse-task-confirmation]
+    strategies: [internal-stock-transfer, product-move, handling-unit-move]
+    execution_channels: [rf, workstation]
+    evidence_refs: [sap-inventory-movement-2026]
+  - company_id: infor
+    product_id: infor/wms
+    terminology: {transaction: Standard Move, execution: RF}
+    workflow: [identify-source, enter-or-scan-move-data, partial-or-full-move, destination-confirmation, inventory-update]
+    strategies: [partial-inventory, split-license-plate, standard-move]
+    execution_channels: [rf]
+    evidence_refs: [infor-inventory-movement-2026]
+spotwo:
+  status: candidate
+  canonical_spine: [relocation-need, source-identification, destination-selection, movement-work-creation, execution, inventory-update, close]
+  canonical_objects: [relocation-intent, relocation-policy, source-inventory, source-context, destination-context, movement-quantity, movement-work, movement-confirmation, residual-movement-need]
+  task_states: [planned, released, in-progress, partially-completed, completed, cancelled, exception]
+  commands: [plan-relocation, release-relocation-work, start-inventory-movement, confirm-inventory-movement, report-movement-exception, cancel-relocation]
+  events: [relocation-planned, relocation-work-released, inventory-movement-started, inventory-movement-confirmed, relocation-partially-completed, relocation-completed, movement-exception-reported]
+  notes: Relocation is a capability-specific reason for the generic Inventory Movement primitive. Putaway replenishment and cross-dock can reuse the same movement execution semantics while owning their own planning and business invariants.
+research_gaps:
+  - Compare Oracle WMS Manhattan Blue Yonder and additional 3PL WMS relocation terminology and work models.
+  - Define rules for moving inventory with active reservations allocations or in-progress warehouse work.
+  - Decide whether movement work is always persisted or may be an atomic command for simple user-directed moves.
+last_verified: '2026-08-18'
+evidence_refs: [dynamics365-inventory-movement-2026, sap-inventory-movement-2026, infor-inventory-movement-2026, dynamics365-reservations-2026]
