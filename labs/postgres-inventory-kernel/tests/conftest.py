@@ -97,6 +97,8 @@ def clean_database():
         conn.execute(
             """
             TRUNCATE TABLE
+              kernel_lab.inventory_position_projection_control,
+              kernel_lab.inventory_position_projection_rebuilds,
               kernel_lab.inventory_position_projection_pending,
               kernel_lab.inventory_position_quantity_projection,
               kernel_lab.domain_event_inbox,

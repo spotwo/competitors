@@ -11,6 +11,7 @@ on:
       - 'bin/archive-kernel-outbox'
       - 'bin/bootstrap-kernel-position-projection'
       - 'bin/inspect-kernel-projection-gaps'
+      - 'bin/rebuild-kernel-position-projection'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -28,6 +29,7 @@ on:
       - 'decisions/domain/0028-inbox-consumer-runtime.md'
       - 'decisions/domain/0029-version-aware-position-projection.md'
       - 'decisions/domain/0030-position-projection-snapshot-gap-health.md'
+      - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -48,6 +50,7 @@ on:
       - 'bin/archive-kernel-outbox'
       - 'bin/bootstrap-kernel-position-projection'
       - 'bin/inspect-kernel-projection-gaps'
+      - 'bin/rebuild-kernel-position-projection'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -65,6 +68,7 @@ on:
       - 'decisions/domain/0028-inbox-consumer-runtime.md'
       - 'decisions/domain/0029-version-aware-position-projection.md'
       - 'decisions/domain/0030-position-projection-snapshot-gap-health.md'
+      - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -118,6 +122,7 @@ jobs:
             bin/archive-kernel-outbox \
             bin/bootstrap-kernel-position-projection \
             bin/inspect-kernel-projection-gaps \
+            bin/rebuild-kernel-position-projection \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -135,6 +140,7 @@ jobs:
             decisions/domain/0028-inbox-consumer-runtime.md \
             decisions/domain/0029-version-aware-position-projection.md \
             decisions/domain/0030-position-projection-snapshot-gap-health.md \
+            decisions/domain/0031-controlled-position-projection-rebuild.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \

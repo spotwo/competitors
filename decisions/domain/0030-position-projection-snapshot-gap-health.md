@@ -19,7 +19,7 @@ Add two operational contracts:
 1. non-destructive bootstrap of one absent `(consumer_name, position_id)` projection cursor from a verified snapshot artifact;
 2. read-only aggregate gap telemetry with configurable warning and critical thresholds.
 
-Destructive replacement of an existing cursor, pending-event repair, and full projection rebuild remain a separate decision.
+ADR 0031 defines a separately fenced and audited destructive rebuild for one existing Position cursor. The non-destructive bootstrap in this ADR still has no replacement mode.
 
 ## Snapshot artifact
 
@@ -82,7 +82,7 @@ The retained bootstrap quantities and provenance make retry payload comparison p
 
 ## Concurrency boundary
 
-Bootstrap and event handling contend on the existing projection primary key.
+Bootstrap and event handling serialize on the durable per-target control row introduced by ADR 0031, then contend on the projection primary key. Before that control row existed, the projection primary key alone provided the same bootstrap/event winner boundary.
 
 If bootstrap commits first, the next contiguous event applies from the snapshot cursor. If an event creates the cursor first, bootstrap fails instead of replacing the event or pending-gap state. PostgreSQL uniqueness and row locking choose the winner without a global projection lock.
 
@@ -159,6 +159,6 @@ The PostgreSQL lab proves:
 
 - snapshot trust is an operational verification responsibility;
 - exact artifact-byte checksums treat formatting changes as a different artifact;
-- this slice cannot replace a live cursor or close an existing gap;
-- automatic repair, consumer fencing, pending-event disposition, destructive rebuild, conflict quarantine, and Inbox cleanup remain later operational work;
+- live cursor replacement and explicit pending-event disposition require the separate ADR 0031 rebuild protocol;
+- automatic repair, conflict quarantine, Inbox cleanup, bulk rebuild coordination, and deployment approval workflow remain later operational work;
 - metric thresholds require deployment calibration.
