@@ -1,0 +1,12 @@
+id: infor-directed-task-execution-2026
+subject: warehouse-work
+source_type: official-docs
+grade: A
+title: Moving inventory - Infor WMS
+url: https://docs.infor.com/wms/2026.x/en-us/wmsolh/pbb1612893942041.html
+publisher: Infor
+captured_at: 2026-08-18
+supports:
+  - Uses RF-directed Task Manager to send move tasks to associates based on priority.
+  - Treats task completion confirmation as the point after which the application updates the inventory record.
+  - Supports separating executable task lifecycle and confirmation from the inventory movement consequence.
