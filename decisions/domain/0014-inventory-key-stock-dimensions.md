@@ -13,7 +13,8 @@ Vendor evidence shows several recurring patterns:
 - SAP EWM quant identity combines physical placement/HU context with a stock key and can intentionally prevent addition to otherwise similar stock.
 - Dynamics models explicit storage/tracking dimensions and allows reservations at different hierarchy granularities.
 - Oracle inventory is addressed by a container or an active location and can have multiple inventory records in the same container/location.
-- SAP and Oracle both model serial identity separately from the surrounding quantity record.
+- Oracle LPN inquiry separates container placement/status from the inventory lines and attributes held inside that LPN.
+- SAP and Oracle model serial identity separately from the surrounding quantity record.
 - SAP HUs can be nested, so copying every parent HU or resolved location into every contained stock key would create unnecessary write fan-out.
 
 The Inventory Key therefore represents **fungibility and segregation**, not every attribute known about inventory.
@@ -66,10 +67,12 @@ Do **not** require both `location_id` and `handling_unit_id` on one position.
 
 Consequences:
 
-- Moving a complete HU changes HU placement/version and does not rewrite every contained Inventory Position.
+- Moving a complete HU **within the same warehouse** changes HU placement/version and does not rewrite every contained Inventory Position.
 - Repacking stock from HU A to HU B changes Inventory Anchor and therefore posts a real inventory movement/split.
 - Nested stock references only the immediate containing HU. Parent HUs and resolved location are derived from the acyclic containment tree.
-- `warehouse_id` remains explicit on the position for tenancy/routing/index locality and must agree with the resolved anchor warehouse.
+- `warehouse_id` remains explicit on the position for routing, partition/index locality and warehouse-level policy, and must agree with the resolved anchor warehouse.
+- Moving an HU across a warehouse boundary is not the cheap same-warehouse relocation case. It follows Transfer / issue-and-receipt semantics and the destination stock belongs to new warehouse keys.
+- A full-HU relocation must still produce durable HU movement/history and appropriate domain events even when no contained Inventory Position quantity leg changes.
 
 ### 3. Required stock dimensions
 
@@ -80,6 +83,8 @@ Consequences:
 #### Owner
 
 `owner_id` is required. A single-owner warehouse still uses its canonical owner organization. This avoids nullable-owner uniqueness ambiguity and keeps the model ready for 3PL inventory.
+
+`owner_id` is not intended to permanently collapse every entitlement concept. SAP evidence distinguishes owner from the party entitled to dispose, so a separate operational-entitlement/account dimension remains an explicit research question before adoption.
 
 #### Inventory condition
 
@@ -230,7 +235,7 @@ Changes how quantity is distributed among Inventory Keys.
 
 Changes containment. It may create inventory movements when stock changes direct HU anchor.
 
-A full-HU move does not alter contained stock anchors because the direct HU remains the same.
+A full-HU move within one warehouse does not alter contained stock anchors because the direct HU remains the same. Cross-warehouse movement is a transfer boundary and creates destination warehouse stock identity.
 
 #### Lot split/merge
 
@@ -258,6 +263,7 @@ CREATE TABLE inventory_positions (
   attribute_set_id        uuid,
   stock_segment_id        uuid,
 
+  -- position-specific quantities only
   physical_qty            numeric(24, 6) NOT NULL DEFAULT 0,
   reserved_qty            numeric(24, 6) NOT NULL DEFAULT 0,
   allocated_qty           numeric(24, 6) NOT NULL DEFAULT 0,
@@ -299,6 +305,8 @@ CREATE TABLE inventory_positions (
 ```
 
 `NULLS NOT DISTINCT` is important because nullable optional dimensions must still participate predictably in uniqueness. The target PostgreSQL version must support it.
+
+`reserved_qty` and `allocated_qty` on this row represent only commitment already bound to this exact Inventory Position / Inventory Key. Coarse warehouse-, owner-, item- or hierarchy-level reservations remain separate commitment aggregates/projections until source specificity reaches this position. `reserved_qty` and `allocated_qty` are not assumed additive: an allocation may refine or overlap a previously reserved quantity according to the commitment model.
 
 ### Serial membership
 
@@ -419,7 +427,9 @@ The semantic unique constraint is the final arbiter against duplicate position r
 
 ### Full Handling Unit movement
 
-Lock/version the HU placement row. Do not lock or rewrite every contained Inventory Position when their direct anchor remains that HU and their quantities do not change.
+For same-warehouse relocation, lock/version the HU placement row. Do not lock or rewrite every contained Inventory Position when their direct anchor remains that HU and their quantities do not change. Persist HU movement/history and its outbox event through the HU movement boundary.
+
+For cross-warehouse movement, use Transfer / issue-and-receipt semantics because `warehouse_id` changes and destination stock belongs to new Inventory Keys.
 
 ### Repack or partial HU movement
 
@@ -434,7 +444,7 @@ Lock serial membership plus affected position rows. Serial uniqueness is a corre
 ### Positive
 
 - Position identity becomes mechanically defined.
-- Full pallet/HU movement avoids O(number of contained stock lines) position rewrites.
+- Same-warehouse full pallet/HU relocation avoids O(number of contained stock lines) position rewrites.
 - 3PL owner segregation is first-class.
 - Lot and serial tracking remain explicit without forcing one position per serial.
 - Custom identity attributes are extensible without turning the hot unique index into JSON/EAV logic.
@@ -444,6 +454,7 @@ Lock serial membership plus affected position rows. Serial uniqueness is a corre
 ### Costs
 
 - HU-anchored inventory requires resolving location through containment for location-oriented queries.
+- Cross-warehouse HU transfer still changes warehouse stock identity by design.
 - Attribute-set canonicalization and fingerprinting need a strict contract.
 - Stock Scope and Stock Segment add concepts that must remain narrowly defined to avoid becoming dumping grounds.
 - Exact serial tracking requires membership-count consistency checks.
@@ -456,6 +467,7 @@ Lock serial membership plus affected position rows. Serial uniqueness is a corre
 4. How long should zero-balance Inventory Position rows remain before garbage collection?
 5. Should high-contention pick faces default to `SELECT ... FOR UPDATE`, optimistic `version` retry, or choose policy per warehouse/process?
 6. Do catch-weight items require a parallel authoritative quantity dimension in v1 or only audited secondary measure?
+7. Should operational entitlement / party-entitled-to-dispose become a first-class key dimension separate from owner for 3PL and special-stock scenarios?
 
 ## Evidence
 
@@ -466,6 +478,9 @@ Primary evidence is captured in:
 - `evidence/dynamics365-reservation-hierarchy-dimensions-2026.yml`
 - `evidence/oracle-wms-inventory-record-model-2026.yml`
 - `evidence/oracle-wms-inventory-attributes-2026.yml`
+- `evidence/oracle-wms-lpn-inventory-lines-2026.yml`
 - `evidence/infor-wms-serial-inventory-dimensions-2026.yml`
 - `evidence/gs1-batch-serial-identifiers-2026.yml`
 - `evidence/sap-ewm-handling-unit-nesting-2026.yml`
+- `evidence/postgresql-unique-nulls-not-distinct-2026.yml`
+- `evidence/postgresql-row-locking-2026.yml`
