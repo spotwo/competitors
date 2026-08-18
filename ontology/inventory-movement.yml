@@ -1,0 +1,64 @@
+id: inventory-movement
+title: Inventory Movement Ontology
+kind: movement
+status: candidate
+description: Canonical concepts for changing where inventory is physically or logically held. The model separates business intent from executable warehouse work and from the confirmed inventory movement that changes inventory context.
+entities:
+  - id: movement-intent
+    term: Movement Intent
+    definition: Business or operational requirement to relocate inventory for a reason such as putaway replenishment relocation cross-docking or transfer.
+    examples: [putaway, replenishment, relocation, cross-dock, transfer]
+  - id: inventory-movement
+    term: Inventory Movement
+    definition: A confirmed or confirmable change of inventory from one inventory context to another.
+    attributes: [movement_id, reason, requested_quantity, confirmed_quantity]
+  - id: inventory-transfer
+    term: Inventory Transfer
+    definition: A business intent to move inventory between organizational or warehouse contexts that may require one or more inventory movements and may cross shipping and receiving boundaries.
+    notes: A transfer is not assumed to be one atomic warehouse movement.
+  - id: movement-leg
+    term: Movement Leg
+    definition: One source-to-destination segment of a larger movement or transfer execution path.
+  - id: movement-reason
+    term: Movement Reason
+    definition: Capability or business reason explaining why inventory is being moved.
+    examples: [putaway, replenishment, relocation, cross-dock, transfer, correction]
+  - id: source-context
+    term: Source Inventory Context
+    definition: Inventory dimensions and identity describing where and in what state stock exists before a movement.
+    attributes: [warehouse, location, handling_unit, lot, serial, owner, condition]
+  - id: destination-context
+    term: Destination Inventory Context
+    definition: Inventory dimensions and identity describing where and in what state stock should exist after movement confirmation.
+    attributes: [warehouse, location, handling_unit, lot, serial, owner, condition]
+  - id: movement-quantity
+    term: Movement Quantity
+    definition: Requested and actual quantity associated with movement execution in a defined unit of measure.
+  - id: movement-confirmation
+    term: Movement Confirmation
+    definition: Evidence of actual source destination quantity handling unit and execution outcome used to apply the inventory context change.
+  - id: movement-exception
+    term: Movement Exception
+    definition: Structured deviation that prevents or changes normal movement execution such as shortage destination rejection or identity mismatch.
+  - id: residual-movement-need
+    term: Residual Movement Need
+    definition: Remaining movement requirement after a partial confirmation or exception.
+relationships:
+  - {subject: movement-intent, predicate: may-produce, object: inventory-movement}
+  - {subject: inventory-transfer, predicate: decomposes-into, object: movement-leg}
+  - {subject: movement-leg, predicate: realizes, object: inventory-movement}
+  - {subject: inventory-movement, predicate: has, object: movement-reason}
+  - {subject: inventory-movement, predicate: moves-from, object: source-context}
+  - {subject: inventory-movement, predicate: moves-to, object: destination-context}
+  - {subject: inventory-movement, predicate: has, object: movement-quantity}
+  - {subject: inventory-movement, predicate: confirmed-by, object: movement-confirmation}
+  - {subject: inventory-movement, predicate: may-produce, object: movement-exception}
+  - {subject: movement-exception, predicate: may-preserve, object: residual-movement-need}
+research_gaps:
+  - Validate Inventory Transfer boundaries across SAP EWM Dynamics Oracle Infor and ERP-centric systems where inter-warehouse transfer includes shipment and receipt documents.
+  - Decide whether source and destination inventory context are immutable value objects or references to stock-position records.
+  - Define atomicity for handling-unit movement where child inventory lines have mixed lot status owner or allocation state.
+  - Define partial movement confirmation and residual need behavior shared by putaway replenishment relocation and cross-dock.
+  - Determine whether inventory condition or ownership changes without physical relocation should use Inventory Movement or a separate Inventory Transformation concept.
+last_verified: '2026-08-18'
+evidence_refs: [sap-ewm-putaway-tasks-2026, dynamics-location-directives-putaway-2026, dynamics365-internal-replenishment-2026, oracle-internal-replenishment-2026, dynamics365-cross-docking-2026]
