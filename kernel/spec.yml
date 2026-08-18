@@ -1,0 +1,101 @@
+id: spotwo-wms-kernel
+version: 0.1.0
+status: frozen-reference
+frozen_on: '2026-08-18'
+purpose: Evidence-backed executable reference kernel for warehouse inventory and execution semantics.
+production_ready: false
+
+stable_contracts:
+  - id: location-and-hu-identity
+    adr: decisions/domain/0003-location-model.md
+  - id: handling-unit-identity
+    adr: decisions/domain/0004-handling-unit-identifiers.md
+  - id: inventory-state-axes
+    adr: decisions/domain/0007-inventory-state-axes.md
+  - id: warehouse-work-abstraction
+    adr: decisions/domain/0008-warehouse-work-abstraction.md
+  - id: inventory-commitment-boundaries
+    adr: decisions/domain/0009-inventory-commitment-model.md
+  - id: inventory-movement-boundaries
+    adr: decisions/domain/0010-inventory-movement-model.md
+  - id: position-ledger-projection
+    adr: decisions/domain/0011-inventory-state-ledger-projection.md
+  - id: balanced-postings
+    adr: decisions/domain/0012-balanced-inventory-postings.md
+  - id: inventory-domain-events
+    adr: decisions/domain/0013-inventory-domain-events.md
+  - id: inventory-key-and-anchor
+    adr: decisions/domain/0014-inventory-key-stock-dimensions.md
+  - id: reservation-allocation-consumption
+    adr: decisions/domain/0015-inventory-commitment-engine.md
+  - id: holds-and-action-eligibility
+    adr: decisions/domain/0016-inventory-holds-eligibility.md
+  - id: warehouse-work-execution
+    adr: decisions/domain/0017-warehouse-work-execution-engine.md
+  - id: golden-scenario-contract
+    adr: decisions/domain/0018-golden-warehouse-scenarios.md
+  - id: performance-methodology
+    adr: decisions/domain/0019-postgresql-performance-contention-lab.md
+  - id: version-freeze
+    adr: decisions/domain/0020-wms-kernel-v0.1.md
+
+stable_boundaries:
+  - InventoryPosition != InventoryTransaction
+  - InventoryKey != SerialMembership
+  - InventoryAnchor = Location XOR direct HandlingUnit
+  - Availability != Reservation != Allocation != Assignment
+  - Reservation and Allocation use consumed quantity after accepted execution
+  - InventoryCondition != InventoryHold != HoldPolicy != ActionEligibility
+  - BusinessProcess != WarehouseWork != WarehouseTask
+  - Allocation != WorkAssignment
+  - TaskExecution != TaskConfirmation
+  - TaskConfirmation != InventoryTransaction
+  - TaskException != InventoryHold
+  - MovementIntent != InventoryMovement
+  - InventoryTransaction != DomainEvent != EPCISEvent
+  - CountResult does not mutate stock before explicit reconciliation
+
+executable_contract:
+  postgres_lab: labs/postgres-inventory-kernel
+  migrations:
+    - labs/postgres-inventory-kernel/sql/001_schema.sql
+    - labs/postgres-inventory-kernel/sql/002_function_search_path.sql
+    - labs/postgres-inventory-kernel/sql/003_idempotency_fingerprint.sql
+    - labs/postgres-inventory-kernel/sql/004_commitment_engine.sql
+    - labs/postgres-inventory-kernel/sql/005_holds_eligibility.sql
+    - labs/postgres-inventory-kernel/sql/006_warehouse_work_engine.sql
+    - labs/postgres-inventory-kernel/sql/007_golden_scenario_support.sql
+  minimum_functional_tests: 43
+  validation_commands:
+    - bash bin/check
+    - bash bin/check-kernel-lab
+
+required_golden_scenarios:
+  registry: scenarios/golden.yml
+  ids:
+    - order-fulfillment-happy-path
+    - whole-hu-relocation
+    - short-pick-recovery
+    - cycle-count-reconciliation
+
+benchmark_evidence:
+  methodology: decisions/domain/0019-postgresql-performance-contention-lab.md
+  baselines:
+    - labs/postgres-inventory-kernel/benchmarks/baselines/2026-08-18-standard.json
+    - labs/postgres-inventory-kernel/benchmarks/baselines/2026-08-18-scale.json
+  latency_is_slo: false
+
+v0_2_candidates:
+  - executable inventory/work outbox and event publication
+  - FEFO and source-selection policy engine
+  - wildcard and hierarchical reservation scopes
+  - broad hold selectors and partial-quantity holds
+  - parallel task dependency graphs and automatic dispatch
+  - resource qualifications and equipment eligibility
+  - cross-warehouse transfer orchestration
+  - lot genealogy
+  - row-level tenant security policies
+  - partitioning and archival policy
+  - catch-weight dual quantities
+  - owner versus entitled-party/account dimension refinement
+  - extreme hot-position allocation contention optimization
