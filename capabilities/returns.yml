@@ -2,12 +2,12 @@ id: returns
 group: reverse
 label: Returns
 status: adopted
-definition: Receive, inspect, disposition, restock, quarantine, repair, or dispose of inventory returned from customers or downstream locations.
-purpose: Bring reverse-flow goods back under controlled inventory and determine their next valid state.
-inputs: [return-authorization, returned-goods, reason-code]
-outputs: [return-receipt, disposition, restocked-inventory, quarantine, disposal]
-entities: [return, order, inventory, sku, lot, serial, disposition]
-strategies: [restock, quarantine, refurbish, return-to-vendor, scrap]
+definition: Receive identify inspect disposition and route inventory returned from customers or downstream locations while keeping physical warehouse outcome separate from commercial credit or replacement logic.
+purpose: Bring reverse-flow goods back under controlled inventory and determine their next valid operational state.
+inputs: [return-reference, returned-goods, reason-code, return-policy]
+outputs: [return-receipt, disposition, inventory-condition, return-work, commercial-outcome-signal]
+entities: [return, return-reference, inventory, sku, lot, serial, handling-unit, reason-code, disposition]
+strategies: [authorized-return, blind-return, restock, quarantine, refurbish, return-to-vendor, scrap]
 related_capabilities: [receiving, inspection, putaway]
 vendor_observations:
   - company_id: manhattan-associates
@@ -16,8 +16,18 @@ vendor_observations:
   - company_id: infios
     level: core
     evidence_refs: [infios-enterprise-capabilities-2026]
+  - company_id: microsoft
+    product_id: microsoft/dynamics-365-scm-warehouse-management
+    level: core
+    terminology: [return details, blind return, disposition code]
+    notes: Return receiving supports referenced and blind flows; disposition drives inventory status work template and location routing.
+    evidence_refs: [dynamics365-returns-2026]
 spotwo:
   canonical_term: Returns
   status: adopted
-last_verified: 2026-08-18
-evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-enterprise-capabilities-2026]
+  notes: Return Reason explains why goods came back. Return Disposition determines operational handling. Receiving a return does not automatically make inventory allocatable.
+research_gaps:
+  - Add Oracle WMS Blue Yonder Extensiv and ecommerce-focused return workflow evidence.
+  - Separate customer returns supplier returns and internal reverse movements into explicit subtypes.
+last_verified: '2026-08-18'
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, infios-enterprise-capabilities-2026, dynamics365-returns-2026]
