@@ -1,0 +1,12 @@
+id: softeon-waveless-picking-2026
+subject: picking-workflow
+source_type: official-product-page
+grade: B
+title: Waveless Picking - Softeon
+url: https://www.softeon.com/glossary/waveless-picking/
+publisher: Softeon
+captured_at: '2026-08-18'
+supports:
+  - Softeon describes waveless picking as dynamic assignment of picks using variables such as location, order priority and travel reduction.
+  - Picks assigned to a cart can be replaced in real time by higher-priority work.
+  - Advanced WMS can operate wave-based and waveless processes in tandem.
