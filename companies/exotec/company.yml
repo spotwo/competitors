@@ -1,0 +1,17 @@
+id: exotec
+name: Exotec
+entity_type: automation-vendor
+website: https://www.exotec.com/
+markets: [global]
+solution_layers: [wes, robotics-orchestration]
+deployment_models: [cloud]
+industries: []
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: deepsky, name: Deepsky, categories: [wes, robotics-orchestration], deployment_models: [cloud]}
+status: active
+research_gaps:
+- Add evidence-backed customer-size segmentation.
+last_verified: '2026-08-18'
+evidence_refs: [exotec-deepsky-2026]

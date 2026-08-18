@@ -1,0 +1,14 @@
+id: exotec-deepsky-2026
+subject: exotec
+source_type: official-product-page
+grade: B
+title: Deepsky Warehouse Execution Software
+url: https://www.exotec.com/system/warehouse-optimization-software/
+publisher: Exotec
+captured_at: '2026-08-18'
+supports:
+- Deepsky WES
+- orchestration layer between WMS and warehouse automation
+- bin, case and container traceability
+- inbound-to-outbound flow optimization
+- North America, Europe and APAC control-center footprint

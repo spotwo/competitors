@@ -1,0 +1,17 @@
+id: increff
+name: Increff
+entity_type: platform-vendor
+website: https://www.increff.com/
+markets: [south-asia, north-america, southeast-asia, oceania]
+segments: [mid-market, enterprise]
+solution_layers: [wms, oms]
+deployment_models: [saas, cloud]
+industries: [retail, ecommerce, fashion]
+operating_environments: [distribution-center, fulfillment-center, dark-store]
+capabilities: [receiving, inspection, putaway, cross-docking, storage, replenishment, cycle-counting, picking, packing, staging, shipping, returns]
+products:
+- {id: wms, name: Increff WMS, categories: [wms], deployment_models: [saas, cloud]}
+- {id: oms, name: Increff OMS, categories: [oms]}
+status: active
+last_verified: '2026-08-18'
+evidence_refs: [increff-wms-2026]

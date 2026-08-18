@@ -1,0 +1,21 @@
+id: microlistics
+name: Microlistics
+entity_type: vendor
+website: https://www.microlistics.com/
+markets: [global]
+segments: [smb, mid-market, enterprise, large-enterprise]
+solution_layers: [wms]
+deployment_models: [cloud, on-premise]
+industries: [3pl, retail, cold-chain, food-beverage, fmcg, fashion, manufacturing, pharma]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl, cold-storage]
+capabilities: [receiving, putaway, storage, replenishment, cycle-counting, picking, packing, shipping, labor-management, automation-orchestration, billing]
+products:
+- {id: enterprise-wms, name: Enterprise WMS, categories: [wms]}
+- {id: express-wms, name: Express WMS, categories: [wms]}
+- {id: 3pl-wms, name: 3PL WMS, categories: [wms]}
+- {id: chilled-wms, name: Chilled WMS, categories: [wms]}
+- {id: retail-wms, name: Retail WMS, categories: [wms]}
+status: active
+notes: Part of WiseTech Global. Product variants share the Microlistics WMS platform.
+last_verified: '2026-08-18'
+evidence_refs: [microlistics-wms-2026]

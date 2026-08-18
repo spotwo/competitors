@@ -1,0 +1,20 @@
+id: descartes
+name: Descartes
+entity_type: platform-vendor
+website: https://www.descartes.com/
+markets: [north-america, europe, oceania]
+segments: [smb, mid-market, enterprise]
+solution_layers: [wms]
+deployment_models: [saas, cloud]
+industries: [retail, ecommerce]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, putaway, storage, picking, packing, shipping, returns]
+products:
+- id: peoplevox-wms
+  name: Descartes Peoplevox WMS
+  categories: [wms]
+  deployment_models: [saas, cloud]
+status: active
+notes: Peoplevox is the primary specialist ecommerce WMS captured in this seed. Descartes also markets other warehouse products such as pixi, OzLink and Sellercloud, which should receive separate product evidence later.
+last_verified: '2026-08-18'
+evidence_refs: [descartes-peoplevox-2026]

@@ -1,0 +1,13 @@
+id: netsuite-wms-2026
+subject: netsuite
+source_type: official-docs
+grade: A
+title: Installing the NetSuite WMS SuiteApps
+url: https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_156399372911.html
+publisher: Oracle NetSuite
+captured_at: '2026-08-18'
+supports:
+- Oracle NetSuite WMS SuiteApp
+- SCM Mobile warehouse-floor application
+- warehouse process business logic
+- sandbox and production deployment

@@ -4,7 +4,7 @@
   "title": "Competitor Company",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "entity_type", "website", "markets", "segments", "solution_layers", "industries", "products", "status", "last_verified", "evidence_refs"],
+  "required": ["id", "name", "entity_type", "website", "markets", "solution_layers", "industries", "products", "status", "last_verified", "evidence_refs"],
   "properties": {
     "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
     "name": {"type": "string", "minLength": 1},

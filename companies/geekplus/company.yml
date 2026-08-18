@@ -1,0 +1,17 @@
+id: geekplus
+name: Geekplus
+entity_type: automation-vendor
+website: https://www.geekplus.com/
+markets: [global]
+solution_layers: [wes, robotics-orchestration, analytics]
+deployment_models: [cloud, on-premise]
+industries: [ecommerce, retail, 3pl, fashion, pharma]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply]
+capabilities: [storage, relocation, replenishment, picking, sortation, cross-docking, automation-orchestration]
+products:
+- {id: software-suite, name: Geekplus Software Suite, categories: [wes, robotics-orchestration, analytics], deployment_models: [cloud, on-premise]}
+status: active
+research_gaps:
+- Add evidence-backed customer-size segmentation.
+last_verified: '2026-08-18'
+evidence_refs: [geekplus-software-2026]

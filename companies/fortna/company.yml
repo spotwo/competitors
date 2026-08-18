@@ -1,0 +1,18 @@
+id: fortna
+name: FORTNA
+entity_type: automation-vendor
+website: https://www.fortna.com/
+markets: [north-america, europe]
+solution_layers: [wes]
+industries: []
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, storage, replenishment, picking, packing, shipping, automation-orchestration]
+products:
+- {id: wes, name: FORTNA WES, categories: [wes]}
+status: active
+research_gaps:
+- Add evidence-backed customer-size segmentation.
+- Verify canonical WES deployment model.
+- Expand geographic coverage from official location/customer evidence.
+last_verified: '2026-08-18'
+evidence_refs: [fortna-wes-2026]

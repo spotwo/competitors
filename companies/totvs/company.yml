@@ -1,0 +1,22 @@
+id: totvs
+name: TOTVS
+entity_type: erp-vendor
+website: https://www.totvs.com/
+markets: [latam]
+segments: [smb, mid-market, enterprise]
+solution_layers: [erp, wms]
+deployment_models: [saas, cloud]
+industries: [retail, 3pl, wholesale, manufacturing]
+operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, 3pl]
+capabilities: [receiving, putaway, storage, picking, packing, shipping, physical-inventory, billing]
+products:
+- {id: wms-saas, name: TOTVS WMS SaaS, categories: [wms], deployment_models: [saas, cloud]}
+- {id: wms-protheus, name: TOTVS WMS - Linha Protheus, categories: [wms], segments: [smb, mid-market]}
+- {id: wms-datasul, name: TOTVS WMS - Linha Datasul, categories: [wms]}
+- {id: wms-logix, name: TOTVS WMS - Linha Logix, categories: [wms]}
+- {id: wms-winthor, name: TOTVS WMS - Linha Winthor, categories: [wms]}
+status: active
+research_gaps:
+- Map product-line deployment models and exact market segmentation individually.
+last_verified: '2026-08-18'
+evidence_refs: [totvs-wms-2026, totvs-protheus-market-2026]

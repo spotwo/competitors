@@ -1,0 +1,21 @@
+id: shiphero
+name: ShipHero
+entity_type: vendor
+website: https://www.shiphero.com/
+markets: [north-america]
+segments: [smb, mid-market]
+solution_layers: [wms]
+deployment_models: [saas, cloud]
+industries: [ecommerce, 3pl]
+operating_environments: [fulfillment-center, 3pl]
+capabilities: [receiving, putaway, storage, picking, packing, shipping, returns, billing, labor-management]
+products:
+- id: shiphero-wms
+  name: ShipHero WMS
+  categories: [wms]
+  deployment_models: [saas, cloud]
+status: active
+research_gaps:
+- Verify supported commercial regions outside North America.
+last_verified: '2026-08-18'
+evidence_refs: [shiphero-wms-2026]

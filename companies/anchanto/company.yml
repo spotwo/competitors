@@ -1,0 +1,18 @@
+id: anchanto
+name: Anchanto
+entity_type: platform-vendor
+website: https://anchanto.com/
+markets: [global]
+segments: [enterprise, large-enterprise]
+solution_layers: [wms, oms]
+industries: [3pl, retail, ecommerce]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [receiving, inspection, putaway, storage, replenishment, waving, picking, packing, shipping, returns, billing]
+products:
+- {id: warehouse-management, name: Anchanto Warehouse Management, categories: [wms]}
+- {id: order-management, name: Anchanto Order Management, categories: [oms]}
+status: active
+research_gaps:
+- Verify canonical deployment model terminology used by Anchanto.
+last_verified: '2026-08-18'
+evidence_refs: [anchanto-wms-2026]
