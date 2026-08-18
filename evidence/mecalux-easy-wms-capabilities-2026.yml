@@ -1,0 +1,13 @@
+id: mecalux-easy-wms-capabilities-2026
+subject: capability-knowledge-graph
+source_type: official-product-page
+grade: B
+title: Easy WMS Warehouse Management System
+url: https://www.mecalux.com/software/warehouse-management-system-wms
+publisher: Mecalux
+captured_at: 2026-08-18
+supports:
+  - Describes receiving, putaway, order fulfilment and shipping as end-to-end WMS scope.
+  - Describes advanced slotting and replenishment strategies.
+  - Documents integration with AS/RS, pick-to-light, AGV, AMR and robotic systems.
+  - Documents both SaaS/cloud and on-premise deployment models.
