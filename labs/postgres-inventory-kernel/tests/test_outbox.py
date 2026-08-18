@@ -100,6 +100,14 @@ def test_failed_posting_rolls_back_transaction_and_outbox():
             """,
             (str(failed_transaction_id),),
         ).fetchone()[0] == 0
+        assert conn.execute(
+            """
+            SELECT count(*)
+            FROM kernel_lab.domain_event_idempotency_keys
+            WHERE data ->> 'transaction_id' = %s
+            """,
+            (str(failed_transaction_id),),
+        ).fetchone()[0] == 0
 
 
 def test_exact_posting_retry_does_not_duplicate_events():

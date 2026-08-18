@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0026.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0027.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -209,6 +209,8 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | audited operator replay | replay requires operator identity/reason and preserves the previous failure state in an audit row |
 | Outbox state telemetry | every unpublished event is exactly ready, delayed, leased, or quarantined |
 | backlog health | oldest ready age, attempt buckets, and bounded alert codes render as JSON or Prometheus |
+| safe Outbox retention | only old published events move in bounded transactional archive batches |
+| durable event dedupe | producer idempotency and replay audit survive live Outbox retention |
 
 ## Deliberate simplifications
 
@@ -235,7 +237,7 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - lot genealogy;
 - HU-cycle prevention beyond the immediate self-parent check;
 - row-level security / tenant policies;
-- partitioning and archival;
+- physical archive partitioning, cold export, and destructive purge;
 - catch-weight dual quantities;
 - production UUIDv7 generation policy;
 - performance benchmarks and `EXPLAIN (ANALYZE, BUFFERS)` tuning.
@@ -259,5 +261,6 @@ The conceptual decisions are:
 - `decisions/domain/0024-nats-jetstream-transport-adapter.md`
 - `decisions/domain/0025-outbox-retry-quarantine.md`
 - `decisions/domain/0026-outbox-operational-telemetry.md`
+- `decisions/domain/0027-outbox-retention-archive.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.
