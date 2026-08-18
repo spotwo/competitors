@@ -1,0 +1,25 @@
+id: cross-docking
+group: inbound
+label: Cross-docking
+status: adopted
+definition: Route eligible inbound goods directly or near-directly into outbound fulfilment with minimal or no storage dwell.
+purpose: Reduce storage touches, inventory dwell time, and handling for demand already known at receipt.
+inputs: [receipt, demand, outbound-order]
+outputs: [cross-dock-work, outbound-allocation]
+entities: [receipt, handling-unit, order, shipment, staging-location]
+strategies: [pre-allocated, opportunistic, flow-through]
+related_capabilities: [receiving, allocation, staging, loading, shipping]
+vendor_observations:
+  - company_id: blue-yonder
+    level: core
+    evidence_refs: [blue-yonder-wm-operations-2026]
+  - company_id: infios
+    level: core
+    evidence_refs: [infios-enterprise-capabilities-2026]
+spotwo:
+  canonical_term: Cross-docking
+  status: adopted
+research_gaps:
+  - Compare pre-allocated versus opportunistic cross-dock terminology across additional WMS products.
+last_verified: 2026-08-18
+evidence_refs: [blue-yonder-wm-operations-2026, infios-enterprise-capabilities-2026]
