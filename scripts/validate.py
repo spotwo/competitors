@@ -240,17 +240,27 @@ def main() -> int:
                 errors.append(f"{path.relative_to(ROOT)}: Spotwo task_states references unknown state {state_id!r}")
 
     ontology_entity_count = 0
+    ontology_records: list[tuple[Path, dict, set[str]]] = []
+    ontology_entity_ids_global: set[str] = set()
     for path in sorted(ROOT.glob("ontology/*.yml")):
         data = load_yaml(path)
         entity_ids = check_unique_nested_ids(path, data.get("entities", []), "ontology entity", errors)
+        ontology_records.append((path, data, entity_ids))
+        ontology_entity_ids_global.update(entity_ids)
+        ontology_entity_count += len(entity_ids)
+
+    for path, data, _entity_ids in ontology_records:
+        for entity in data.get("entities", []) or []:
+            for parent in entity.get("parents", []) or []:
+                if parent not in ontology_entity_ids_global:
+                    errors.append(f"{path.relative_to(ROOT)}: ontology entity {entity.get('id')!r} unresolved parent {parent!r}")
         for relationship in data.get("relationships", []) or []:
             subject = relationship.get("subject")
             object_id = relationship.get("object")
-            if subject not in entity_ids:
+            if subject not in ontology_entity_ids_global:
                 errors.append(f"{path.relative_to(ROOT)}: ontology relationship unresolved subject {subject!r}")
-            if object_id not in entity_ids:
+            if object_id not in ontology_entity_ids_global:
                 errors.append(f"{path.relative_to(ROOT)}: ontology relationship unresolved object {object_id!r}")
-        ontology_entity_count += len(entity_ids)
 
     kpi_ids: set[str] = set()
     for path in sorted(ROOT.glob("kpis/*.yml")):
