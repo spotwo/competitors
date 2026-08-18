@@ -5,7 +5,7 @@
 | Event type | Category | External visibility | Ledger relation | Evidence |
 |---|---|---|---|---:|
 | `inventory.transaction.posted` | inventory | no | Directly references transaction_id and affected inventory keys. | 0 |
-| `inventory.position.changed` | inventory | no | Carries transaction_id plus before and after position version or deltas. | 0 |
+| `inventory.position.changed` | inventory | no | Carries transaction_id and quantity deltas; the envelope aggregate_version is the monotonic post-change Inventory Position version. | 0 |
 | `inventory.reservation.created` | commitment | no | References reservation transaction and demand reference. | 0 |
 | `inventory.reservation.released` | commitment | no | References release transaction and reservation identity. | 0 |
 | `inventory.allocation.created` | commitment | no | References allocation transaction and source inventory key. | 0 |

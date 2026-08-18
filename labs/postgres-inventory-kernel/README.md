@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0028.
+Executable proof-of-concept for Spotwo WMS Kernel ADR 0014 through ADR 0029.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -215,6 +215,9 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | consumer ACK uncertainty | JetStream redelivery after ACK loss skips the already-committed handler |
 | consumer failure redelivery | failed handler SQL rolls back its receipt and succeeds on redelivery |
 | explicit consumer provisioning | runtime refuses to create a missing durable with accidental defaults |
+| ordered Position projection | quantity deltas apply once in monotonic aggregate-version order |
+| durable version-gap recovery | out-of-order facts commit to PostgreSQL before ACK and drain when gaps close |
+| stale and conflict policy | lower versions are audited; competing events for one version fail closed |
 
 ## Deliberate simplifications
 
@@ -243,7 +246,8 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - row-level security / tenant policies;
 - physical archive partitioning, cold export, and destructive purge;
 - consumer poison-message quarantine, DLQ review, and Inbox cleanup;
-- strict per-aggregate consumer lanes and version-gap recovery;
+- snapshot bootstrap, destructive rebuild tooling, and gap-repair automation;
+- version-aware projection handlers beyond the concrete Position quantity view;
 - catch-weight dual quantities;
 - production UUIDv7 generation policy;
 - performance benchmarks and `EXPLAIN (ANALYZE, BUFFERS)` tuning.
@@ -269,5 +273,6 @@ The conceptual decisions are:
 - `decisions/domain/0026-outbox-operational-telemetry.md`
 - `decisions/domain/0027-outbox-retention-archive.md`
 - `decisions/domain/0028-inbox-consumer-runtime.md`
+- `decisions/domain/0029-version-aware-position-projection.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL and transport behavior.

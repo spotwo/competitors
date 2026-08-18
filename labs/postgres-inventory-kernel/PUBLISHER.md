@@ -129,6 +129,8 @@ aggregate_version
 
 to detect stale/out-of-order facts. Future broker adapters may use aggregate identity as a partition or message-group key where the transport supports ordered streams.
 
+ADR 0029 makes this executable for the Inventory Position quantity projection. The consumer does not depend on arrival order: it applies the next version, records lower versions as stale, rejects version conflicts, and copies gap events to a durable PostgreSQL buffer before ACK.
+
 ## Failure policy and quarantine
 
 For failed attempts below the configured limit, the runtime computes:

@@ -23,6 +23,7 @@ from nats_transport import (
     NATS_MESSAGE_ID_HEADER,
     NatsJetStreamTransport,
 )
+from position_projection import InventoryPositionQuantityProjector
 from publisher_runtime import PostgresOutboxStore, PublisherRuntime, RetryPolicy
 
 NATS_URL = os.getenv("KERNEL_LAB_NATS_URL", "nats://127.0.0.1:54222")
@@ -62,6 +63,58 @@ def enqueue_event(conn: psycopg.Connection, *, dedup_key: str, ordinal: int):
             ordinal,
             ordinal,
             f"corr-{ordinal}",
+            lab.WAREHOUSE,
+        ),
+    ).fetchone()[0]
+
+
+def enqueue_projection_event(
+    conn: psycopg.Connection,
+    *,
+    dedup_key: str,
+    position_id,
+    version: int,
+    physical_delta: int = 0,
+    reserved_delta: int = 0,
+    allocated_delta: int = 0,
+):
+    return conn.execute(
+        """
+        SELECT kernel_lab.enqueue_domain_event(
+          %s,
+          %s,
+          'inventory.position.changed',
+          %s,
+          'InventoryPosition',
+          %s,
+          %s,
+          jsonb_build_object(
+            'transaction_id', %s::uuid,
+            'transaction_type', 'projection-test',
+            'position_id', %s::uuid,
+            'physical_delta', %s,
+            'reserved_delta', %s,
+            'allocated_delta', %s
+          ),
+          clock_timestamp(),
+          NULL,
+          NULL,
+          NULL,
+          %s,
+          1
+        )
+        """,
+        (
+            lab.TENANT,
+            dedup_key,
+            f"inventory-position/{position_id}",
+            str(position_id),
+            version,
+            str(lab.new_id()),
+            str(position_id),
+            physical_delta,
+            reserved_delta,
+            allocated_delta,
             lab.WAREHOUSE,
         ),
     ).fetchone()[0]
@@ -154,6 +207,15 @@ def publish_one(
         )
         conn.commit()
 
+    publish_queued(
+        stream_name=stream_name,
+        subject_prefix=subject_prefix,
+        suffix=suffix,
+    )
+    return event_id
+
+
+def publish_queued(*, stream_name: str, subject_prefix: str, suffix: str) -> None:
     transport = NatsJetStreamTransport(
         server_url=NATS_URL,
         stream_name=stream_name,
@@ -173,7 +235,6 @@ def publish_one(
         transport.close()
 
     assert result.published == 1
-    return event_id
 
 
 def effect_handler(consumer_name: str, calls: list):
@@ -366,6 +427,133 @@ def test_handler_failure_rolls_back_inbox_and_jetstream_redelivers():
             ).fetchone()[0]
         assert metadata["effect_count"] == 1
         assert metadata["delivery_count"] == 2
+    finally:
+        source.close()
+        probe.close(stream_name)
+
+
+def test_out_of_order_versions_ack_after_durable_buffer_then_drain():
+    suffix = uuid4().hex.upper()
+    stream_name = f"WMS_CONSUMER_{suffix}"
+    durable_name = f"POSITION_{suffix}"
+    consumer_name = f"position-projector-{suffix.lower()}"
+    subject_prefix = f"spotwo.wms.consumer.{suffix.lower()}"
+    position_id = lab.new_id()
+    probe = ConsumerProbe(NATS_URL)
+    probe.provision(
+        stream_name=stream_name,
+        subject_prefix=subject_prefix,
+        durable_name=durable_name,
+    )
+    source = NatsJetStreamPullSource(
+        server_url=NATS_URL,
+        stream_name=stream_name,
+        durable_name=durable_name,
+        client_name=f"position-projector-{suffix}",
+        fetch_timeout_seconds=2,
+    )
+    runtime = InboxConsumerRuntime(
+        source=source,
+        store=PostgresInboxStore(lab.DATABASE_URL),
+        consumer_name=consumer_name,
+        handler=InventoryPositionQuantityProjector(consumer_name=consumer_name),
+    )
+
+    try:
+        with lab.connect() as conn:
+            second_event_id = enqueue_projection_event(
+                conn,
+                dedup_key=f"projection:{suffix}:2",
+                position_id=position_id,
+                version=2,
+                reserved_delta=3,
+            )
+            conn.commit()
+        publish_queued(
+            stream_name=stream_name,
+            subject_prefix=subject_prefix,
+            suffix=f"{suffix}-2",
+        )
+
+        buffered = runtime.run_once()
+        assert buffered.event_id == second_event_id
+        assert buffered.acknowledged == 1
+        with lab.connect() as conn:
+            projection_version = conn.execute(
+                """
+                SELECT aggregate_version
+                FROM kernel_lab.inventory_position_quantity_projection
+                WHERE consumer_name = %s
+                  AND position_id = %s
+                """,
+                (consumer_name, position_id),
+            ).fetchone()[0]
+            pending_versions = conn.execute(
+                """
+                SELECT aggregate_version
+                FROM kernel_lab.inventory_position_projection_pending
+                WHERE consumer_name = %s
+                  AND position_id = %s
+                """,
+                (consumer_name, position_id),
+            ).fetchall()
+        assert projection_version == 0
+        assert pending_versions == [(2,)]
+        assert probe.consumer_info(
+            stream_name=stream_name,
+            durable_name=durable_name,
+        ).num_ack_pending == 0
+
+        with lab.connect() as conn:
+            first_event_id = enqueue_projection_event(
+                conn,
+                dedup_key=f"projection:{suffix}:1",
+                position_id=position_id,
+                version=1,
+                physical_delta=10,
+            )
+            conn.commit()
+        publish_queued(
+            stream_name=stream_name,
+            subject_prefix=subject_prefix,
+            suffix=f"{suffix}-1",
+        )
+
+        applied = runtime.run_once()
+        assert applied.event_id == first_event_id
+        assert applied.acknowledged == 1
+        with lab.connect() as conn:
+            projection = conn.execute(
+                """
+                SELECT aggregate_version, physical_qty, reserved_qty, allocated_qty,
+                       last_event_id
+                FROM kernel_lab.inventory_position_quantity_projection
+                WHERE consumer_name = %s
+                  AND position_id = %s
+                """,
+                (consumer_name, position_id),
+            ).fetchone()
+            pending_count = conn.execute(
+                """
+                SELECT count(*)
+                FROM kernel_lab.inventory_position_projection_pending
+                WHERE consumer_name = %s
+                  AND position_id = %s
+                """,
+                (consumer_name, position_id),
+            ).fetchone()[0]
+            second_status = conn.execute(
+                """
+                SELECT metadata #>> '{projection,status}'
+                FROM kernel_lab.domain_event_inbox
+                WHERE consumer_name = %s
+                  AND event_id = %s
+                """,
+                (consumer_name, second_event_id),
+            ).fetchone()[0]
+        assert projection == (2, 10, 3, 0, second_event_id)
+        assert pending_count == 0
+        assert second_status == "applied"
     finally:
         source.close()
         probe.close(stream_name)
