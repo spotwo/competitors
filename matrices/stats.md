@@ -6,7 +6,7 @@
 |---|---:|
 | Companies | 50 |
 | Products | 88 |
-| Evidence records | 103 |
+| Evidence records | 118 |
 | Claims | 15 |
 | Terminology records | 30 |
 | Authorities | 8 |
@@ -17,3 +17,7 @@
 | Integration patterns | 8 |
 | Capability records | 27 |
 | Vendor capability observations | 64 |
+| Workflow decompositions | 1 |
+| Workflow stages | 8 |
+| Workflow strategies | 18 |
+| Workflow vendor models | 10 |
