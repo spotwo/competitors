@@ -28,7 +28,16 @@ patterns:
     description: Asynchronous publication of committed business facts for downstream integrations and automation.
     typical_protocols: [webhook, Kafka, AMQP, CloudEvents]
     entities: [inventory, task, shipment, handling-unit]
-    reliability_controls: [transactional outbox, event id, at-least-once delivery, consumer idempotency]
+    reliability_controls: [transactional outbox, event id, aggregate version, at-least-once delivery, consumer idempotency]
+  - id: visibility-events
+    name: Supply Chain Visibility Events
+    category: event
+    directionality: bidirectional
+    status: observed
+    description: Standards-based capture and query of business visibility facts about identified objects, locations, movements and dispositions across supply-chain participants.
+    typical_protocols: [GS1 EPCIS 2.0, REST/JSON-LD]
+    entities: [item, logistic-unit, handling-unit, location, shipment]
+    reliability_controls: [event identity, event time, record time, business step, read point, business location, replayable capture]
   - id: edi-documents
     name: EDI and Business Document Exchange
     category: batch
@@ -76,7 +85,7 @@ patterns:
     reliability_controls: [timestamp, sequence, quality flag, retention policy]
 research_gaps:
   - Map which protocols and reliability controls are actually exposed by the top 20 WMS WES and WCS vendors.
-  - Add GS1 EPCIS as a first-class visibility and event pattern after a dedicated standards review.
+  - Map receiving shipping packing aggregation cross-docking and disposition events to EPCIS 2.0 event classes and CBV values.
   - Separate machine-control commands from WES missions and WMS tasks in a future interface ontology.
-last_verified: 2026-08-18
-evidence_refs: [gs1-logistic-label-guideline, gs1-gln-location-model]
+last_verified: '2026-08-18'
+evidence_refs: [gs1-logistic-label-guideline, gs1-gln-location-model, cloudevents-event-envelope-2026, gs1-epcis-event-model-2026]
