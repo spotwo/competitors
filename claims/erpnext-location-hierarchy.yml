@@ -1,0 +1,10 @@
+id: erpnext-location-hierarchy
+subject_type: product
+subject: erpnext/stock-and-warehouse
+predicate: example-location-hierarchy
+value: [warehouse, room, row, shelf, bin]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [erpnext-warehouse-2026]
+notes: ERPNext models warehouse nodes broadly as storage locations; this hierarchy is an example, not a universal standard.

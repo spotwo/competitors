@@ -1,0 +1,12 @@
+id: openboxes-deployment-2026
+subject: openboxes
+source_type: official-product-page
+grade: B
+title: OpenBoxes Open-Source Inventory Management
+url: https://openboxes.com/index.html
+publisher: OpenBoxes
+captured_at: '2026-08-18'
+supports:
+- self-hosted open-source deployment
+- managed cloud deployment through OpenBoxes Lift
+- no license-fee open-source positioning

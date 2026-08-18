@@ -1,0 +1,9 @@
+id: anchanto-location-concepts
+subject_type: product
+subject: anchanto/warehouse-management
+predicate: warehouse-location-concepts
+value: [zone, rack, shelf, bin]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [anchanto-wms-2026]

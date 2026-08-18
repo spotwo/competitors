@@ -17,4 +17,4 @@ status: active
 research_gaps:
 - Map OpenBoxes Lift commercial service separately from self-hosted open-source deployments.
 last_verified: '2026-08-18'
-evidence_refs: [openboxes-platform-2026]
+evidence_refs: [openboxes-platform-2026, openboxes-deployment-2026]

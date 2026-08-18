@@ -1,0 +1,9 @@
+id: kardex-location-concepts
+subject_type: product
+subject: kardex/power-pick-cloud
+predicate: warehouse-location-concepts
+value: [working-area, location, bin]
+confidence: confirmed
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [kardex-power-pick-cloud-2026]
