@@ -4,7 +4,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LAB="$ROOT/labs/postgres-inventory-kernel"
 COMPOSE=(docker compose -f "$LAB/compose.yaml")
-PORT="${KERNEL_LAB_PORT:-55432}"
+
+if [[ -n "${KERNEL_LAB_PORT:-}" ]]; then
+  PORT="$KERNEL_LAB_PORT"
+else
+  PORT="$(python - <<'PY'
+import socket
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+)"
+fi
+
 export KERNEL_LAB_PORT="$PORT"
 export KERNEL_LAB_DATABASE_URL="${KERNEL_LAB_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:${PORT}/kernel_lab}"
 
