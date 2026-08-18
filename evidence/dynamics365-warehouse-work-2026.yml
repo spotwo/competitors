@@ -1,0 +1,12 @@
+id: dynamics365-warehouse-work-2026
+subject: warehouse-work
+source_type: official-docs
+grade: A
+title: Manage warehouse workers - Dynamics 365 Supply Chain Management
+url: https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/manage-warehouse-workers
+publisher: Microsoft
+captured_at: 2026-08-18
+supports:
+  - Uses Work as a shared warehouse execution concept for worker operations.
+  - Explicitly includes picking, moving, and counting on-hand inventory as work performed through warehouse mobile devices.
+  - Supports separating generic execution infrastructure from capability-specific warehouse process semantics.

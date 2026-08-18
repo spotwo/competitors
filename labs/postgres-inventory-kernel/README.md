@@ -1,6 +1,6 @@
 # PostgreSQL Inventory Kernel Lab
 
-Executable proof-of-concept for ADR 0014, ADR 0015, ADR 0016, and the inventory transaction kernel.
+Executable proof-of-concept for ADR 0014, ADR 0015, ADR 0016, ADR 0017, and the inventory/work transaction kernel.
 
 The lab deliberately tests **database invariants and concurrency behavior**, not WMS UI or a production application architecture.
 
@@ -128,9 +128,33 @@ Hold apply/release uses the same exact-scope advisory lock as Reservation and Al
 
 Exact serial tracking uses `inventory_serial_memberships`; a tenant/serial can have only one live position membership. Serial identity is not a generic Inventory Key column.
 
+### Warehouse Work execution
+
+The lab now separates execution concerns from inventory and capability documents:
+
+```text
+Business Process != WarehouseWork
+WarehouseWork != WarehouseTask
+Allocation != WorkAssignment
+TaskExecution != TaskConfirmation
+TaskConfirmation != InventoryTransaction
+```
+
+`warehouse_works` is the aggregate root. Ordered `warehouse_tasks` are executable children. Releasing work makes only the first task ready; each confirmation unlocks the next task.
+
+One active `warehouse_work_assignment` is allowed per Work in v0.1. Concurrent claim attempts serialize on the Work row so only one resource wins. The assigned resource must own every execution attempt.
+
+`warehouse_task_executions` are attempts rather than overwritten state history. A task exception blocks the active attempt; resolving it with `resume` aborts that historical attempt, returns the task to `ready`, and a later start creates a new execution attempt.
+
+Execution channel is orthogonal to task semantics and is persisted per attempt, so RF, mobile, voice, workstation, light-directed, or automation adapters can execute the same generic task contract.
+
+For capability-affecting tasks, `requires_domain_confirmation = true` requires a `domain_result_reference` before the task can be completed. The generic Work engine therefore cannot silently stand in for an Inventory Transaction, Count Result, Pack Confirmation, or other capability-owned consequence.
+
+Work commands use their own tenant-scoped idempotency receipt table. The Inventory Transaction ledger is not abused as a generic command-deduplication store.
+
 ### Retry safety
 
-Inventory posting commands carry a tenant-scoped idempotency key bound to a canonical request fingerprint. An exact retry returns the already-posted result instead of applying the mutation twice; reuse of the same key for a different payload is rejected.
+Inventory posting commands carry a tenant-scoped idempotency key bound to a canonical request fingerprint. Work lifecycle commands use the same retry-safety principle in their own domain receipt table. An exact retry returns the already-applied result; reuse of the same key for a different payload is rejected.
 
 ## Executable scenarios
 
@@ -163,6 +187,17 @@ Inventory posting commands carry a tenant-scoped idempotency key bound to a cano
 | HU hold enforcement | whole-HU relocation cannot bypass held inventory inside the HU subtree |
 | hold retry | apply command is idempotent and rejects a changed payload under the same key |
 | hold/reservation race | hold and reservation serialize on the same stock-scope lock |
+| work release | only the first ordered Warehouse Task becomes ready |
+| work queue priority | released work is ranked by priority/due time without inventing a Wave |
+| concurrent work claim | only one resource can own the active Work assignment |
+| execution ownership | only the assigned resource can start a task; channel remains orthogonal |
+| task sequence | later tasks cannot start early and confirmation unlocks the next task |
+| work completion | final task confirmation completes Work and its active Assignment together |
+| domain confirmation boundary | inventory/capability-affecting task requires an external domain result reference |
+| exception retry | resolved exception preserves the blocked attempt and creates a new execution attempt on retry |
+| pre-start cancellation | cancelling unstarted work releases assignment and cancels remaining tasks |
+| late cancellation rejection | generic cancellation cannot bypass capability compensation after execution starts |
+| work command retry | exact command replay is idempotent and changed payload under the same key is rejected |
 
 ## Deliberate simplifications
 
@@ -176,8 +211,15 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - separate available-to-reserve versus available-to-allocate projections;
 - reservation expiration and priority;
 - FEFO/source-selection policy;
-- Warehouse Work creation and assignment;
-- outbox/domain-event persistence;
+- resource qualification and equipment eligibility;
+- automatic dispatch / claim-next scoring;
+- task dependency graphs and parallel execution branches;
+- multi-resource work and task-level assignment;
+- work hold/resume separate from execution exceptions;
+- capability-specific atomic confirmation handlers beyond the domain-result-reference contract;
+- outbox/domain-event persistence for Work lifecycle facts;
+- cross-work dependencies and orchestration;
+- labor actuals and engineered standards;
 - cross-warehouse transfer orchestration;
 - lot genealogy;
 - HU-cycle prevention beyond the immediate self-parent check;
@@ -187,7 +229,7 @@ This is a kernel lab, not the production schema. It intentionally omits or simpl
 - production UUIDv7 generation policy;
 - performance benchmarks and `EXPLAIN (ANALYZE, BUFFERS)` tuning.
 
-These are subsequent layers after the commitment, eligibility and concurrency semantics prove sound.
+These are subsequent layers after the inventory, commitment, eligibility, Work lifecycle, and concurrency semantics prove sound.
 
 ## Source of truth
 
@@ -196,5 +238,6 @@ The conceptual decisions are:
 - `decisions/domain/0014-inventory-key-stock-dimensions.md`
 - `decisions/domain/0015-inventory-commitment-engine.md`
 - `decisions/domain/0016-inventory-holds-eligibility.md`
+- `decisions/domain/0017-warehouse-work-execution-engine.md`
 
 The lab exists to falsify or strengthen those candidate models with executable PostgreSQL behavior.

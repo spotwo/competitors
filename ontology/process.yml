@@ -2,7 +2,7 @@ id: process
 title: Warehouse Process Ontology
 kind: process
 status: candidate
-description: Canonical warehouse and intralogistics process vocabulary spanning inbound, storage, fulfillment, outbound and reverse flows.
+description: Canonical warehouse and intralogistics process vocabulary spanning inbound, storage, fulfillment, outbound and reverse flows. Executable work concepts are defined separately in the Warehouse Work Execution Ontology.
 entities:
   - id: receiving
     term: Receiving
@@ -55,10 +55,6 @@ entities:
   - id: returns
     term: Returns
     definition: Receiving and dispositioning goods returned from customers or downstream locations.
-  - id: warehouse-task
-    term: Warehouse Task
-    definition: An executable unit of warehouse work that directs a movement or operation.
-    vendor_specific: false
 relationships:
   - {subject: receiving, predicate: typically-precedes, object: putaway}
   - {subject: replenishment, predicate: supplies, object: picking}
@@ -67,14 +63,14 @@ relationships:
   - {subject: packing, predicate: typically-precedes, object: staging}
   - {subject: staging, predicate: typically-precedes, object: loading}
   - {subject: loading, predicate: typically-precedes, object: shipping}
-  - {subject: warehouse-task, predicate: may-execute, object: relocation}
+  - {subject: warehouse-task, predicate: may-execute, object: relocation, notes: Warehouse Task is defined in ontology/work.yml.}
   - {subject: inventory-transfer, predicate: may-orchestrate, object: picking}
   - {subject: inventory-transfer, predicate: may-orchestrate, object: shipping}
   - {subject: inventory-transfer, predicate: may-orchestrate, object: receiving}
   - {subject: inventory-transfer, predicate: may-orchestrate, object: putaway}
 research_gaps:
   - Map process vocabulary against VDI 3601 task and performance areas and at least ten WMS navigation models.
-  - Separate business process executable Warehouse Work inventory movement and automation command vocabularies in the next ontology revision.
+  - Validate capability-to-Work mappings for Receiving, Packing, Shipping, and automation-heavy flows without collapsing their business states into execution states.
   - Validate inter-warehouse transfer orchestration across SAP Oracle Infor and ERP-centric systems.
 last_verified: '2026-08-18'
 evidence_refs: [sap-ewm-hu-warehouse-task-2026, werc-dc-measures-2026, dynamics365-inventory-movement-2026, dynamics365-inventory-transfer-2026, oracle-allocation-model-2026]

@@ -28,6 +28,32 @@ FORBIDDEN_INVENTORY_KEY_ATTRIBUTES = {
     "uom",
 }
 REQUIRED_POSITION_ENTITIES = {"inventory-key", "inventory-anchor", "serial-membership"}
+REQUIRED_WORK_ENTITIES = {
+    "warehouse-work",
+    "warehouse-task",
+    "work-assignment",
+    "execution-resource",
+    "task-execution",
+    "execution-channel",
+    "task-confirmation",
+    "task-exception",
+    "confirmation-requirement",
+}
+PROCESS_FORBIDDEN_EXECUTION_ENTITIES = {
+    "warehouse-work",
+    "warehouse-task",
+    "work-assignment",
+    "task-execution",
+    "task-confirmation",
+    "task-exception",
+}
+REQUIRED_WORK_RELATIONSHIPS = {
+    ("warehouse-work", "contains", "warehouse-task"),
+    ("warehouse-work", "has-current", "work-assignment"),
+    ("warehouse-task", "executed-through", "task-execution"),
+    ("task-execution", "produces", "task-confirmation"),
+    ("task-execution", "may-produce", "task-exception"),
+}
 
 
 def load(path: Path):
@@ -68,10 +94,48 @@ def validate_inventory_key(errors: list[str]) -> None:
         errors.append(f"{path.relative_to(ROOT)}: Serial Membership must not be modeled as an Inventory Key subtype")
 
 
+def validate_work_model(errors: list[str]) -> None:
+    work_path = ROOT / "ontology/work.yml"
+    if not work_path.exists():
+        errors.append("ontology/work.yml: missing Warehouse Work execution ontology")
+        return
+
+    ontology = load(work_path)
+    if ontology.get("kind") != "work":
+        errors.append(f"{work_path.relative_to(ROOT)}: Warehouse Work ontology kind must be 'work'")
+
+    entity_ids = {item["id"] for item in ontology.get("entities", []) or []}
+    for required in sorted(REQUIRED_WORK_ENTITIES - entity_ids):
+        errors.append(f"{work_path.relative_to(ROOT)}: missing core execution entity {required!r}")
+
+    relationships = {
+        (item["subject"], item["predicate"], item["object"])
+        for item in ontology.get("relationships", []) or []
+    }
+    for required in sorted(REQUIRED_WORK_RELATIONSHIPS - relationships):
+        errors.append(
+            f"{work_path.relative_to(ROOT)}: missing core work relationship "
+            f"{required[0]!r} {required[1]!r} {required[2]!r}"
+        )
+
+    if len(ontology.get("evidence_refs", []) or []) < 3:
+        errors.append(f"{work_path.relative_to(ROOT)}: Warehouse Work ontology requires multi-vendor evidence")
+
+    process_path = ROOT / "ontology/process.yml"
+    if process_path.exists():
+        process = load(process_path)
+        process_entities = {item["id"] for item in process.get("entities", []) or []}
+        for forbidden in sorted(PROCESS_FORBIDDEN_EXECUTION_ENTITIES & process_entities):
+            errors.append(
+                f"{process_path.relative_to(ROOT)}: execution entity {forbidden!r} belongs in ontology/work.yml, not Process ontology"
+            )
+
+
 def main() -> int:
     errors: list[str] = []
 
     validate_inventory_key(errors)
+    validate_work_model(errors)
 
     for path in sorted(ROOT.glob("ledger/*.yml")):
         ledger = load(path)
