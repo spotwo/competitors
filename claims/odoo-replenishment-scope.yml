@@ -1,0 +1,12 @@
+id: odoo-replenishment-scope
+subject_type: company
+subject: odoo
+predicate: replenishment-scope
+value:
+  primary_scope: [procurement, manufacturing-supply, inter-warehouse-resupply]
+  mechanisms: [reordering-rules, make-to-order, master-production-schedule]
+  warning: Do not assume this term means internal reserve-to-pick-face replenishment.
+confidence: high
+status: current
+observed_at: '2026-08-18'
+evidence_refs: [odoo-replenishment-scope-2026]
