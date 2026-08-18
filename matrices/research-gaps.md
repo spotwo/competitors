@@ -68,6 +68,11 @@
 
 | Workflow / gap | Status | Vendor models | Evidence refs |
 |---|---|---:|---:|
+| Internal Replenishment Workflow | candidate | 3 | 3 |
+| Internal Replenishment Workflow - Add SAP EWM, Manhattan, Blue Yonder, Mecalux, PSIwms and at least four more WMS models before adopting the Spotwo workflow. | research | 3 | 3 |
+| Internal Replenishment Workflow - Compare whether source inventory is reserved at planning time, release time or task-start time across vendors. | research | 3 | 3 |
+| Internal Replenishment Workflow - Determine whether residual replenishment need should persist as an object or be recalculated from current inventory after every confirmation. | research | 3 | 3 |
+| Internal Replenishment Workflow - Model replenishment priority separately from outbound pick priority and define dependency semantics between replenishment and blocked pick work. | research | 3 | 3 |
 | Picking Workflow | candidate | 10 | 15 |
 | Picking Workflow - Add UI interaction observations for handheld RF, voice, pick-to-light and goods-to-person stations without treating presentation details as domain semantics. | research | 10 | 15 |
 | Picking Workflow - Compare short-pick residual-demand and automatic reallocation behavior across SAP, Manhattan, Blue Yonder, Oracle, Infor and Mecalux. | research | 10 | 15 |
