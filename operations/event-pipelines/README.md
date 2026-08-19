@@ -170,6 +170,25 @@ A successful run only reports that the migration declaration can be cleaned up. 
 
 See `labs/postgres-inventory-kernel/EVENT_PIPELINE_TOPOLOGY_PROVISIONING.md` and ADR 0049 for execution and rollback semantics.
 
+## Crash-safe provisioning journal
+
+Every mutating rollout is now journaled in PostgreSQL before the first JetStream write. The journal records the authorized pipeline/migration identity, one affected resource, the source topology snapshot, bounded field changes, an intent fingerprint, durable execution state, and a lease.
+
+Only one non-terminal provisioning run may exist per pipeline. While another process owns a live lease, a second provisioner is blocked. After lease expiry, re-running the same command with the same migration ID claims the existing run ID and reconciles against live JetStream topology rather than starting a second rollout.
+
+Recovery is deterministic:
+
+- exact source live -> finalize the old run as rolled back/source restored;
+- exact target live -> continue the missing target, canary, and readiness verification stages;
+- rollback was started but target is still live -> restore the persisted source values and verify source;
+- neither exact source nor exact target -> stop at `manual_intervention` without guessing or auto-repairing drift.
+
+Lease loss is fail-stop. A process that loses ownership does not attempt a compensating mutation because another process may already be reconciling the run.
+
+The same apply command is therefore both the normal executor and the crash-recovery entry point. JSON output includes `execution_journal` with run ID, state, attempt count, recovery count, and lease metadata.
+
+See `labs/postgres-inventory-kernel/EVENT_PIPELINE_TOPOLOGY_CRASH_RECOVERY.md` and ADR 0050 for recovery and lease semantics.
+
 ## Operational readiness
 
 For one configured pipeline:
