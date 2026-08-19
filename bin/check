@@ -5,6 +5,7 @@ python scripts/validate.py
 python scripts/validate_open_source_research.py
 python scripts/validate_event_pipeline_deployments.py
 python scripts/validate_topology_finalization_references.py
+python scripts/validate_github_main_ruleset.py
 python scripts/validate_kernel_semantics.py
 python scripts/validate_scenarios.py
 python scripts/validate_kernel_spec.py
