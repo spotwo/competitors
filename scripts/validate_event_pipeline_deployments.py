@@ -24,11 +24,17 @@ def main() -> int:
         schema = json.load(handle)
 
     validator = jsonschema.Draft202012Validator(schema)
-    errors = sorted(validator.iter_errors(registry_data), key=lambda error: list(error.path))
+    errors = sorted(
+        validator.iter_errors(registry_data),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
+    )
     if errors:
         for error in errors:
             path = ".".join(str(part) for part in error.absolute_path) or "<root>"
-            print(f"event pipeline deployment schema error at {path}: {error.message}", file=sys.stderr)
+            print(
+                f"event pipeline deployment schema error at {path}: {error.message}",
+                file=sys.stderr,
+            )
         return 1
 
     try:
