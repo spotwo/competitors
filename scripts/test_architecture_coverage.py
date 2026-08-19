@@ -67,12 +67,17 @@ class ArchitectureCoverageQueryTest(unittest.TestCase):
             {item["boundary_ref"] for item in result},
         )
 
-    def test_gap_filter_finds_reconnect_questions(self):
+    def test_gap_filter_searches_gaps_not_targets(self):
         result = self.select(gap="reconnect")
-        refs = {item["boundary_ref"] for item in result}
-        self.assertIn("edge-control-and-sync", refs)
-        self.assertIn("device-telemetry", refs)
-        self.assertIn("plc-control", refs)
+        self.assertEqual(
+            {"device-telemetry", "plc-control", "robot-fleet-control"},
+            {item["boundary_ref"] for item in result},
+        )
+        self.assertNotIn("edge-control-and-sync", {item["boundary_ref"] for item in result})
+        self.assertEqual(
+            ["edge-control-and-sync"],
+            [item["boundary_ref"] for item in self.select(target="reconnect")],
+        )
 
     def test_evidence_filter_uses_evidence_only(self):
         result = self.select(evidence="eclipse-ditto")
