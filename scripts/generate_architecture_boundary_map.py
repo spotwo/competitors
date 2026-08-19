@@ -33,11 +33,6 @@ def cell(value: Any) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
 
 
-def bullet(lines: list[str], values: list[str]) -> None:
-    for value in values:
-        lines.append(f"- {value}")
-
-
 def render() -> str:
     data = load()
     boundaries = sorted(
@@ -94,87 +89,27 @@ def render() -> str:
         "",
         "```text",
         "External ERP / OMS / TMS / customers",
-        "        |",
         "        | REST + OpenAPI 3.1",
         "        v",
         "Spotwo application + canonical domain",
-        "        |\\",
-        "        | \\ broker-neutral domain events -> NATS JetStream -> internal consumers / Edge consumers",
-        "        |",
-        "        +---- external async projection -> [UNRESOLVED public async contract] -> partners",
-        "        |",
-        "        +---- supply-chain projection -> GS1 EPCIS candidate -> visibility consumers",
-        "        |",
-        "        +---- optimization port -> OR-Tools candidate",
-        "        |",
-        "        +---- execution port -> real executor / simulation executor",
-        "        |",
+        "        |-- NATS JetStream domain events --> internal consumers / Edge consumers",
+        "        |-- [UNRESOLVED] external async --> customers / partners",
+        "        |-- GS1 EPCIS candidate ---------> visibility consumers",
+        "        |-- OR-Tools candidate ----------> optimization",
+        "        |-- real/sim executor port ------> execution",
         "        v",
         "Spotwo WES / WCS / MFC / Edge",
-        "        |\\",
-        "        | +---- robot adapter -> VDA 5050 candidate / vendor API -> fleet manager",
-        "        |",
-        "        +------ PLC adapter -> PLC4X / OPC UA / native -> PLC / machine",
-        "        |",
-        "        +------ telemetry <- MQTT / Sparkplug candidate <- devices / gateways",
-        "        |",
-        "        +------ Edge management <-> [UNRESOLVED control + sync contract] <-> control plane",
+        "        |-- VDA 5050 candidate ----------> robot fleet",
+        "        |-- PLC4X / OPC UA candidate ----> PLC / machine",
+        "        |<- MQTT / Sparkplug candidate --- devices / gateways",
+        "        |<-> [UNRESOLVED] Edge control --- control plane",
         "        v",
         "Physical world",
         "```",
         "",
-        "## Detailed contracts",
-    ])
-
-    for boundary in boundaries:
-        contract = boundary["contract"]
-        lines.extend([
-            "",
-            f"### {boundary['name']} (`{boundary['id']}`)",
-            "",
-            f"**Classification:** `{boundary['classification']}`  ",
-            f"**Flow:** {boundary['from']} -> {boundary['to']}  ",
-            f"**Contract:** `{contract['status']}` - {contract['mechanism']}  ",
-            f"**Interaction:** `{boundary['flow']['interaction']}` / `{boundary['flow']['direction']}`",
-            "",
-            contract["rationale"],
-            "",
-            "**State ownership**",
-            "",
-        ])
-        bullet(lines, boundary["state_ownership"]["authoritative"])
-        lines.extend(["", "**Forbidden ownership leaks**", ""])
-        bullet(lines, boundary["state_ownership"]["forbidden"])
-        lines.extend([
-            "",
-            "**Reliability**",
-            "",
-            f"- Retry: {boundary['reliability']['retry']}",
-            f"- Idempotency: {boundary['reliability']['idempotency']}",
-            f"- Ordering: {boundary['reliability']['ordering']}",
-            f"- Offline: {boundary['reliability']['offline_behavior']}",
-            "",
-            "**Security and compatibility**",
-            "",
-            f"- Trust boundary: {boundary['security']['trust_boundary']}",
-            f"- Authentication: {boundary['security']['authentication']}",
-            f"- Authorization: {boundary['security']['authorization']}",
-            f"- Versioning: {boundary['versioning']}",
-            f"- Simulation: {boundary['simulation']}",
-            "",
-            "**Research gaps**",
-            "",
-        ])
-        if boundary["research_gaps"]:
-            bullet(lines, boundary["research_gaps"])
-        else:
-            lines.append("- None recorded.")
-
-    lines.extend([
-        "",
         "## Rule of interpretation",
         "",
-        "`canonical` means the contract mechanism is adopted for this exact boundary. `candidate` means the boundary and ownership are defined but the implementation mechanism is still under trial. `unresolved` means the map deliberately refuses to guess a mechanism. None of these statuses grant an external standard, transport, SDK, or generated DTO ownership of the internal Spotwo domain model.",
+        "`canonical` means the contract mechanism is adopted for this exact boundary. `candidate` means the boundary and ownership are defined but the mechanism is still under trial. `unresolved` means the map deliberately refuses to guess a mechanism. Detailed state ownership, reliability, security, versioning, simulation rules, evidence, standards, and research gaps live in `architecture/boundaries.yml`.",
         "",
     ])
     return "\n".join(lines)
