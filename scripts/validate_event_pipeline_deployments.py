@@ -25,6 +25,23 @@ from event_pipeline_topology_migration import (  # noqa: E402
 )
 
 
+def validate_global_consumer_identities(
+    registry: EventPipelineDeploymentRegistry,
+) -> None:
+    durable_names: list[str] = []
+    inbox_names: list[str] = []
+    for pipeline in registry.pipelines:
+        durable_names.extend((pipeline.consumer.durable, pipeline.canary.durable))
+        inbox_names.extend(
+            (pipeline.consumer.inbox_consumer_name, pipeline.canary.consumer_name)
+        )
+
+    if len(durable_names) != len(set(durable_names)):
+        raise ValueError("JetStream durable identities must be unique across pipelines")
+    if len(inbox_names) != len(set(inbox_names)):
+        raise ValueError("Inbox consumer identities must be unique across pipelines")
+
+
 def main() -> int:
     with REGISTRY.open("r", encoding="utf-8") as handle:
         registry_data = yaml.safe_load(handle)
@@ -50,6 +67,7 @@ def main() -> int:
 
     try:
         registry = EventPipelineDeploymentRegistry.from_mapping(registry_data)
+        validate_global_consumer_identities(registry)
         for spec in registry.pipelines:
             topology = pipeline_topology_mapping(registry_data, spec.pipeline_id)
             DeploymentTopologyConfig.from_mapping(topology).validate(spec)
