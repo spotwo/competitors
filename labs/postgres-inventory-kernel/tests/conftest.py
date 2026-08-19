@@ -97,6 +97,7 @@ def clean_database():
         conn.execute(
             """
             TRUNCATE TABLE
+              kernel_lab.event_pipeline_topology_provisioning_runs,
               kernel_lab.event_pipeline_canary_outcomes,
               kernel_lab.event_pipeline_canary_runs,
               kernel_lab.inventory_position_projection_control,
@@ -178,6 +179,6 @@ def clean_database():
         )
         conn.execute(
             "INSERT INTO kernel_lab.inventory_conditions (id, tenant_id, code) VALUES (%s, %s, 'NORMAL')",
-            (CONDITION, TENANT),
+            (CONDITION,),
         )
     yield
