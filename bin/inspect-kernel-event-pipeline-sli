@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_canary_sli import (  # noqa: E402
+    EventPipelineCanarySliPolicy,
+    PostgresEventPipelineCanarySliStore,
+    render_prometheus,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Inspect synthetic event-pipeline SLI history and error-budget burn"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument(
+        "--stream",
+        default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"),
+    )
+    parser.add_argument(
+        "--durable",
+        default=os.getenv("KERNEL_LAB_CANARY_DURABLE", "EVENT_PIPELINE_CANARY"),
+    )
+    parser.add_argument(
+        "--consumer-name",
+        default=os.getenv(
+            "KERNEL_LAB_CANARY_CONSUMER_NAME", "event_pipeline_canary"
+        ),
+    )
+    parser.add_argument("--availability-target", type=float, default=0.999)
+    parser.add_argument("--latency-target-ratio", type=float, default=0.99)
+    parser.add_argument("--latency-target-seconds", type=float, default=5.0)
+    parser.add_argument("--stale-after-seconds", type=float, default=180.0)
+    parser.add_argument("--warning-consecutive-failures", type=int, default=2)
+    parser.add_argument("--critical-consecutive-failures", type=int, default=3)
+    parser.add_argument("--warning-slow-burn-rate", type=float, default=3.0)
+    parser.add_argument("--critical-fast-burn-rate", type=float, default=14.4)
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 1 for warning and 2 for critical SLI health",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+    if args.pretty and args.format != "json":
+        raise SystemExit("--pretty is available only with --format json")
+
+    try:
+        snapshot = PostgresEventPipelineCanarySliStore(args.database_url).snapshot(
+            stream_name=args.stream,
+            durable_name=args.durable,
+            consumer_name=args.consumer_name,
+            availability_target=args.availability_target,
+            latency_target_ratio=args.latency_target_ratio,
+            latency_target_seconds=args.latency_target_seconds,
+        )
+        report = EventPipelineCanarySliPolicy(
+            stale_after_seconds=args.stale_after_seconds,
+            warning_consecutive_failures=args.warning_consecutive_failures,
+            critical_consecutive_failures=args.critical_consecutive_failures,
+            warning_slow_burn_rate=args.warning_slow_burn_rate,
+            critical_fast_burn_rate=args.critical_fast_burn_rate,
+        ).evaluate(snapshot)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
