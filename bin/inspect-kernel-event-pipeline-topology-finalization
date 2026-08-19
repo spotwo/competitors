@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_finalization import (  # noqa: E402
+    TopologyMigrationFinalizationInspector,
+    render_prometheus,
+)
+from event_pipeline_topology_migration import pipeline_topology_migration_mapping  # noqa: E402
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Prove whether a topology_migration registry stanza is safe to remove"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument("--database-url")
+    parser.add_argument("--nats-url")
+    parser.add_argument("--watchdog-state")
+    parser.add_argument("--observed-at")
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true")
+    parser.add_argument("--check", action="store_true")
+    return parser.parse_args()
+
+
+def registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def watchdog_state(path: str | None) -> dict | None:
+    if not path:
+        return None
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def observed_at(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise SystemExit("--observed-at must be an RFC3339 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SystemExit("--observed-at must include a timezone")
+    return parsed
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        registry = load_registry(args.registry)
+        raw = registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(raw, args.pipeline)
+        migration = pipeline_topology_migration_mapping(raw, args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
+
+    report = TopologyMigrationFinalizationInspector(
+        database_url=database_url,
+        nats_url=nats_url,
+    ).inspect(
+        spec,
+        target_topology=topology,
+        migration_mapping=migration,
+        watchdog_state=watchdog_state(watchdog_path),
+        observed_at=observed_at(args.observed_at),
+    )
+
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(json.dumps(report.to_dict(), indent=2 if args.pretty else None, sort_keys=True))
+
+    if not args.check:
+        return 0
+    return 0 if report.safe_to_remove_topology_migration else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
