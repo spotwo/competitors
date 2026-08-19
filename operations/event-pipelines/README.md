@@ -142,6 +142,34 @@ If one migration changes more than one of `stream`, `business_consumer`, and `ca
 
 See `labs/postgres-inventory-kernel/EVENT_PIPELINE_TOPOLOGY_PREFLIGHT.md` for the preflight runbook.
 
+## Authorized provisioning
+
+After preflight returns `safe_to_apply`, one narrowly supported in-place migration can be executed with an explicit authorization tied to the reviewed migration ID:
+
+```bash
+bin/apply-kernel-event-pipeline-topology \
+  --pipeline inventory-position-projection \
+  --apply-migration <exact-topology-migration-id> \
+  --tenant-id <uuid> \
+  --pretty
+```
+
+The command re-runs preflight and requires full deployment readiness before mutation. Immediately before writing it re-reads the selected resource and requires the bounded source snapshot to still equal the preflight source, preventing a stale preflight from overwriting concurrent topology changes.
+
+The initial automatic in-place capability is deliberately narrow:
+
+- stream: `replicas`, `duplicate_window_seconds`;
+- business consumer: `max_ack_pending`, `max_deliver`;
+- canary consumer: `max_ack_pending`, `max_deliver`.
+
+Unsupported topology changes are blocked. The provisioner never falls back to delete/recreate.
+
+After mutation it requires exact target topology, a fresh tracked synthetic canary with status `ok`, and full deployment readiness `READY`. If a post-apply gate fails, it restores the complete source resource config captured immediately before mutation and then requires topology to match the declared source again.
+
+A successful run only reports that the migration declaration can be cleaned up. It does not edit Git or remove `topology_migration` automatically.
+
+See `labs/postgres-inventory-kernel/EVENT_PIPELINE_TOPOLOGY_PROVISIONING.md` and ADR 0049 for execution and rollback semantics.
+
 ## Operational readiness
 
 For one configured pipeline:
@@ -165,4 +193,4 @@ The readiness gate is an operational deployment decision. It does not mutate the
 
 ## Intentional changes
 
-Change the registry and provisioning as one reviewed rollout. For a topology transition, merge the target plus a short migration deadline before changing the broker. Run rollout preflight before mutation. Once live topology matches target and event-pipeline readiness is healthy, remove `topology_migration` so steady-state exact matching is again the only accepted state.
+Change the registry and provisioning as one reviewed rollout. For a topology transition, merge the target plus a short migration deadline before changing the broker. Run rollout preflight before mutation. If the change is in the authorized in-place capability set, execute it with the exact reviewed migration ID. Once live topology matches target, a fresh canary is healthy, and event-pipeline readiness is healthy, remove `topology_migration` so steady-state exact matching is again the only accepted state.
