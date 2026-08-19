@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schema/topology-finalization-reference.schema.json",
+  "title": "Topology migration finalization reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "pipeline",
+    "migration_id",
+    "receipt",
+    "receipt_fingerprint",
+    "registry_change"
+  ],
+  "properties": {
+    "version": {"const": 1},
+    "kind": {"const": "topology_migration_finalization"},
+    "pipeline": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+    "migration_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receipt_id",
+        "pipeline",
+        "migration_id",
+        "run_id",
+        "lineage",
+        "target_fingerprint",
+        "live_fingerprint",
+        "migration_fingerprint",
+        "readiness_status",
+        "finalization_code",
+        "created_at"
+      ],
+      "properties": {
+        "receipt_id": {"type": "string", "format": "uuid"},
+        "pipeline": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+        "migration_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+        "run_id": {"type": "string", "format": "uuid"},
+        "lineage": {"enum": ["completed", "resolved_target"]},
+        "target_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "live_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "migration_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "readiness_status": {"const": "ready"},
+        "finalization_code": {"const": "topology_migration_finalization_ready"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "receipt_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "registry_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation"],
+      "properties": {
+        "operation": {"const": "remove_topology_migration"}
+      }
+    }
+  }
+}
