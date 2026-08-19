@@ -119,6 +119,29 @@ The inspector is read-only. It calls JetStream metadata APIs only and never crea
 
 Missing required streams or consumers are drift. Broker unavailability is reported as inspection unavailable rather than as a false match.
 
+## Rollout preflight
+
+Before an external provisioner mutates JetStream, build a deterministic dry-run plan:
+
+```bash
+bin/plan-kernel-event-pipeline-topology \
+  --pipeline inventory-position-projection \
+  --pretty \
+  --check
+```
+
+The planner combines the reviewed target, optional migration contract, and one live topology snapshot. Its decision is one of:
+
+- `safe_to_apply` - the migration is active, live topology exactly matches the source, and the source-to-target delta affects exactly one JetStream resource;
+- `no_changes` - the target is already deployed;
+- `blocked` - do not begin the rollout from the observed state.
+
+A `safe_to_apply` plan groups all changed fields for one resource into one `apply_target_resource` step, followed by exact-target verification, full event-pipeline readiness verification, and migration-contract cleanup. The planner itself is always dry-run and never performs that resource update.
+
+If one migration changes more than one of `stream`, `business_consumer`, and `canary_consumer`, preflight blocks it. A sequential multi-resource rollout would create a hybrid topology that is neither the exact source nor the exact target accepted by the bounded migration contract. Split such work into separate reviewed migrations.
+
+See `labs/postgres-inventory-kernel/EVENT_PIPELINE_TOPOLOGY_PREFLIGHT.md` for the preflight runbook.
+
 ## Operational readiness
 
 For one configured pipeline:
@@ -142,4 +165,4 @@ The readiness gate is an operational deployment decision. It does not mutate the
 
 ## Intentional changes
 
-Change the registry and provisioning as one reviewed rollout. For a topology transition, merge the target plus a short migration deadline before changing the broker. Once live topology matches target, remove `topology_migration` so steady-state exact matching is again the only accepted state.
+Change the registry and provisioning as one reviewed rollout. For a topology transition, merge the target plus a short migration deadline before changing the broker. Run rollout preflight before mutation. Once live topology matches target and event-pipeline readiness is healthy, remove `topology_migration` so steady-state exact matching is again the only accepted state.
