@@ -1,0 +1,272 @@
+openapi: 3.1.0
+info:
+  title: Spotwo WMS API Contract Lab
+  version: 0.1.0
+  summary: Minimal WMS contract used to compare REST/OpenAPI with a gRPC equivalent.
+  description: Experimental MISC contract. It is not the canonical Spotwo public API.
+servers:
+  - url: https://api.example.invalid
+tags:
+  - name: Locations
+  - name: HandlingUnits
+  - name: Inventory
+  - name: Tasks
+paths:
+  /v1/locations/{location_id}:
+    get:
+      tags: [Locations]
+      operationId: getLocation
+      summary: Get one warehouse location.
+      parameters:
+        - $ref: '#/components/parameters/LocationId'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Location found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/handling-units/{handling_unit_id}:
+    get:
+      tags: [HandlingUnits]
+      operationId: getHandlingUnit
+      summary: Get one handling unit.
+      parameters:
+        - $ref: '#/components/parameters/HandlingUnitId'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Handling unit found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandlingUnit'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/inventory/positions:
+    get:
+      tags: [Inventory]
+      operationId: listInventoryPositions
+      summary: List inventory positions by explicit warehouse dimensions.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - name: item_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: handling_unit_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching inventory positions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPositionList'
+  /v1/tasks:
+    post:
+      tags: [Tasks]
+      operationId: createTask
+      summary: Create a warehouse execution task.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Task created or replayed from the same idempotency key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/tasks/{task_id}:
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      summary: Get one warehouse execution task.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Task found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    LocationId:
+      name: location_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    HandlingUnitId:
+      name: handling_unit_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    InvalidArgument:
+      description: Request is semantically invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Request conflicts with current warehouse state.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Location:
+      type: object
+      additionalProperties: false
+      required: [id, code, type]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        type:
+          type: string
+          enum: [zone, rack, level, bin, staging, dock]
+        parent_location_id:
+          type: [string, 'null']
+    HandlingUnit:
+      type: object
+      additionalProperties: false
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [pallet, tote, bin, carton, container]
+        current_location_id:
+          type: [string, 'null']
+    InventoryPosition:
+      type: object
+      additionalProperties: false
+      required: [item_id, location_id, quantity]
+      properties:
+        item_id:
+          type: string
+        location_id:
+          type: string
+        handling_unit_id:
+          type: [string, 'null']
+        quantity:
+          type: number
+    InventoryPositionList:
+      type: object
+      additionalProperties: false
+      required: [positions]
+      properties:
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryPosition'
+    CreateTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, target_location_id]
+      properties:
+        kind:
+          type: string
+          enum: [move_handling_unit, pick, putaway]
+        source_location_id:
+          type: [string, 'null']
+        target_location_id:
+          type: string
+        handling_unit_id:
+          type: [string, 'null']
+    Task:
+      type: object
+      additionalProperties: false
+      required: [id, kind, status, target_location_id, created_at]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [move_handling_unit, pick, putaway]
+        status:
+          type: string
+          enum: [created, assigned, in_progress, completed, cancelled]
+        source_location_id:
+          type: [string, 'null']
+        target_location_id:
+          type: string
+        handling_unit_id:
+          type: [string, 'null']
+        created_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        correlation_id:
+          type: [string, 'null']

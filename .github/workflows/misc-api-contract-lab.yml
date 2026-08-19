@@ -1,0 +1,37 @@
+name: MISC API contract lab
+
+on:
+  pull_request:
+    paths:
+      - 'misc/api-contract-lab/**'
+      - 'scripts/validate_misc_api_contract_lab.py'
+      - 'scripts/generate_misc_api_contract_lab.py'
+      - 'bin/check-misc-api-contract-lab'
+      - '.github/workflows/misc-api-contract-lab.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'misc/api-contract-lab/**'
+      - 'scripts/validate_misc_api_contract_lab.py'
+      - 'scripts/generate_misc_api_contract_lab.py'
+      - 'bin/check-misc-api-contract-lab'
+      - '.github/workflows/misc-api-contract-lab.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: misc-api-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract-codegen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, Node 24
+        with:
+          python-version: '3.12'
+      - run: bash bin/check-misc-api-contract-lab
