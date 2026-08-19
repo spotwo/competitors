@@ -4,9 +4,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
 import sys
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import yaml
 
@@ -17,11 +18,14 @@ sys.path.insert(0, str(LAB))
 from event_pipeline_canary_sli import TrackedEventPipelineCanaryProbe  # noqa: E402
 from event_pipeline_readiness import load_registry  # noqa: E402
 from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_crash_safe_provisioner import (  # noqa: E402
+    CrashSafeAuthorizedEventPipelineTopologyProvisioner,
+)
 from event_pipeline_topology_migration import (  # noqa: E402
     pipeline_topology_migration_mapping,
 )
-from event_pipeline_topology_provisioner import (  # noqa: E402
-    AuthorizedEventPipelineTopologyProvisioner,
+from event_pipeline_topology_provisioning_journal import (  # noqa: E402
+    PostgresTopologyProvisioningJournal,
 )
 from event_pipeline_topology_readiness import (  # noqa: E402
     TopologyAwareEventPipelineReadinessCollector,
@@ -32,7 +36,7 @@ DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Apply one explicitly authorized in-place event pipeline topology migration"
+        description="Apply or reconcile one explicitly authorized in-place event pipeline topology migration"
     )
     parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
     parser.add_argument("--pipeline", required=True)
@@ -40,7 +44,7 @@ def parse_args() -> argparse.Namespace:
         "--apply-migration",
         required=True,
         metavar="MIGRATION_ID",
-        help="exact reviewed topology_migration.id to authorize",
+        help="exact reviewed topology_migration.id to authorize or resume",
     )
     parser.add_argument(
         "--database-url",
@@ -58,6 +62,11 @@ def parse_args() -> argparse.Namespace:
         "--tenant-id",
         default=os.getenv("KERNEL_LAB_CANARY_TENANT_ID"),
         help="UUID used only for the mandatory fresh synthetic canary",
+    )
+    parser.add_argument(
+        "--lease-seconds",
+        type=float,
+        help="provisioning lease TTL; defaults to at least canary timeout plus 60 seconds",
     )
     parser.add_argument("--pretty", action="store_true", help="indent JSON output")
     return parser.parse_args()
@@ -80,6 +89,13 @@ def _read_watchdog_state(path: str | None) -> dict | None:
     except (OSError, json.JSONDecodeError):
         return None
     return value if isinstance(value, dict) else None
+
+
+def _lease_owner() -> str:
+    configured = os.getenv("KERNEL_TOPOLOGY_PROVISIONER_OWNER")
+    if configured:
+        return configured
+    return f"{socket.gethostname()}:{os.getpid()}:{uuid4()}"
 
 
 def main() -> int:
@@ -115,6 +131,12 @@ def main() -> int:
     except ValueError as exc:
         raise SystemExit("--tenant-id must be a UUID") from exc
 
+    lease_seconds = args.lease_seconds
+    if lease_seconds is None:
+        lease_seconds = max(120.0, float(spec.canary.timeout_seconds) + 60.0)
+    if lease_seconds <= float(spec.canary.timeout_seconds):
+        raise SystemExit("--lease-seconds must exceed the configured canary timeout")
+
     readiness_collector = TopologyAwareEventPipelineReadinessCollector()
 
     def readiness_verifier():
@@ -142,8 +164,17 @@ def main() -> int:
             timeout_seconds=spec.canary.timeout_seconds,
         )
 
+    journal = PostgresTopologyProvisioningJournal(
+        database_url,
+        owner_id=_lease_owner(),
+        lease_seconds=lease_seconds,
+    )
+
     try:
-        report = AuthorizedEventPipelineTopologyProvisioner(nats_url).execute(
+        report = CrashSafeAuthorizedEventPipelineTopologyProvisioner(
+            nats_url,
+            journal=journal,
+        ).execute(
             spec,
             target_topology=topology,
             migration_mapping=migration,
