@@ -100,6 +100,6 @@ class TopologyAwareEventPipelineReadinessCollector:
             name="topology",
             status=report.status,
             available=True,
-            code=report.code,
+            code=None if report.status == "ok" else report.code,
             details=report.to_dict(),
         )
