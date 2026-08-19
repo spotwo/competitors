@@ -190,6 +190,12 @@ class ExternalProbeWatchdogSnapshot:
         if any(receipt.scheduled_at > self.expected_execution_at for receipt in self.receipts):
             raise ValueError("receipt cannot belong to a future schedule slot")
         for receipt in self.receipts:
+            delta_seconds = (
+                self.expected_execution_at - receipt.scheduled_at
+            ).total_seconds()
+            slots = delta_seconds / self.cadence_seconds
+            if abs(slots - round(slots)) > 1e-9:
+                raise ValueError("receipt scheduled_at must align to cadence")
             if receipt.started_at is not None and receipt.started_at > self.observed_at:
                 raise ValueError("receipt started_at cannot be in the future")
             if receipt.finished_at is not None and receipt.finished_at > self.observed_at:
@@ -365,8 +371,13 @@ class ExternalProbeWatchdogPolicy:
             raise ValueError(
                 "critical_missing_executions must not be below warning threshold"
             )
-        _nonnegative(self.warning_scheduler_lag_seconds, "warning_scheduler_lag_seconds")
-        if self.critical_scheduler_lag_seconds < self.warning_scheduler_lag_seconds:
+        warning_lag = _nonnegative(
+            self.warning_scheduler_lag_seconds, "warning_scheduler_lag_seconds"
+        )
+        critical_lag = _nonnegative(
+            self.critical_scheduler_lag_seconds, "critical_scheduler_lag_seconds"
+        )
+        if critical_lag < warning_lag:
             raise ValueError(
                 "critical scheduler lag must not be below warning scheduler lag"
             )
