@@ -1,0 +1,105 @@
+version: 1
+method: weighted-average-1-to-5
+measurement_basis: structural-only
+
+profiles:
+  external_business_api:
+    status: experiment-result
+    scope: Customer integrations, mobile/web clients, agents, and warehouse-edge HTTP access.
+    criteria:
+      - id: http_browser_ubiquity
+        weight: 20
+      - id: human_debuggability
+        weight: 15
+      - id: customer_tooling
+        weight: 15
+      - id: contract_codegen
+        weight: 10
+      - id: streaming
+        weight: 10
+      - id: wire_efficiency
+        weight: 10
+      - id: agent_tooling
+        weight: 10
+      - id: edge_proxy_compatibility
+        weight: 10
+    candidates:
+      rest-openapi:
+        scores:
+          http_browser_ubiquity: 5
+          human_debuggability: 5
+          customer_tooling: 5
+          contract_codegen: 4
+          streaming: 2
+          wire_efficiency: 3
+          agent_tooling: 5
+          edge_proxy_compatibility: 5
+      grpc:
+        scores:
+          http_browser_ubiquity: 2
+          human_debuggability: 2
+          customer_tooling: 3
+          contract_codegen: 5
+          streaming: 5
+          wire_efficiency: 5
+          agent_tooling: 3
+          edge_proxy_compatibility: 3
+    decision:
+      preferred: rest-openapi
+      minimum_margin: 0.25
+      conclusion: REST plus OpenAPI is the stronger candidate for the external business API scope.
+
+  internal_realtime_candidate:
+    status: hypothesis
+    scope: Internal service-to-service or high-frequency control paths where typed RPC and streaming may dominate HTTP ergonomics.
+    criteria:
+      - id: wire_efficiency
+        weight: 20
+      - id: bidirectional_streaming
+        weight: 20
+      - id: contract_codegen
+        weight: 15
+      - id: typed_contract
+        weight: 15
+      - id: polyglot_support
+        weight: 10
+      - id: browser_support
+        weight: 5
+      - id: human_debuggability
+        weight: 5
+      - id: proxy_compatibility
+        weight: 10
+    candidates:
+      rest-openapi:
+        scores:
+          wire_efficiency: 3
+          bidirectional_streaming: 2
+          contract_codegen: 4
+          typed_contract: 3
+          polyglot_support: 5
+          browser_support: 5
+          human_debuggability: 5
+          proxy_compatibility: 5
+      grpc:
+        scores:
+          wire_efficiency: 5
+          bidirectional_streaming: 5
+          contract_codegen: 5
+          typed_contract: 5
+          polyglot_support: 5
+          browser_support: 2
+          human_debuggability: 2
+          proxy_compatibility: 3
+    decision:
+      preferred: grpc
+      minimum_margin: 0.25
+      conclusion: gRPC is the stronger hypothesis for a separately scoped internal realtime contract, but runtime evidence is still required.
+
+unmeasured:
+  - production_latency
+  - sustained_throughput
+  - cpu_and_memory_cost
+  - connection_scale
+  - proxy_failure_behavior
+  - offline_recovery
+  - generated_code_maintenance_cost

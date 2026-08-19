@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package spotwo.wms.v1;
+
+service WarehouseApi {
+  rpc GetLocation(GetLocationRequest) returns (Location);
+  rpc GetHandlingUnit(GetHandlingUnitRequest) returns (HandlingUnit);
+  rpc ListInventoryPositions(ListInventoryPositionsRequest) returns (InventoryPositionList);
+  rpc CreateTask(CreateTaskRequest) returns (Task);
+  rpc GetTask(GetTaskRequest) returns (Task);
+}
+
+enum LocationType {
+  LOCATION_TYPE_UNSPECIFIED = 0;
+  LOCATION_TYPE_ZONE = 1;
+  LOCATION_TYPE_RACK = 2;
+  LOCATION_TYPE_LEVEL = 3;
+  LOCATION_TYPE_BIN = 4;
+  LOCATION_TYPE_STAGING = 5;
+  LOCATION_TYPE_DOCK = 6;
+}
+
+enum HandlingUnitType {
+  HANDLING_UNIT_TYPE_UNSPECIFIED = 0;
+  HANDLING_UNIT_TYPE_PALLET = 1;
+  HANDLING_UNIT_TYPE_TOTE = 2;
+  HANDLING_UNIT_TYPE_BIN = 3;
+  HANDLING_UNIT_TYPE_CARTON = 4;
+  HANDLING_UNIT_TYPE_CONTAINER = 5;
+}
+
+enum TaskKind {
+  TASK_KIND_UNSPECIFIED = 0;
+  TASK_KIND_MOVE_HANDLING_UNIT = 1;
+  TASK_KIND_PICK = 2;
+  TASK_KIND_PUTAWAY = 3;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_CREATED = 1;
+  TASK_STATUS_ASSIGNED = 2;
+  TASK_STATUS_IN_PROGRESS = 3;
+  TASK_STATUS_COMPLETED = 4;
+  TASK_STATUS_CANCELLED = 5;
+}
+
+message Location {
+  string id = 1;
+  string code = 2;
+  LocationType type = 3;
+  optional string parent_location_id = 4;
+}
+
+message HandlingUnit {
+  string id = 1;
+  HandlingUnitType type = 2;
+  optional string current_location_id = 3;
+}
+
+message InventoryPosition {
+  string item_id = 1;
+  string location_id = 2;
+  optional string handling_unit_id = 3;
+  double quantity = 4;
+}
+
+message InventoryPositionList {
+  repeated InventoryPosition positions = 1;
+}
+
+message Task {
+  string id = 1;
+  TaskKind kind = 2;
+  TaskStatus status = 3;
+  optional string source_location_id = 4;
+  string target_location_id = 5;
+  optional string handling_unit_id = 6;
+  string created_at = 7;
+}
+
+message GetLocationRequest {
+  string correlation_id = 1;
+  string location_id = 2;
+}
+
+message GetHandlingUnitRequest {
+  string correlation_id = 1;
+  string handling_unit_id = 2;
+}
+
+message ListInventoryPositionsRequest {
+  string correlation_id = 1;
+  optional string item_id = 2;
+  optional string location_id = 3;
+  optional string handling_unit_id = 4;
+}
+
+message CreateTaskRequest {
+  string correlation_id = 1;
+  string idempotency_key = 2;
+  TaskKind kind = 3;
+  optional string source_location_id = 4;
+  string target_location_id = 5;
+  optional string handling_unit_id = 6;
+}
+
+message GetTaskRequest {
+  string correlation_id = 1;
+  string task_id = 2;
+}

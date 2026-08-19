@@ -1,0 +1,84 @@
+version: 1
+service: WarehouseApi
+
+models:
+  Location:
+    fields: [id, code, type, parent_location_id]
+  HandlingUnit:
+    fields: [id, type, current_location_id]
+  InventoryPosition:
+    fields: [item_id, location_id, handling_unit_id, quantity]
+  Task:
+    fields: [id, kind, status, source_location_id, target_location_id, handling_unit_id, created_at]
+
+operations:
+  - id: get_location
+    semantic: Read one warehouse location by stable location identity.
+    rest:
+      method: GET
+      path: /v1/locations/{location_id}
+      operation_id: getLocation
+    grpc:
+      method: GetLocation
+    mutating: false
+    idempotency: not-required
+
+  - id: get_handling_unit
+    semantic: Read one handling unit by stable handling-unit identity.
+    rest:
+      method: GET
+      path: /v1/handling-units/{handling_unit_id}
+      operation_id: getHandlingUnit
+    grpc:
+      method: GetHandlingUnit
+    mutating: false
+    idempotency: not-required
+
+  - id: list_inventory_positions
+    semantic: Query inventory positions by explicit warehouse dimensions.
+    rest:
+      method: GET
+      path: /v1/inventory/positions
+      operation_id: listInventoryPositions
+    grpc:
+      method: ListInventoryPositions
+    mutating: false
+    idempotency: not-required
+
+  - id: create_task
+    semantic: Create one warehouse execution task without duplicate side effects on retry.
+    rest:
+      method: POST
+      path: /v1/tasks
+      operation_id: createTask
+      idempotency_key: Idempotency-Key
+    grpc:
+      method: CreateTask
+      idempotency_key_field: idempotency_key
+    mutating: true
+    idempotency: required
+
+  - id: get_task
+    semantic: Read one warehouse execution task by stable task identity.
+    rest:
+      method: GET
+      path: /v1/tasks/{task_id}
+      operation_id: getTask
+    grpc:
+      method: GetTask
+    mutating: false
+    idempotency: not-required
+
+errors:
+  invalid_argument:
+    http_status: 400
+    grpc_status: INVALID_ARGUMENT
+  not_found:
+    http_status: 404
+    grpc_status: NOT_FOUND
+  conflict:
+    http_status: 409
+    grpc_status: ABORTED
+  unavailable:
+    http_status: 503
+    grpc_status: UNAVAILABLE

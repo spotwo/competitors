@@ -28,6 +28,7 @@ on:
       - 'kernel/**'
       - 'operations/**'
       - 'decisions/**'
+      - 'misc/**'
       - 'schema/**'
       - 'scripts/**'
       - 'bin/**'

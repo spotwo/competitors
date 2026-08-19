@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  echo "Python interpreter not found: $PYTHON_BIN" >&2
+  exit 1
+fi
+
+create_venv() {
+  local name="$1"
+  local requirements="$2"
+  "$PYTHON_BIN" -m venv "$TMP/$name"
+  PIP_DISABLE_PIP_VERSION_CHECK=1 "$TMP/$name/bin/python" -m pip install --quiet -r "$requirements"
+}
+
+echo "Validating semantic parity"
+create_venv static "$ROOT/requirements.txt"
+"$TMP/static/bin/python" "$ROOT/scripts/validate_misc_api_contract_lab.py"
+"$TMP/static/bin/python" "$ROOT/scripts/generate_misc_api_contract_lab.py" --check
+
+echo "Generating OpenAPI Python client"
+create_venv openapi-client "$ROOT/misc/api-contract-lab/requirements-openapi-client.txt"
+"$TMP/openapi-client/bin/openapi-python-client" generate \
+  --path "$ROOT/misc/api-contract-lab/openapi.yaml" \
+  --output-path "$TMP/generated-openapi-client"
+
+echo "Generating OpenAPI FastAPI server skeleton"
+create_venv openapi-server "$ROOT/misc/api-contract-lab/requirements-openapi-server.txt"
+"$TMP/openapi-server/bin/fastapi-codegen" \
+  --input "$ROOT/misc/api-contract-lab/openapi.yaml" \
+  --output "$TMP/generated-openapi-server" \
+  --output-model-type pydantic_v2.BaseModel
+
+echo "Generating gRPC Python client and server stubs"
+create_venv grpc "$ROOT/misc/api-contract-lab/requirements-grpc.txt"
+mkdir -p "$TMP/generated-grpc"
+"$TMP/grpc/bin/python" -m grpc_tools.protoc \
+  -I"$ROOT/misc/api-contract-lab" \
+  --python_out="$TMP/generated-grpc" \
+  --pyi_out="$TMP/generated-grpc" \
+  --grpc_python_out="$TMP/generated-grpc" \
+  "$ROOT/misc/api-contract-lab/spotwo.proto"
+
+test -f "$TMP/generated-grpc/spotwo_pb2.py"
+test -f "$TMP/generated-grpc/spotwo_pb2.pyi"
+test -f "$TMP/generated-grpc/spotwo_pb2_grpc.py"
+
+test "$(find "$TMP/generated-openapi-client" -type f -name '*.py' | wc -l | tr -d ' ')" -gt 0
+test "$(find "$TMP/generated-openapi-server" -type f -name '*.py' | wc -l | tr -d ' ')" -gt 0
+
+"$TMP/openapi-client/bin/python" -m compileall -q "$TMP/generated-openapi-client"
+"$TMP/openapi-server/bin/python" -m compileall -q "$TMP/generated-openapi-server"
+"$TMP/grpc/bin/python" -m compileall -q "$TMP/generated-grpc"
+
+echo "MISC API contract codegen smoke test passed"
