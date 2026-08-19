@@ -9,7 +9,7 @@ Competitor adoption and open-source popularity are evidence signals, not automat
 | Disposition | Count | Meaning |
 |---|---:|---|
 | `adopt` | 3 | Use as the current default inside the stated scope. |
-| `trial` | 8 | Build or continue a bounded prototype before adoption. |
+| `trial` | 9 | Build or continue a bounded prototype before adoption. |
 | `watch` | 5 | Keep as a researched option or architecture reference without committing runtime dependency. |
 | `reject` | 1 | Do not use inside the stated scope; rejection does not extend beyond that scope. |
 
@@ -21,6 +21,7 @@ Competitor adoption and open-source popularity are evidence signals, not automat
 | **PostgreSQL** (`postgresql`) | `database` | `adopt` | `high` | `repo:2 / oss:0 / market:1` | `continue` |
 | **NATS JetStream** (`nats-jetstream`) | `event-transport` | `adopt` | `high` | `repo:3 / oss:0 / market:0` | `continue` |
 | **gRPC** (`grpc-internal`) | `api-contract` | `trial` | `medium` | `repo:3 / oss:0 / market:0` | `benchmark` |
+| **Signed CloudEvents webhooks** (`signed-cloudevents-webhooks`) | `api-contract` | `trial` | `medium` | `repo:6 / oss:0 / market:2` | `prototype` |
 | **Apache PLC4X** (`apache-plc4x`) | `industrial-connectivity` | `trial` | `medium` | `repo:0 / oss:1 / market:0` | `prototype` |
 | **MQTT + Sparkplug** (`sparkplug-mqtt`) | `industrial-telemetry` | `trial` | `medium` | `repo:0 / oss:1 / market:0` | `prototype` |
 | **GS1 EPCIS** (`gs1-epcis`) | `logistics-standard` | `trial` | `medium` | `repo:0 / oss:1 / market:0` | `prototype` |
