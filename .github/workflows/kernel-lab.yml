@@ -5,6 +5,9 @@ on:
     paths:
       - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
+      - 'operations/event-pipelines/**'
+      - 'schema/event-pipeline-deployment.schema.json'
+      - 'scripts/validate_event_pipeline_deployments.py'
       - 'bin/check-kernel-lab'
       - 'bin/run-kernel-outbox-publisher'
       - 'bin/inspect-kernel-outbox'
@@ -25,6 +28,7 @@ on:
       - 'bin/run-kernel-event-pipeline-canary-consumer'
       - 'bin/inspect-kernel-event-pipeline-sli'
       - 'bin/run-kernel-event-pipeline-fault-drills'
+      - 'bin/inspect-kernel-event-pipeline-readiness'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -55,6 +59,8 @@ on:
       - 'decisions/domain/0041-event-pipeline-canary-latency-slo.md'
       - 'decisions/domain/0042-event-pipeline-canary-sli-burn-rate.md'
       - 'decisions/domain/0043-event-pipeline-fault-injection-recovery-drills.md'
+      - 'decisions/domain/0044-external-event-pipeline-probe-watchdog.md'
+      - 'decisions/domain/0045-event-pipeline-deployment-readiness-gate.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -69,6 +75,9 @@ on:
     paths:
       - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
+      - 'operations/event-pipelines/**'
+      - 'schema/event-pipeline-deployment.schema.json'
+      - 'scripts/validate_event_pipeline_deployments.py'
       - 'bin/check-kernel-lab'
       - 'bin/run-kernel-outbox-publisher'
       - 'bin/inspect-kernel-outbox'
@@ -89,6 +98,7 @@ on:
       - 'bin/run-kernel-event-pipeline-canary-consumer'
       - 'bin/inspect-kernel-event-pipeline-sli'
       - 'bin/run-kernel-event-pipeline-fault-drills'
+      - 'bin/inspect-kernel-event-pipeline-readiness'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -119,6 +129,8 @@ on:
       - 'decisions/domain/0041-event-pipeline-canary-latency-slo.md'
       - 'decisions/domain/0042-event-pipeline-canary-sli-burn-rate.md'
       - 'decisions/domain/0043-event-pipeline-fault-injection-recovery-drills.md'
+      - 'decisions/domain/0044-external-event-pipeline-probe-watchdog.md'
+      - 'decisions/domain/0045-event-pipeline-deployment-readiness-gate.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -166,6 +178,9 @@ jobs:
           if git diff --quiet HEAD^1 HEAD -- \
             kernel \
             labs/postgres-inventory-kernel \
+            operations/event-pipelines \
+            schema/event-pipeline-deployment.schema.json \
+            scripts/validate_event_pipeline_deployments.py \
             bin/check-kernel-lab \
             bin/run-kernel-outbox-publisher \
             bin/inspect-kernel-outbox \
@@ -186,6 +201,7 @@ jobs:
             bin/run-kernel-event-pipeline-canary-consumer \
             bin/inspect-kernel-event-pipeline-sli \
             bin/run-kernel-event-pipeline-fault-drills \
+            bin/inspect-kernel-event-pipeline-readiness \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -216,6 +232,8 @@ jobs:
             decisions/domain/0041-event-pipeline-canary-latency-slo.md \
             decisions/domain/0042-event-pipeline-canary-sli-burn-rate.md \
             decisions/domain/0043-event-pipeline-fault-injection-recovery-drills.md \
+            decisions/domain/0044-external-event-pipeline-probe-watchdog.md \
+            decisions/domain/0045-event-pipeline-deployment-readiness-gate.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
