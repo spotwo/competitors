@@ -280,6 +280,26 @@ class TopologyContractInspector:
         )
 
 
+def pipeline_topology_migration_mapping(
+    registry_data: Mapping[str, Any],
+    pipeline_id: str,
+) -> Mapping[str, Any] | None:
+    pipelines = registry_data.get("pipelines")
+    if not isinstance(pipelines, list):
+        raise ValueError("pipelines must be an array")
+    for item in pipelines:
+        if isinstance(item, Mapping) and item.get("id") == pipeline_id:
+            value = item.get("topology_migration")
+            if value is None:
+                return None
+            if not isinstance(value, Mapping):
+                raise ValueError(
+                    f"pipeline {pipeline_id} topology_migration must be an object"
+                )
+            return value
+    raise KeyError(pipeline_id)
+
+
 def render_prometheus(report: TopologyContractReport, *, pipeline_id: str) -> str:
     def escape(value: str) -> str:
         return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
