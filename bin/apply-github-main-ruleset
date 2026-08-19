@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RULESET="$ROOT/.github/rulesets/main.json"
+REPOSITORY="${1:-spotwo/competitors}"
+API_VERSION="2026-03-10"
+
+command -v gh >/dev/null 2>&1 || {
+  echo "gh CLI is required" >&2
+  exit 2
+}
+
+gh auth status >/dev/null
+python "$ROOT/scripts/validate_github_main_ruleset.py"
+
+name="$(python - "$RULESET" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+print(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["name"])
+PY
+)"
+
+ruleset_id="$(
+  gh api \
+    -H "X-GitHub-Api-Version: $API_VERSION" \
+    "repos/$REPOSITORY/rulesets?per_page=100" \
+    --jq ".[] | select(.name == \"$name\") | .id" \
+    | head -n 1
+)"
+
+if [[ -n "$ruleset_id" ]]; then
+  echo "Updating ruleset $ruleset_id ($name) on $REPOSITORY" >&2
+  gh api \
+    --method PUT \
+    -H "X-GitHub-Api-Version: $API_VERSION" \
+    "repos/$REPOSITORY/rulesets/$ruleset_id" \
+    --input "$RULESET" >/dev/null
+else
+  echo "Creating ruleset $name on $REPOSITORY" >&2
+  gh api \
+    --method POST \
+    -H "X-GitHub-Api-Version: $API_VERSION" \
+    "repos/$REPOSITORY/rulesets" \
+    --input "$RULESET" >/dev/null
+fi
+
+echo "Active rules for main:" >&2
+gh api \
+  -H "X-GitHub-Api-Version: $API_VERSION" \
+  "repos/$REPOSITORY/rules/branches/main" \
+  --jq '.[] | [.ruleset_id, .type] | @tsv'
