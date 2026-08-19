@@ -12,6 +12,8 @@ A pipeline can remain superficially healthy while its deployed topology has drif
 
 These are deployment-contract failures, not transient business backlog. They must be visible independently from current stream and consumer health.
 
+There is also an isolation requirement. The Position projector accepts only `inventory.position.changed`. If its durable were filtered to the entire publisher prefix, it would also receive the synthetic `health_check.ping` event used by the dedicated canary path. The topology contract therefore protects both configuration correctness and business/canary traffic separation.
+
 ## Decision
 
 The canonical event pipeline registry SHALL include an explicit `topology` contract for every pipeline.
@@ -39,7 +41,14 @@ The first contract covers:
 
 The same consumer fields are checked, with an exact filter restricted to the synthetic canary subject.
 
-The business and canary consumers remain explicit-ACK pull consumers. The canary durable remains isolated from the business durable.
+The business and canary consumers remain explicit-ACK pull consumers. Their durable identities and subject scopes remain isolated.
+
+For the inventory position projection, the canonical filters are:
+
+```text
+business  spotwo.wms.events.inventory.position.changed
+canary    spotwo.wms.events.health_check.ping
+```
 
 ## Read-only inspection
 
@@ -81,8 +90,9 @@ This is intentionally stricter than current health. A consumer can have zero bac
 
 The validator additionally requires:
 
-- the stream subject contract to include `<subject_prefix>.>`;
-- the business durable filter to equal `<subject_prefix>.>`;
+- the stream subject contract to include `<subject_prefix>.>` so publisher routes are captured;
+- the business durable filter to stay under the publisher prefix;
+- the business durable filter not to match the synthetic canary subject;
 - the canary durable filter to equal `<subject_prefix>.health_check.ping`;
 - both durables to remain pull consumers;
 - both durables to use explicit ACK;
@@ -105,6 +115,7 @@ JSON output may include expected and observed configuration values for operator 
 - `READY` now means the live broker topology matches the reviewed deployment contract.
 - Accidental console changes and provisioning drift become machine-detectable.
 - Stream and durable configuration is reviewable in Git without storing secrets.
+- Synthetic canary traffic cannot silently enter the business Position projector through an over-broad declared filter.
 - Current health and desired topology remain separate signals, avoiding false equivalence between healthy backlog and correct configuration.
 
 ### Trade-offs
