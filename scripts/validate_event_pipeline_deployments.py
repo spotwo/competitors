@@ -15,6 +15,10 @@ LAB = ROOT / "labs" / "postgres-inventory-kernel"
 sys.path.insert(0, str(LAB))
 
 from event_pipeline_readiness import EventPipelineDeploymentRegistry  # noqa: E402
+from event_pipeline_topology_config import (  # noqa: E402
+    DeploymentTopologyConfig,
+    pipeline_topology_mapping,
+)
 
 
 def main() -> int:
@@ -39,7 +43,10 @@ def main() -> int:
 
     try:
         registry = EventPipelineDeploymentRegistry.from_mapping(registry_data)
-    except ValueError as exc:
+        for spec in registry.pipelines:
+            topology = pipeline_topology_mapping(registry_data, spec.pipeline_id)
+            DeploymentTopologyConfig.from_mapping(topology).expectation(spec)
+    except (KeyError, ValueError) as exc:
         print(f"event pipeline deployment invariant error: {exc}", file=sys.stderr)
         return 1
 
