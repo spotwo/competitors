@@ -77,12 +77,15 @@ decisions:
   - id: rest-openapi
     name: REST + OpenAPI
     category: api-contract
-    scope: Default external HTTP API contract style for Spotwo business integrations; not a decision for every internal service-to-service call.
-    disposition: trial
-    confidence: medium
-    rationale: REST APIs are repeatedly visible in verified WMS products and open-source warehouse systems, and OpenAPI gives Spotwo a language-neutral contract that can be generated, validated, and consumed by agents and customers. The repository has not yet completed a dedicated REST versus gRPC contract benchmark, so this remains a trial rather than a final platform-wide mandate.
+    scope: Canonical default external HTTP API contract style for Spotwo business integrations, web/mobile clients, agents, and warehouse-edge HTTP access; not a mandate for every internal service call.
+    disposition: adopt
+    confidence: high
+    rationale: A Spotwo-owned contract lab now validates semantic parity between REST/OpenAPI and gRPC, proves client/server code generation for both, and gives REST plus OpenAPI a 4.40 versus 3.25 structural result for the external business API profile. Verified competitor usage supports the direction but is not the authority for adoption.
     evidence:
       repository_refs:
+        - decisions/domain/0059-external-api-contract-selection.md
+        - misc/api-contract-lab/comparison.yml
+        - misc/api-contract-lab/openapi.yaml
         - technology-intelligence/matrix.csv
         - technology-intelligence/sources.csv
       open_source_project_refs: []
@@ -93,17 +96,47 @@ decisions:
         - erpnext/stock-and-warehouse
     constraints:
       - Public API compatibility and domain semantics must be versioned independently of implementation language or framework.
-      - Internal high-frequency control paths may use another protocol after a measured comparison.
+      - Retriable mutating operations that can duplicate effects require an explicit idempotency mechanism.
+      - Stable machine-readable error codes must remain separate from human-readable error text and support correlation identity.
+      - Internal high-frequency or streaming paths may use another protocol after a measured, separately scoped decision.
     alternatives:
       - gRPC
       - GraphQL
       - Async event contracts
     next_action:
-      type: prototype
-      description: Define a small canonical WMS REST/OpenAPI contract and benchmark ergonomics, versioning, generated clients, and agent tooling against a gRPC equivalent.
+      type: continue
+      description: Use OpenAPI 3.1 as the executable contract for the first canonical product API slice and keep code generation and compatibility checks in CI.
     revisit_triggers:
-      - Internal latency or streaming requirements make HTTP request-response semantics a poor fit.
+      - Measured payload, latency, or connection constraints make HTTP and JSON unsuitable for an important external profile.
       - Customer integration evidence strongly favors another public contract style.
+
+  - id: grpc-internal
+    name: gRPC
+    category: api-contract
+    scope: Candidate contract for internal service-to-service or realtime/control paths where typed RPC, wire efficiency, or streaming may dominate ordinary HTTP ergonomics.
+    disposition: trial
+    confidence: medium
+    rationale: The shared API contract lab gives gRPC a 4.50 versus 3.55 structural result for the internal realtime profile and proves Python client/server stub generation, but it does not yet measure production latency, throughput, resource cost, connection scale, proxy failures, or offline recovery.
+    evidence:
+      repository_refs:
+        - decisions/domain/0059-external-api-contract-selection.md
+        - misc/api-contract-lab/comparison.yml
+        - misc/api-contract-lab/spotwo.proto
+      open_source_project_refs: []
+      competitor_product_refs: []
+    constraints:
+      - Do not mirror every REST endpoint through gRPC without a concrete internal requirement.
+      - Keep business-domain semantics independent from Protocol Buffer wire shapes and generated classes.
+      - Adoption requires a realistic runtime benchmark for the target call path.
+    alternatives:
+      - REST + OpenAPI
+      - NATS request/reply or asynchronous domain events where messaging semantics fit better
+    next_action:
+      type: benchmark
+      description: Benchmark a realistic high-frequency or streaming internal call path against the REST baseline before adopting gRPC in production.
+    revisit_triggers:
+      - A real internal path requires high-frequency unary calls, client/server streaming, or bidirectional streaming.
+      - Runtime measurements show no material benefit over the simpler HTTP contract for the intended path.
 
   - id: gs1-epcis
     name: GS1 EPCIS
