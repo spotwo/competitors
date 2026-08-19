@@ -7,17 +7,17 @@ This view turns the Architecture Boundary Map into a bounded research backlog. E
 ## Summary
 
 - Boundaries: **10**
-- Coverage: **2 covered**, **7 partial**, **1 missing**
+- Coverage: **2 covered**, **8 partial**, **0 missing**
 - Priority: **4 P0**, **4 P1**, **2 P2**
-- Explicit gaps: **32**
-- Research targets: **54**
+- Explicit gaps: **33**
+- Research targets: **48**
 
 ## Coverage matrix
 
 | Priority | Boundary | Contract | Overall | Standards | Open source | Commercial | Executable | Gaps | Targets |
 |---|---|---|---|---|---|---|---|---:|---:|
-| `P0` | **External asynchronous integration** (`external-async-integration`) | `unresolved` | `missing` | `missing` | `missing` | `missing` | `missing` | 4 | 11 |
 | `P0` | **Spotwo Edge control and synchronization** (`edge-control-and-sync`) | `unresolved` | `partial` | `missing` | `partial` | `missing` | `missing` | 4 | 8 |
+| `P0` | **External asynchronous integration** (`external-async-integration`) | `candidate` | `partial` | `covered` | `covered` | `partial` | `covered` | 5 | 5 |
 | `P0` | **PLC and machine control** (`plc-control`) | `candidate` | `partial` | `partial` | `covered` | `missing` | `missing` | 4 | 12 |
 | `P0` | **AMR and AGV fleet control** (`robot-fleet-control`) | `candidate` | `partial` | `partial` | `covered` | `missing` | `missing` | 3 | 7 |
 | `P1` | **Device and machine telemetry** (`device-telemetry`) | `candidate` | `partial` | `partial` | `covered` | `missing` | `missing` | 4 | 4 |
@@ -28,36 +28,6 @@ This view turns the Architecture Boundary Map into a bounded research backlog. E
 | `P2` | **Internal domain event backbone** (`internal-domain-event-backbone`) | `canonical` | `covered` | `not-required` | `partial` | `not-required` | `covered` | 1 | 1 |
 
 ## P0 research queue
-
-### External asynchronous integration (`external-async-integration`)
-
-**Coverage:** `missing`  
-**Contract:** `unresolved` - Unselected external event, webhook, subscription, or document-delivery contract
-
-The boundary is explicit but the repository intentionally has not selected a public asynchronous contract. Internal JetStream topology is not acceptable evidence for a customer-facing event contract.
-
-**Standards**: `missing` (useful)
-- Gap: Compare event-envelope and contract-description standards without assuming either is the delivery mechanism.
-- Target: CloudEvents
-- Target: AsyncAPI
-- Target: standards-based event subscription profiles used by logistics platforms
-
-**Open Source**: `missing` (required)
-- Gap: Capture at least two maintained implementations with explicit retry, replay, and dead-letter semantics.
-- Target: webhook delivery engines with replay and signature semantics
-- Target: durable subscription and pull-feed reference implementations
-
-**Commercial**: `missing` (required)
-- Gap: Capture product-specific public evidence for delivery guarantees, replay, subscription scope, and compatibility.
-- Target: Manhattan Active event or webhook integration model
-- Target: Blue Yonder integration event model
-- Target: SAP EWM event and webhook surfaces
-- Target: Logiwa outbound event model
-
-**Executable**: `missing` (required)
-- Gap: Compare duplicate delivery, replay windows, acknowledgement, rate limiting, and dead-letter ownership.
-- Target: signed webhook lab
-- Target: durable pull-feed lab
 
 ### Spotwo Edge control and synchronization (`edge-control-and-sync`)
 
@@ -85,6 +55,31 @@ The repository has useful edge-management references, but no selected Spotwo con
 **Executable**: `missing` (required)
 - Gap: Exercise enrollment, credential rotation, stale desired state, offline execution evidence, and conflict resolution.
 - Target: fake Edge enrollment and reconnect lab
+
+### External asynchronous integration (`external-async-integration`)
+
+**Coverage:** `partial`  
+**Contract:** `candidate` - CloudEvents 1.0 structured JSON over signed HTTPS webhooks, described with AsyncAPI 3.1.0
+
+The public asynchronous boundary now has a candidate signed CloudEvents webhook contract, captured standards and implementation references, and executable durable-delivery evidence. Commercial evidence remains incomplete and production authorization, network, backpressure, diagnostics, retention, and pull-recovery questions are still open.
+
+**Standards**: `covered` (useful)
+- Gap: Define the production compatibility and deprecation policy for public event types and payloads.
+
+**Open Source**: `covered` (required)
+- Gap: Keep Svix and Convoy as implementation references without importing their product boundaries automatically.
+
+**Commercial**: `partial` (required)
+- Gap: Capture at least one additional WMS product with explicit acknowledgement, duplicate, replay, authorization, or compatibility semantics comparable to the Manhattan evidence.
+- Target: Blue Yonder integration event model
+- Target: SAP EWM event and webhook surfaces
+- Target: Logiwa outbound event model
+
+**Executable**: `covered` (required)
+- Gap: Prove endpoint ownership, scoped authorization, secret-manager integration, rate limiting, backpressure, diagnostics, retention, observability, and SLO behavior with real HTTP delivery.
+- Gap: Decide whether a pull-feed recovery surface is required in addition to push webhooks.
+- Target: real HTTP/TLS delivery and failure lab
+- Target: durable pull-feed recovery comparison
 
 ### PLC and machine control (`plc-control`)
 

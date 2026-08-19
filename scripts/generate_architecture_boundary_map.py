@@ -93,7 +93,7 @@ def render() -> str:
         "        v",
         "Spotwo application + canonical domain",
         "        |-- NATS JetStream domain events --> internal consumers / Edge consumers",
-        "        |-- [UNRESOLVED] external async --> customers / partners",
+        "        |-- signed CloudEvents webhook candidate --> customers / partners",
         "        |-- GS1 EPCIS candidate ---------> visibility consumers",
         "        |-- OR-Tools candidate ----------> optimization",
         "        |-- real/sim executor port ------> execution",

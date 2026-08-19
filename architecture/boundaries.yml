@@ -121,12 +121,14 @@ boundaries:
     from: Spotwo domains
     to: Customer and partner systems outside the Spotwo trust domain
     contract:
-      status: unresolved
-      mechanism: Unselected external event, webhook, subscription, or document-delivery contract
-      technology_decision_ref: null
+      status: candidate
+      mechanism: CloudEvents 1.0 structured JSON over signed HTTPS webhooks, described with AsyncAPI 3.1.0
+      technology_decision_ref: signed-cloudevents-webhooks
       rationale: >-
-        Internal NATS topology must not leak into customer integration by default. The public asynchronous boundary needs
-        its own compatibility, delivery, authentication, replay, and subscription semantics before a mechanism is selected.
+        The contract and durable PostgreSQL delivery labs now prove enough public identity, signing, retry, replay,
+        dead-letter, and crash-recovery semantics to select signed CloudEvents webhooks as the candidate outbound
+        asynchronous contract without exposing internal NATS topology. Production adoption still requires real network,
+        authorization, rate-limit, diagnostics, and compatibility evidence.
     flow:
       direction: outbound
       interaction: async-notification
@@ -137,29 +139,41 @@ boundaries:
     state_ownership:
       authoritative:
         - Spotwo domains own the facts being projected.
-        - External systems own their acknowledgement and downstream processing state.
+        - Spotwo owns durable delivery state, retry history, dead-letter state, and replay generations.
+        - External systems own their acknowledgement and downstream processing state after delivery.
       forbidden:
         - External consumers must not depend on internal stream names, durable identities, or broker retention settings.
+        - A customer HTTP endpoint must not become part of the canonical warehouse transaction boundary.
     reliability:
-      retry: Delivery retry policy must be explicit and bounded.
-      idempotency: External event identity must support duplicate detection.
-      ordering: Any ordering guarantee must be documented per external contract.
-      offline_behavior: External unavailability must not block core warehouse transactions; delivery requires durable buffering or replay semantics.
+      retry: Network failures, HTTP 408, 425, 429, and 5xx responses are bounded retry cases; retry budget exhaustion becomes durable dead-letter state.
+      idempotency: Stable public CloudEvents id supports duplicate detection across ordinary retries and explicit replay generations.
+      ordering: Delivery is at-least-once and duplicate-capable with no global ordering guarantee; stronger ordering requires a separately documented contract.
+      offline_behavior: External unavailability must not block core warehouse transactions; durable delivery buffering, lease recovery, and explicit replay preserve delivery intent.
     security:
       trust_boundary: Spotwo to customer or partner network.
-      authentication: Unresolved; must support independently revocable integration credentials.
-      authorization: Subscription scope must be limited to tenant, site, event type, and resource permissions.
-    versioning: Public event compatibility and deprecation rules are unresolved and must be independent from internal broker topology.
-    simulation: Delivery adapters should be testable against deterministic fake consumers.
-    standards: []
+      authentication: The candidate signs each delivery with an independently rotatable subscription secret reference/version; production endpoint ownership and credential lifecycle remain to be proven.
+      authorization: Subscription scope must be limited to tenant, site, event type, and resource permissions before production adoption.
+    versioning: Public event identity, event types, and payload compatibility are independent from internal broker topology; AsyncAPI describes the candidate contract while production deprecation policy remains open.
+    simulation: Delivery adapters must remain testable against deterministic fake consumers, lease expiry, retries, replay, and signature failures.
+    standards:
+      - CloudEvents 1.0
+      - AsyncAPI 3.1.0
+      - Standard Webhooks 1.0
     evidence:
       repository_refs:
-        - decisions/domain/0059-external-api-contract-selection.md
-      technology_decision_refs: []
+        - decisions/domain/0063-trial-signed-cloudevents-webhooks-for-external-events.md
+        - decisions/domain/0064-prove-durable-external-webhook-delivery.md
+        - decisions/domain/0065-promote-external-async-integration-to-candidate.md
+        - misc/external-async-contract-lab/contract.yml
+        - labs/postgres-inventory-kernel/EXTERNAL_WEBHOOK_DELIVERY.md
+        - labs/postgres-inventory-kernel/sql/029_external_webhook_delivery.sql
+      technology_decision_refs:
+        - signed-cloudevents-webhooks
       open_source_project_refs: []
     research_gaps:
-      - Compare webhooks, managed event subscriptions, pull feeds, and standards-based event projections.
-      - Define replay windows, signatures, acknowledgement semantics, rate limits, and dead-letter ownership.
+      - Prove real HTTP/TLS failures, endpoint ownership, scoped authorization, secret-manager integration, rotation, and revocation.
+      - Define rate limiting, backpressure, customer-visible diagnostics, retention, observability, and delivery SLOs.
+      - Decide whether durable pull-feed recovery is required and define public event compatibility/deprecation policy.
 
   - id: edge-control-and-sync
     name: Spotwo Edge control and synchronization

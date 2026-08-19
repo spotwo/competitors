@@ -24,12 +24,12 @@ class ArchitectureBoundaryMapTests(unittest.TestCase):
         values.update(overrides)
         return argparse.Namespace(**values)
 
-    def test_initial_map_has_expected_contract_statuses(self):
+    def test_map_has_expected_contract_statuses(self):
         counts = {"canonical": 0, "candidate": 0, "unresolved": 0}
         for boundary in self.boundaries:
             counts[boundary["contract"]["status"]] += 1
         self.assertEqual(10, len(self.boundaries))
-        self.assertEqual({"canonical": 2, "candidate": 6, "unresolved": 2}, counts)
+        self.assertEqual({"canonical": 2, "candidate": 7, "unresolved": 1}, counts)
 
     def test_canonical_contracts_are_rest_and_nats(self):
         canonical = {
@@ -44,6 +44,13 @@ class ArchitectureBoundaryMapTests(unittest.TestCase):
             },
             canonical,
         )
+
+    def test_external_async_candidate_uses_signed_cloudevents_webhooks(self):
+        boundary = next(item for item in self.boundaries if item["id"] == "external-async-integration")
+        self.assertEqual("candidate", boundary["contract"]["status"])
+        self.assertEqual("signed-cloudevents-webhooks", boundary["contract"]["technology_decision_ref"])
+        self.assertIn("CloudEvents 1.0", boundary["standards"])
+        self.assertIn("AsyncAPI 3.1.0", boundary["standards"])
 
     def test_unresolved_contracts_do_not_guess_primary_technology(self):
         unresolved = [item for item in self.boundaries if item["contract"]["status"] == "unresolved"]

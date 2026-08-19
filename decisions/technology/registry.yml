@@ -110,6 +110,41 @@ decisions:
       - Measured payload, latency, or connection constraints make HTTP and JSON unsuitable for an important external profile.
       - Customer integration evidence strongly favors another public contract style.
 
+  - id: signed-cloudevents-webhooks
+    name: Signed CloudEvents webhooks
+    category: api-contract
+    scope: Candidate default public outbound asynchronous notification contract for Spotwo customer and partner integrations; separate from internal NATS transport and synchronous REST APIs.
+    disposition: trial
+    confidence: medium
+    rationale: The public contract lab proves CloudEvents 1.0 structured JSON, AsyncAPI 3.1 description, Standard Webhooks-style signing, stable duplicate-detection identity, and bounded retry classification. The PostgreSQL runtime lab then proves durable delivery generations, worker lease recovery, stale-worker fencing, deterministic retry, dead-letter state, replay, pause behavior, and signing-secret version snapshots. This is enough evidence for a candidate boundary but not production adoption.
+    evidence:
+      repository_refs:
+        - decisions/domain/0063-trial-signed-cloudevents-webhooks-for-external-events.md
+        - decisions/domain/0064-prove-durable-external-webhook-delivery.md
+        - decisions/domain/0065-promote-external-async-integration-to-candidate.md
+        - misc/external-async-contract-lab/contract.yml
+        - labs/postgres-inventory-kernel/EXTERNAL_WEBHOOK_DELIVERY.md
+        - labs/postgres-inventory-kernel/sql/029_external_webhook_delivery.sql
+      open_source_project_refs: []
+      competitor_product_refs:
+        - manhattan-associates/activewarehouse
+        - oracle/warehouse-management-cloud
+    constraints:
+      - Customer-visible event identity, event types, retry, replay, and signing semantics must remain independent from internal NATS subjects, streams, durable consumers, retention, and topology migrations.
+      - Delivery is explicitly at-least-once and duplicate-capable; do not claim exactly-once HTTP effects or global ordering.
+      - A stable public CloudEvents id remains the consumer deduplication key across ordinary retries and explicit replay generations.
+      - Production adoption requires real HTTP/TLS failure tests, endpoint ownership and authorization, secret-manager integration, rate limiting, diagnostics, retention, observability, and compatibility policy.
+    alternatives:
+      - Managed customer event subscriptions such as cloud Pub/Sub
+      - Durable pull-feed recovery API
+      - Partner-specific asynchronous adapters
+    next_action:
+      type: prototype
+      description: Extend the durable delivery lab through real HTTP/TLS endpoints, scoped authorization, secret-manager integration, rate limiting, diagnostics, and a bounded pull-feed recovery comparison.
+    revisit_triggers:
+      - Target customers require pull-based recovery or managed broker subscriptions as a first-class integration surface.
+      - Real network, authorization, or backpressure tests show that the candidate cannot meet required delivery SLOs safely.
+
   - id: grpc-internal
     name: gRPC
     category: api-contract
