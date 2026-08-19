@@ -12,7 +12,7 @@ The map answers a different question from the technology decision registry. A te
 
 Unresolved is a valid architecture state. It is better than converting a plausible guess into a hidden dependency.
 
-## Querying
+## Querying boundaries
 
 ```bash
 bin/query-boundary
@@ -27,15 +27,50 @@ bin/query-boundary --gap enrollment --format ndjson
 
 `--technology` searches only the contract mechanism and explicit technology/open-source references. It does not treat arbitrary research-gap prose as evidence that a technology belongs to the boundary.
 
-## Human-readable view
+## Reference coverage backlog
 
-`matrices/spotwo-architecture-boundaries.md` is generated from the registry:
+`architecture/coverage-gaps.yml` is the canonical machine-readable backlog for the **Reference Coverage Gaps** step of the research strategy.
+
+It does not select technologies. It records whether each boundary has enough evidence across four separate lenses:
+
+- `standards`;
+- `open_source`;
+- `commercial`;
+- `executable`.
+
+Each lens is `required`, `useful`, or `not-required` and has a status of `covered`, `partial`, `missing`, or `not-required`.
+
+Evidence and research targets are structurally separate. A target such as `AutoStore`, `open62541`, or `AsyncAPI` means "research this next". It does not mean the repository has verified a claim about that target.
+
+Query the backlog with:
+
+```bash
+bin/query-coverage
+bin/query-coverage --priority P0
+bin/query-coverage --overall missing
+bin/query-coverage --lens executable --lens-status missing
+bin/query-coverage --target open62541
+bin/query-coverage --gap reconnect --format json
+bin/query-coverage --contract-status unresolved --format ndjson
+```
+
+The initial P0 research queue is deliberately bounded to external asynchronous integration, Spotwo Edge control/synchronization, PLC/machine control, and AMR/AGV fleet control.
+
+## Human-readable views
+
+`matrices/spotwo-architecture-boundaries.md` is generated from the boundary registry:
 
 ```bash
 python scripts/generate_architecture_boundary_map.py
 ```
 
-The repository validator checks that the generated view is current.
+`matrices/spotwo-architecture-reference-coverage.md` is generated from the coverage backlog:
+
+```bash
+python scripts/generate_architecture_coverage.py
+```
+
+The repository validator checks that both generated views are current.
 
 ## Evidence and ownership rules
 
@@ -59,4 +94,4 @@ Technology and standard names do not gain ownership merely by appearing in this 
 
 ## Next research use
 
-The immediate next use of this registry is **Reference Coverage Gaps**. Query unresolved boundaries and explicit gaps, then attach market, standards, and implementation evidence to those exact architecture questions instead of growing an undifferentiated technology catalog.
+Use the coverage backlog to drive the next evidence passes instead of collecting references indiscriminately. Start with P0 gaps, attach verified evidence to the exact boundary and lens it supports, and only then revisit technology decisions or contract status when the evidence justifies a change.
