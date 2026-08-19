@@ -55,24 +55,54 @@ class HealthyBaseCollector:
         )
 
 
-class DriftingInspector:
+class DriftingContractInspector:
     def __init__(self, _nats_url):
         pass
 
-    def inspect(self, _expectation, *, observed_at):
+    def inspect(
+        self,
+        _spec,
+        *,
+        target_topology,
+        migration_mapping,
+        observed_at,
+    ):
+        assert target_topology
+        assert migration_mapping is None
         return SimpleNamespace(
             status="critical",
+            code="topology_drift",
             to_dict=lambda: {
                 "status": "critical",
+                "code": "topology_drift",
                 "observed_at": observed_at.isoformat(),
-                "drift_count": 1,
-                "drift": [
-                    {
-                        "resource": "business_consumer",
-                        "field": "ack_policy",
-                        "code": "business_consumer_ack_policy_mismatch",
-                    }
-                ],
+                "matched": "neither",
+            },
+        )
+
+
+class SourceMigrationContractInspector:
+    def __init__(self, _nats_url):
+        pass
+
+    def inspect(
+        self,
+        _spec,
+        *,
+        target_topology,
+        migration_mapping,
+        observed_at,
+    ):
+        assert target_topology
+        assert migration_mapping is not None
+        return SimpleNamespace(
+            status="ok",
+            code="topology_migration_source_accepted",
+            to_dict=lambda: {
+                "status": "ok",
+                "code": "topology_migration_source_accepted",
+                "observed_at": observed_at.isoformat(),
+                "matched": "source",
             },
         )
 
@@ -81,8 +111,8 @@ def test_topology_drift_makes_otherwise_healthy_deployment_not_ready(monkeypatch
     spec, topology = configured_pipeline()
     observed_at = datetime(2026, 8, 19, 8, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(
-        "event_pipeline_topology_readiness.NatsJetStreamTopologyInspector",
-        DriftingInspector,
+        "event_pipeline_topology_readiness.TopologyContractInspector",
+        DriftingContractInspector,
     )
     collector = TopologyAwareEventPipelineReadinessCollector()
     collector.base = HealthyBaseCollector()
@@ -111,11 +141,44 @@ def test_topology_drift_makes_otherwise_healthy_deployment_not_ready(monkeypatch
     assert report.root_cause_candidate == topology_signal
 
 
+def test_active_source_migration_can_keep_readiness_ready(monkeypatch):
+    spec, topology = configured_pipeline()
+    observed_at = datetime(2026, 8, 19, 8, 0, tzinfo=timezone.utc)
+    migration = {
+        "id": "replicas-1-to-3",
+        "valid_until": "2026-08-19T12:00:00Z",
+        "from_overrides": {"stream": {"replicas": 1}},
+    }
+    monkeypatch.setattr(
+        "event_pipeline_topology_readiness.TopologyContractInspector",
+        SourceMigrationContractInspector,
+    )
+    collector = TopologyAwareEventPipelineReadinessCollector()
+    collector.base = HealthyBaseCollector()
+
+    report = collector.collect(
+        spec,
+        topology=topology,
+        topology_migration=migration,
+        database_url="postgresql://not-used",
+        nats_url="nats://not-used",
+        watchdog_state={},
+        observed_at=observed_at,
+    )
+
+    assert report.status == "ready"
+    assert report.signals[1].status == "ok"
+    assert report.signals[1].code is None
+    assert report.signals[1].details["code"] == "topology_migration_source_accepted"
+    assert report.config["topology_migration"] == migration
+
+
 def test_missing_nats_endpoint_fails_topology_signal_closed():
     spec, topology = configured_pipeline()
     signal = TopologyAwareEventPipelineReadinessCollector._topology_signal(
         spec,
         topology=topology,
+        topology_migration=None,
         nats_url=None,
         observed_at=datetime(2026, 8, 19, 8, 0, tzinfo=timezone.utc),
     )

@@ -15,6 +15,9 @@ sys.path.insert(0, str(LAB))
 
 from event_pipeline_readiness import load_registry, render_prometheus  # noqa: E402
 from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_migration import (  # noqa: E402
+    pipeline_topology_migration_mapping,
+)
 from event_pipeline_topology_readiness import (  # noqa: E402
     TopologyAwareEventPipelineReadinessCollector,
 )
@@ -83,6 +86,10 @@ def main() -> int:
         registry_data = _read_registry_mapping(args.registry)
         spec = registry.get(args.pipeline)
         topology = pipeline_topology_mapping(registry_data, args.pipeline)
+        topology_migration = pipeline_topology_migration_mapping(
+            registry_data,
+            args.pipeline,
+        )
     except KeyError as exc:
         raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
     except (OSError, ValueError) as exc:
@@ -96,6 +103,7 @@ def main() -> int:
     report = TopologyAwareEventPipelineReadinessCollector().collect(
         spec,
         topology=topology,
+        topology_migration=topology_migration,
         database_url=database_url,
         nats_url=nats_url,
         watchdog_state=watchdog_state,
