@@ -7,22 +7,29 @@ CREATE TABLE event_pipeline_canary_outcomes (
     REFERENCES event_pipeline_canary_runs(canary_id) ON DELETE RESTRICT,
   tenant_id uuid NOT NULL REFERENCES tenants(id),
   started_at timestamptz NOT NULL,
-  finalized_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  deadline_at timestamptz NOT NULL,
+  finalized_at timestamptz,
   stream_name text NOT NULL CHECK (btrim(stream_name) <> ''),
   durable_name text NOT NULL CHECK (btrim(durable_name) <> ''),
   consumer_name text NOT NULL CHECK (btrim(consumer_name) <> ''),
-  outcome text NOT NULL CHECK (outcome IN ('succeeded', 'failed')),
-  health_status text NOT NULL CHECK (health_status IN ('ok', 'warning', 'critical')),
+  outcome text NOT NULL DEFAULT 'pending'
+    CHECK (outcome IN ('pending', 'succeeded', 'failed')),
+  health_status text CHECK (
+    health_status IS NULL OR health_status IN ('ok', 'warning', 'critical')
+  ),
   terminal_code text,
-  timed_out boolean NOT NULL,
-  ack_confirmed boolean NOT NULL,
-  clock_skew_detected boolean NOT NULL,
+  timed_out boolean,
+  ack_confirmed boolean,
+  clock_skew_detected boolean,
   outbox_publish_confirm_seconds double precision,
   broker_to_inbox_seconds double precision,
   inbox_to_projection_seconds double precision,
   end_to_end_projection_seconds double precision,
+  CONSTRAINT event_pipeline_canary_outcome_deadline_ck CHECK (
+    deadline_at > started_at
+  ),
   CONSTRAINT event_pipeline_canary_outcome_time_ck CHECK (
-    finalized_at >= started_at
+    finalized_at IS NULL OR finalized_at >= started_at
   ),
   CONSTRAINT event_pipeline_canary_outcome_publish_latency_ck CHECK (
     outbox_publish_confirm_seconds IS NULL OR outbox_publish_confirm_seconds >= 0
@@ -50,10 +57,27 @@ CREATE TABLE event_pipeline_canary_outcomes (
   ),
   CONSTRAINT event_pipeline_canary_outcome_state_ck CHECK (
     (
+      outcome = 'pending'
+      AND finalized_at IS NULL
+      AND health_status IS NULL
+      AND terminal_code IS NULL
+      AND timed_out IS NULL
+      AND ack_confirmed IS NULL
+      AND clock_skew_detected IS NULL
+      AND outbox_publish_confirm_seconds IS NULL
+      AND broker_to_inbox_seconds IS NULL
+      AND inbox_to_projection_seconds IS NULL
+      AND end_to_end_projection_seconds IS NULL
+    )
+    OR
+    (
       outcome = 'succeeded'
+      AND finalized_at IS NOT NULL
+      AND health_status IS NOT NULL
       AND terminal_code IS NULL
       AND timed_out = false
       AND ack_confirmed = true
+      AND clock_skew_detected IS NOT NULL
       AND outbox_publish_confirm_seconds IS NOT NULL
       AND broker_to_inbox_seconds IS NOT NULL
       AND inbox_to_projection_seconds IS NOT NULL
@@ -62,34 +86,92 @@ CREATE TABLE event_pipeline_canary_outcomes (
     OR
     (
       outcome = 'failed'
+      AND finalized_at IS NOT NULL
+      AND health_status IS NOT NULL
       AND terminal_code IS NOT NULL
+      AND timed_out IS NOT NULL
+      AND ack_confirmed IS NOT NULL
+      AND clock_skew_detected IS NOT NULL
     )
   )
 );
 
-CREATE INDEX event_pipeline_canary_outcomes_scope_time_idx
+CREATE INDEX event_pipeline_canary_outcomes_scope_start_idx
+  ON event_pipeline_canary_outcomes (
+    stream_name,
+    durable_name,
+    consumer_name,
+    started_at DESC,
+    canary_id
+  );
+
+CREATE INDEX event_pipeline_canary_outcomes_scope_finalized_idx
   ON event_pipeline_canary_outcomes (
     stream_name,
     durable_name,
     consumer_name,
     finalized_at DESC,
     canary_id
-  );
-
-CREATE INDEX event_pipeline_canary_outcomes_scope_success_time_idx
-  ON event_pipeline_canary_outcomes (
-    stream_name,
-    durable_name,
-    consumer_name,
-    finalized_at DESC
   )
-  WHERE outcome = 'succeeded';
+  WHERE finalized_at IS NOT NULL;
 
-CREATE FUNCTION record_event_pipeline_canary_outcome(
-  p_canary_id uuid,
+CREATE FUNCTION start_tracked_event_pipeline_canary(
+  p_tenant_id uuid,
   p_stream_name text,
   p_durable_name text,
   p_consumer_name text,
+  p_timeout_seconds double precision DEFAULT 30.0
+) RETURNS TABLE (
+  canary_id uuid,
+  event_id uuid,
+  recorded_at timestamptz
+)
+LANGUAGE plpgsql
+SET search_path = kernel_lab, pg_catalog, pg_temp
+AS $$
+DECLARE
+  v_canary_id uuid;
+  v_event_id uuid;
+  v_recorded_at timestamptz;
+BEGIN
+  IF p_stream_name IS NULL OR btrim(p_stream_name) = ''
+     OR p_durable_name IS NULL OR btrim(p_durable_name) = ''
+     OR p_consumer_name IS NULL OR btrim(p_consumer_name) = '' THEN
+    RAISE EXCEPTION 'canary SLI scope is required' USING ERRCODE = '23514';
+  END IF;
+  IF p_timeout_seconds IS NULL OR p_timeout_seconds <= 0 OR p_timeout_seconds > 300 THEN
+    RAISE EXCEPTION 'canary timeout must be between zero and 300 seconds'
+      USING ERRCODE = '23514';
+  END IF;
+
+  SELECT started.canary_id, started.event_id, started.recorded_at
+  INTO STRICT v_canary_id, v_event_id, v_recorded_at
+  FROM start_event_pipeline_canary(p_tenant_id) started;
+
+  INSERT INTO event_pipeline_canary_outcomes (
+    canary_id,
+    tenant_id,
+    started_at,
+    deadline_at,
+    stream_name,
+    durable_name,
+    consumer_name
+  ) VALUES (
+    v_canary_id,
+    p_tenant_id,
+    v_recorded_at,
+    v_recorded_at + make_interval(secs => p_timeout_seconds),
+    p_stream_name,
+    p_durable_name,
+    p_consumer_name
+  );
+
+  RETURN QUERY SELECT v_canary_id, v_event_id, v_recorded_at;
+END;
+$$;
+
+CREATE FUNCTION record_event_pipeline_canary_outcome(
+  p_canary_id uuid,
   p_outcome text,
   p_health_status text,
   p_terminal_code text,
@@ -108,72 +190,33 @@ LANGUAGE plpgsql
 SET search_path = kernel_lab, pg_catalog, pg_temp
 AS $$
 DECLARE
-  v_run event_pipeline_canary_runs%ROWTYPE;
   v_existing event_pipeline_canary_outcomes%ROWTYPE;
   v_finalized_at timestamptz := clock_timestamp();
 BEGIN
   IF p_canary_id IS NULL THEN
     RAISE EXCEPTION 'canary id is required' USING ERRCODE = '23514';
   END IF;
-  IF p_stream_name IS NULL OR btrim(p_stream_name) = ''
-     OR p_durable_name IS NULL OR btrim(p_durable_name) = ''
-     OR p_consumer_name IS NULL OR btrim(p_consumer_name) = '' THEN
-    RAISE EXCEPTION 'canary SLI scope is required' USING ERRCODE = '23514';
-  END IF;
-  IF p_outcome NOT IN ('succeeded', 'failed') THEN
+  IF p_outcome IS NULL OR p_outcome NOT IN ('succeeded', 'failed') THEN
     RAISE EXCEPTION 'canary SLI outcome is invalid' USING ERRCODE = '23514';
   END IF;
-  IF p_health_status NOT IN ('ok', 'warning', 'critical') THEN
+  IF p_health_status IS NULL OR p_health_status NOT IN ('ok', 'warning', 'critical') THEN
     RAISE EXCEPTION 'canary SLI health status is invalid' USING ERRCODE = '23514';
   END IF;
 
-  SELECT *
-  INTO v_run
-  FROM event_pipeline_canary_runs
-  WHERE canary_id = p_canary_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'event pipeline canary does not exist' USING ERRCODE = '23503';
-  END IF;
-
-  INSERT INTO event_pipeline_canary_outcomes (
-    canary_id,
-    tenant_id,
-    started_at,
-    finalized_at,
-    stream_name,
-    durable_name,
-    consumer_name,
-    outcome,
-    health_status,
-    terminal_code,
-    timed_out,
-    ack_confirmed,
-    clock_skew_detected,
-    outbox_publish_confirm_seconds,
-    broker_to_inbox_seconds,
-    inbox_to_projection_seconds,
-    end_to_end_projection_seconds
-  ) VALUES (
-    p_canary_id,
-    v_run.tenant_id,
-    v_run.started_at,
-    v_finalized_at,
-    p_stream_name,
-    p_durable_name,
-    p_consumer_name,
-    p_outcome,
-    p_health_status,
-    p_terminal_code,
-    p_timed_out,
-    p_ack_confirmed,
-    p_clock_skew_detected,
-    p_outbox_publish_confirm_seconds,
-    p_broker_to_inbox_seconds,
-    p_inbox_to_projection_seconds,
-    p_end_to_end_projection_seconds
-  )
-  ON CONFLICT (canary_id) DO NOTHING;
+  UPDATE event_pipeline_canary_outcomes
+  SET outcome = p_outcome,
+      health_status = p_health_status,
+      terminal_code = p_terminal_code,
+      timed_out = p_timed_out,
+      ack_confirmed = p_ack_confirmed,
+      clock_skew_detected = p_clock_skew_detected,
+      outbox_publish_confirm_seconds = p_outbox_publish_confirm_seconds,
+      broker_to_inbox_seconds = p_broker_to_inbox_seconds,
+      inbox_to_projection_seconds = p_inbox_to_projection_seconds,
+      end_to_end_projection_seconds = p_end_to_end_projection_seconds,
+      finalized_at = v_finalized_at
+  WHERE canary_id = p_canary_id
+    AND outcome = 'pending';
 
   IF FOUND THEN
     RETURN QUERY SELECT true, v_finalized_at;
@@ -181,14 +224,15 @@ BEGIN
   END IF;
 
   SELECT *
-  INTO STRICT v_existing
+  INTO v_existing
   FROM event_pipeline_canary_outcomes
   WHERE canary_id = p_canary_id;
 
-  IF v_existing.stream_name IS DISTINCT FROM p_stream_name
-     OR v_existing.durable_name IS DISTINCT FROM p_durable_name
-     OR v_existing.consumer_name IS DISTINCT FROM p_consumer_name
-     OR v_existing.outcome IS DISTINCT FROM p_outcome
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'tracked event pipeline canary does not exist' USING ERRCODE = '23503';
+  END IF;
+
+  IF v_existing.outcome IS DISTINCT FROM p_outcome
      OR v_existing.health_status IS DISTINCT FROM p_health_status
      OR v_existing.terminal_code IS DISTINCT FROM p_terminal_code
      OR v_existing.timed_out IS DISTINCT FROM p_timed_out
@@ -262,53 +306,78 @@ BEGIN
 
   RETURN QUERY
   WITH scope_all AS (
-    SELECT o.*
+    SELECT
+      o.*,
+      CASE
+        WHEN o.outcome = 'pending' AND o.deadline_at <= v_observed_at THEN 'failed'
+        ELSE o.outcome
+      END AS effective_outcome,
+      CASE
+        WHEN o.outcome = 'pending' AND o.deadline_at <= v_observed_at THEN o.deadline_at
+        ELSE o.finalized_at
+      END AS effective_finalized_at,
+      CASE
+        WHEN o.outcome = 'pending' AND o.deadline_at <= v_observed_at THEN 'canary_probe_abandoned'
+        ELSE o.terminal_code
+      END AS effective_terminal_code
     FROM event_pipeline_canary_outcomes o
     WHERE o.stream_name = p_stream_name
       AND o.durable_name = p_durable_name
       AND o.consumer_name = p_consumer_name
+  ), terminal_all AS (
+    SELECT *
+    FROM scope_all
+    WHERE effective_outcome <> 'pending'
   ), scoped AS (
     SELECT o.*
-    FROM scope_all o
-    WHERE o.finalized_at >= v_observed_at - make_interval(secs => p_window_seconds)
-      AND o.finalized_at <= v_observed_at
+    FROM terminal_all o
+    WHERE o.effective_finalized_at >= v_observed_at - make_interval(secs => p_window_seconds)
+      AND o.effective_finalized_at <= v_observed_at
   ), aggregate_counts AS (
     SELECT
       count(*)::bigint AS total_runs,
-      count(*) FILTER (WHERE outcome = 'succeeded')::bigint AS successful_runs,
-      count(*) FILTER (WHERE outcome = 'failed')::bigint AS failed_runs,
+      count(*) FILTER (WHERE effective_outcome = 'succeeded')::bigint AS successful_runs,
+      count(*) FILTER (WHERE effective_outcome = 'failed')::bigint AS failed_runs,
       count(*) FILTER (
-        WHERE outcome = 'succeeded'
+        WHERE effective_outcome = 'succeeded'
           AND end_to_end_projection_seconds <= p_latency_target_seconds
       )::bigint AS latency_good_runs
     FROM scoped
   ), latest AS (
     SELECT
-      max(finalized_at) AS last_run_at,
-      max(finalized_at) FILTER (WHERE outcome = 'succeeded') AS last_success_at
+      max(started_at) AS last_run_at,
+      max(effective_finalized_at) FILTER (
+        WHERE effective_outcome = 'succeeded'
+      ) AS last_success_at
     FROM scope_all
   ), ordered AS (
     SELECT
-      outcome,
-      row_number() OVER (ORDER BY finalized_at DESC, canary_id DESC) AS ordinal
-    FROM scope_all
+      effective_outcome,
+      row_number() OVER (
+        ORDER BY effective_finalized_at DESC, canary_id DESC
+      ) AS ordinal
+    FROM terminal_all
   ), first_success AS (
     SELECT min(ordinal) AS ordinal
     FROM ordered
-    WHERE outcome = 'succeeded'
+    WHERE effective_outcome = 'succeeded'
   ), failure_streak AS (
     SELECT count(*)::bigint AS consecutive_failures
     FROM ordered, first_success
-    WHERE ordered.outcome = 'failed'
+    WHERE ordered.effective_outcome = 'failed'
       AND ordered.ordinal < COALESCE(first_success.ordinal, 9223372036854775807)
   ), failure_code_counts AS (
-    SELECT terminal_code, count(*)::bigint AS failure_count
+    SELECT effective_terminal_code, count(*)::bigint AS failure_count
     FROM scoped
-    WHERE outcome = 'failed'
-    GROUP BY terminal_code
+    WHERE effective_outcome = 'failed'
+    GROUP BY effective_terminal_code
   ), failure_code_map AS (
     SELECT COALESCE(
-      jsonb_object_agg(terminal_code, failure_count ORDER BY terminal_code),
+      jsonb_object_agg(
+        effective_terminal_code,
+        failure_count
+        ORDER BY effective_terminal_code
+      ),
       '{}'::jsonb
     ) AS failure_codes
     FROM failure_code_counts
@@ -317,13 +386,13 @@ BEGIN
       percentile_cont(ARRAY[0.5, 0.95, 0.99])
         WITHIN GROUP (ORDER BY outbox_publish_confirm_seconds)
         FILTER (
-          WHERE outcome = 'succeeded'
+          WHERE effective_outcome = 'succeeded'
             AND outbox_publish_confirm_seconds IS NOT NULL
         ) AS publish_values,
       percentile_cont(ARRAY[0.5, 0.95, 0.99])
         WITHIN GROUP (ORDER BY broker_to_inbox_seconds)
         FILTER (
-          WHERE outcome = 'succeeded'
+          WHERE effective_outcome = 'succeeded'
             AND broker_to_inbox_seconds IS NOT NULL
             AND broker_to_inbox_seconds >= 0
             AND clock_skew_detected = false
@@ -331,13 +400,13 @@ BEGIN
       percentile_cont(ARRAY[0.5, 0.95, 0.99])
         WITHIN GROUP (ORDER BY inbox_to_projection_seconds)
         FILTER (
-          WHERE outcome = 'succeeded'
+          WHERE effective_outcome = 'succeeded'
             AND inbox_to_projection_seconds IS NOT NULL
         ) AS projection_values,
       percentile_cont(ARRAY[0.5, 0.95, 0.99])
         WITHIN GROUP (ORDER BY end_to_end_projection_seconds)
         FILTER (
-          WHERE outcome = 'succeeded'
+          WHERE effective_outcome = 'succeeded'
             AND end_to_end_projection_seconds IS NOT NULL
         ) AS end_to_end_values
     FROM scoped
