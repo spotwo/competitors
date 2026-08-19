@@ -36,7 +36,7 @@ pipelines:
         delivery_mode: pull
         deliver_policy: all
         ack_policy: explicit
-        filter_subject: spotwo.wms.events.>
+        filter_subject: spotwo.wms.events.inventory.position.changed
         max_ack_pending: 10
         max_deliver: 3
       canary_consumer:
