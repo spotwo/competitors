@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+from uuid import UUID
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_finalization_receipt import (  # noqa: E402
+    TopologyFinalizationReceiptController,
+    TopologyFinalizationReceiptIssueReport,
+    render_prometheus,
+)
+from event_pipeline_topology_migration import pipeline_topology_migration_mapping  # noqa: E402
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Issue immutable topology finalization receipts and verify them after the cleanup merge"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument("--database-url")
+    parser.add_argument("--nats-url")
+    parser.add_argument("--watchdog-state")
+    parser.add_argument("--observed-at")
+    parser.add_argument("--pretty", action="store_true")
+    parser.add_argument("--check", action="store_true")
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("issue-receipt")
+    verify = subparsers.add_parser("verify-post-merge")
+    verify.add_argument("--receipt", required=True)
+    verify.add_argument("--format", choices=("json", "prometheus"), default="json")
+    return parser.parse_args()
+
+
+def registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def read_watchdog_state(path: str | None) -> dict | None:
+    if not path:
+        return None
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def parse_observed_at(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise SystemExit("--observed-at must be an RFC3339 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SystemExit("--observed-at must include a timezone")
+    return parsed
+
+
+def emit_json(value: dict, pretty: bool) -> None:
+    print(json.dumps(value, indent=2 if pretty else None, sort_keys=True))
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        registry = load_registry(args.registry)
+        raw = registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(raw, args.pipeline)
+        migration = pipeline_topology_migration_mapping(raw, args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    if args.command == "issue-receipt" and migration is None:
+        report = TopologyFinalizationReceiptIssueReport(
+            "blocked", "topology_finalization_receipt_migration_missing", None
+        )
+        emit_json(report.to_dict(), args.pretty)
+        return 2 if args.check else 0
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    if not database_url:
+        raise SystemExit(
+            f"database URL is required via --database-url or {spec.runtime.database_url_env}"
+        )
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
+    watchdog = read_watchdog_state(watchdog_path)
+    controller = TopologyFinalizationReceiptController(
+        database_url=database_url,
+        nats_url=nats_url,
+    )
+    observed_at = parse_observed_at(args.observed_at)
+
+    if args.command == "issue-receipt":
+        report = controller.issue(
+            spec,
+            target_topology=topology,
+            migration_mapping=migration,
+            watchdog_state=watchdog,
+            observed_at=observed_at,
+        )
+        emit_json(report.to_dict(), args.pretty)
+        if not args.check:
+            return 0
+        return 0 if report.successful else 2
+
+    try:
+        receipt_id = UUID(args.receipt)
+    except ValueError as exc:
+        raise SystemExit("--receipt must be a UUID") from exc
+    report = controller.verify_post_merge(
+        spec,
+        receipt_id=receipt_id,
+        target_topology=topology,
+        migration_mapping=migration,
+        watchdog_state=watchdog,
+        observed_at=observed_at,
+    )
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        emit_json(report.to_dict(), args.pretty)
+    if not args.check:
+        return 0
+    return 0 if report.closed else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
