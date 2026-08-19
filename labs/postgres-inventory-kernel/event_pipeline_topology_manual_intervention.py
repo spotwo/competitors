@@ -16,20 +16,13 @@ from event_pipeline_topology_provisioning_journal import PostgresTopologyProvisi
 
 InterventionAction = Literal["restore_source", "accept_target", "abort"]
 InterventionState = Literal[
-    "detected",
-    "proposed",
-    "confirmed",
-    "executing",
-    "resolved_source",
-    "resolved_target",
-    "aborted",
-    "failed",
+    "detected", "proposed", "confirmed", "executing",
+    "resolved_source", "resolved_target", "aborted", "failed",
 ]
 InterventionHealth = Literal["clear", "warning", "critical"]
 
 ACTIVE_STATES = frozenset({"detected", "proposed", "confirmed", "executing"})
 TERMINAL_STATES = frozenset({"resolved_source", "resolved_target", "aborted", "failed"})
-ALL_STATES = ACTIVE_STATES | TERMINAL_STATES
 ACTIONS = frozenset({"restore_source", "accept_target", "abort"})
 
 
@@ -44,10 +37,8 @@ def _jsonable(value: Any) -> Any:
         return {str(key): _jsonable(item) for key, item in value.items()}
     if isinstance(value, (tuple, list)):
         return [_jsonable(item) for item in value]
-    if isinstance(value, UUID):
-        return str(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
+    if isinstance(value, (UUID, datetime)):
+        return str(value) if isinstance(value, UUID) else value.isoformat()
     return value
 
 
@@ -114,7 +105,7 @@ class TopologyManualIntervention:
 
 
 class PostgresTopologyManualInterventionStore:
-    """Persist explicit operator decisions without reopening a terminal provisioning run."""
+    """Persist explicit decisions without reopening a terminal provisioning run."""
 
     def __init__(self, database_url: str):
         self.database_url = _required_name(database_url, "database_url")
@@ -126,25 +117,16 @@ class PostgresTopologyManualInterventionStore:
         return conn
 
     @staticmethod
-    def _from_row(row: Mapping[str, Any]) -> TopologyManualIntervention:
+    def _row(row: Mapping[str, Any]) -> TopologyManualIntervention:
         return TopologyManualIntervention(
-            intervention_id=row["intervention_id"],
-            run_id=row["run_id"],
-            pipeline_id=row["pipeline_id"],
-            migration_id=row["migration_id"],
-            resource=row["resource"],
-            state=row["state"],
-            evidence=dict(row["evidence"]),
-            evidence_fingerprint=row["evidence_fingerprint"],
-            proposed_action=row["proposed_action"],
-            proposed_by=row["proposed_by"],
-            proposed_at=row["proposed_at"],
-            confirmed_by=row["confirmed_by"],
-            confirmed_at=row["confirmed_at"],
-            resolution_code=row["resolution_code"],
-            created_at=row["created_at"],
-            updated_at=row["updated_at"],
-            state_changed_at=row["state_changed_at"],
+            intervention_id=row["intervention_id"], run_id=row["run_id"],
+            pipeline_id=row["pipeline_id"], migration_id=row["migration_id"],
+            resource=row["resource"], state=row["state"], evidence=dict(row["evidence"]),
+            evidence_fingerprint=row["evidence_fingerprint"], proposed_action=row["proposed_action"],
+            proposed_by=row["proposed_by"], proposed_at=row["proposed_at"],
+            confirmed_by=row["confirmed_by"], confirmed_at=row["confirmed_at"],
+            resolution_code=row["resolution_code"], created_at=row["created_at"],
+            updated_at=row["updated_at"], state_changed_at=row["state_changed_at"],
         )
 
     def get(self, intervention_id: UUID) -> TopologyManualIntervention | None:
@@ -153,59 +135,52 @@ class PostgresTopologyManualInterventionStore:
                 "SELECT * FROM kernel_lab.event_pipeline_topology_interventions WHERE intervention_id = %s",
                 (intervention_id,),
             ).fetchone()
-        return None if row is None else self._from_row(row)
+        return None if row is None else self._row(row)
 
     def latest_for_pipeline(self, pipeline_id: str) -> TopologyManualIntervention | None:
-        pipeline_id = _required_name(pipeline_id, "pipeline_id")
         with self._connect() as conn:
             row = conn.execute(
-                """
-                SELECT *
-                FROM kernel_lab.event_pipeline_topology_interventions
-                WHERE pipeline_id = %s
-                ORDER BY created_at DESC
-                LIMIT 1
-                """,
-                (pipeline_id,),
+                "SELECT * FROM kernel_lab.event_pipeline_topology_interventions WHERE pipeline_id = %s ORDER BY created_at DESC LIMIT 1",
+                (_required_name(pipeline_id, "pipeline_id"),),
             ).fetchone()
-        return None if row is None else self._from_row(row)
+        return None if row is None else self._row(row)
+
+    def latest_for_run(self, run_id: UUID) -> TopologyManualIntervention | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM kernel_lab.event_pipeline_topology_interventions WHERE run_id = %s ORDER BY created_at DESC LIMIT 1",
+                (run_id,),
+            ).fetchone()
+        return None if row is None else self._row(row)
 
     def active_for_run(self, run_id: UUID) -> TopologyManualIntervention | None:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT *
-                FROM kernel_lab.event_pipeline_topology_interventions
+                SELECT * FROM kernel_lab.event_pipeline_topology_interventions
                 WHERE run_id = %s AND state IN ('detected', 'proposed', 'confirmed', 'executing')
-                ORDER BY created_at DESC
-                LIMIT 1
+                ORDER BY created_at DESC LIMIT 1
                 """,
                 (run_id,),
             ).fetchone()
-        return None if row is None else self._from_row(row)
+        return None if row is None else self._row(row)
 
-    def latest_for_run(self, run_id: UUID) -> TopologyManualIntervention | None:
+    def manual_run_for_pipeline(self, pipeline_id: str) -> UUID | None:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT * FROM kernel_lab.event_pipeline_topology_interventions
-                WHERE run_id = %s ORDER BY created_at DESC LIMIT 1
+                SELECT run_id FROM kernel_lab.event_pipeline_topology_provisioning_runs
+                WHERE pipeline_id = %s AND state = 'manual_intervention'
+                ORDER BY started_at DESC LIMIT 1
                 """,
-                (run_id,),
+                (_required_name(pipeline_id, "pipeline_id"),),
             ).fetchone()
-        return None if row is None else self._from_row(row)
+        return None if row is None else row["run_id"]
 
-    def create_detected(
-        self,
-        *,
-        run: TopologyProvisioningJournalRun,
-        evidence: Mapping[str, Any],
-        evidence_fingerprint: str,
-    ) -> TopologyManualIntervention:
+    def create_detected(self, *, run: TopologyProvisioningJournalRun, evidence: Mapping[str, Any], evidence_fingerprint: str) -> TopologyManualIntervention:
         existing = self.active_for_run(run.run_id)
         if existing is not None:
             return existing
-        intervention_id = uuid4()
         try:
             with self._connect() as conn:
                 row = conn.execute(
@@ -216,56 +191,37 @@ class PostgresTopologyManualInterventionStore:
                     ) VALUES (%s, %s, %s, %s, %s, 'detected', %s::jsonb, %s)
                     RETURNING *
                     """,
-                    (
-                        intervention_id,
-                        run.run_id,
-                        run.pipeline_id,
-                        run.migration_id,
-                        run.resource,
-                        json.dumps(_jsonable(evidence)),
-                        evidence_fingerprint,
-                    ),
+                    (uuid4(), run.run_id, run.pipeline_id, run.migration_id, run.resource,
+                     json.dumps(_jsonable(evidence)), evidence_fingerprint),
                 ).fetchone()
-                return self._from_row(row)
+                return self._row(row)
         except psycopg.errors.UniqueViolation:
             existing = self.active_for_run(run.run_id)
             if existing is None:
                 raise TopologyManualInterventionError("topology_manual_intervention_detection_race")
             return existing
 
-    def propose(
-        self,
-        intervention_id: UUID,
-        *,
-        action: InterventionAction,
-        operator: str,
-    ) -> TopologyManualIntervention:
+    def propose(self, intervention_id: UUID, *, action: InterventionAction, operator: str) -> TopologyManualIntervention:
         if action not in ACTIONS:
             raise ValueError("unsupported topology manual intervention action")
-        operator = _required_name(operator, "operator")
         with self._connect() as conn:
             row = conn.execute(
                 """
                 UPDATE kernel_lab.event_pipeline_topology_interventions
-                SET state = 'proposed', proposed_action = %s, proposed_by = %s,
-                    proposed_at = clock_timestamp()
-                WHERE intervention_id = %s AND state = 'detected'
-                RETURNING *
+                SET state = 'proposed', proposed_action = %s, proposed_by = %s, proposed_at = clock_timestamp()
+                WHERE intervention_id = %s AND state = 'detected' RETURNING *
                 """,
-                (action, operator, intervention_id),
+                (action, _required_name(operator, "operator"), intervention_id),
             ).fetchone()
-            if row is None:
-                raise TopologyManualInterventionError("topology_manual_intervention_not_detected")
-            return self._from_row(row)
+        if row is None:
+            raise TopologyManualInterventionError("topology_manual_intervention_not_detected")
+        return self._row(row)
 
     def confirm(self, intervention_id: UUID, *, operator: str) -> TopologyManualIntervention:
         operator = _required_name(operator, "operator")
         with self._connect() as conn:
             current = conn.execute(
-                """
-                SELECT * FROM kernel_lab.event_pipeline_topology_interventions
-                WHERE intervention_id = %s FOR UPDATE
-                """,
+                "SELECT * FROM kernel_lab.event_pipeline_topology_interventions WHERE intervention_id = %s FOR UPDATE",
                 (intervention_id,),
             ).fetchone()
             if current is None:
@@ -278,66 +234,39 @@ class PostgresTopologyManualInterventionStore:
                 """
                 UPDATE kernel_lab.event_pipeline_topology_interventions
                 SET state = 'confirmed', confirmed_by = %s, confirmed_at = clock_timestamp()
-                WHERE intervention_id = %s AND state = 'proposed'
-                RETURNING *
+                WHERE intervention_id = %s AND state = 'proposed' RETURNING *
                 """,
                 (operator, intervention_id),
             ).fetchone()
-            if row is None:
-                raise TopologyManualInterventionError("topology_manual_intervention_confirmation_race")
-            return self._from_row(row)
+        if row is None:
+            raise TopologyManualInterventionError("topology_manual_intervention_confirmation_race")
+        return self._row(row)
 
     def mark_executing(self, intervention_id: UUID) -> TopologyManualIntervention:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                UPDATE kernel_lab.event_pipeline_topology_interventions
-                SET state = 'executing'
-                WHERE intervention_id = %s AND state = 'confirmed'
-                RETURNING *
+                UPDATE kernel_lab.event_pipeline_topology_interventions SET state = 'executing'
+                WHERE intervention_id = %s AND state = 'confirmed' RETURNING *
                 """,
                 (intervention_id,),
             ).fetchone()
-            if row is None:
-                raise TopologyManualInterventionError("topology_manual_intervention_not_confirmed")
-            return self._from_row(row)
+        if row is None:
+            raise TopologyManualInterventionError("topology_manual_intervention_not_confirmed")
+        return self._row(row)
 
-    def finish(
-        self,
-        intervention_id: UUID,
-        *,
-        state: Literal["resolved_source", "resolved_target", "aborted", "failed"],
-        code: str,
-    ) -> TopologyManualIntervention:
-        code = _required_name(code, "resolution_code")
+    def finish(self, intervention_id: UUID, *, state: Literal["resolved_source", "resolved_target", "aborted", "failed"], code: str) -> TopologyManualIntervention:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                UPDATE kernel_lab.event_pipeline_topology_interventions
-                SET state = %s, resolution_code = %s
-                WHERE intervention_id = %s AND state = 'executing'
-                RETURNING *
+                UPDATE kernel_lab.event_pipeline_topology_interventions SET state = %s, resolution_code = %s
+                WHERE intervention_id = %s AND state = 'executing' RETURNING *
                 """,
-                (state, code, intervention_id),
+                (state, _required_name(code, "resolution_code"), intervention_id),
             ).fetchone()
-            if row is None:
-                raise TopologyManualInterventionError("topology_manual_intervention_not_executing")
-            return self._from_row(row)
-
-    def manual_run_for_pipeline(self, pipeline_id: str) -> UUID | None:
-        pipeline_id = _required_name(pipeline_id, "pipeline_id")
-        with self._connect() as conn:
-            row = conn.execute(
-                """
-                SELECT run_id
-                FROM kernel_lab.event_pipeline_topology_provisioning_runs
-                WHERE pipeline_id = %s AND state = 'manual_intervention'
-                ORDER BY started_at DESC
-                LIMIT 1
-                """,
-                (pipeline_id,),
-            ).fetchone()
-        return None if row is None else row["run_id"]
+        if row is None:
+            raise TopologyManualInterventionError("topology_manual_intervention_not_executing")
+        return self._row(row)
 
 
 @dataclass(frozen=True)
@@ -352,31 +281,18 @@ class TopologyManualInterventionReport:
         return self.status in {"detected", "proposed", "confirmed", "resolved", "aborted", "idle"}
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "status": self.status,
-            "code": self.code,
-            "mutates_topology": self.mutates_topology,
-            "intervention": self.intervention.to_dict() if self.intervention else None,
-        }
+        return {"status": self.status, "code": self.code, "mutates_topology": self.mutates_topology,
+                "intervention": self.intervention.to_dict() if self.intervention else None}
 
 
 class ExplicitTopologyManualInterventionController:
-    """Require explicit proposal and independent confirmation before emergency resolution."""
+    """Require an explicit proposal and an independent confirmation before emergency resolution."""
 
-    def __init__(
-        self,
-        *,
-        database_url: str,
-        nats_url: str,
-        contract_inspector: TopologyContractInspector | None = None,
-        mutator: RecoverableNatsJetStreamTopologyMutator | None = None,
-    ):
+    def __init__(self, *, database_url: str, nats_url: str, contract_inspector: Any | None = None, mutator: Any | None = None):
         self.database_url = _required_name(database_url, "database_url")
         self.nats_url = _required_name(nats_url, "nats_url")
         self.store = PostgresTopologyManualInterventionStore(database_url)
-        self.journal = PostgresTopologyProvisioningJournal(
-            database_url, owner_id="manual-intervention-observer"
-        )
+        self.journal = PostgresTopologyProvisioningJournal(database_url, owner_id="manual-intervention-observer")
         self.contract_inspector = contract_inspector or TopologyContractInspector(nats_url)
         self.mutator = mutator or RecoverableNatsJetStreamTopologyMutator(nats_url)
 
@@ -392,113 +308,53 @@ class ExplicitTopologyManualInterventionController:
     def _validate_migration(run: TopologyProvisioningJournalRun, migration_mapping: Mapping[str, Any] | None) -> None:
         if migration_mapping is None:
             raise TopologyManualInterventionError("topology_manual_intervention_migration_contract_missing")
-        migration = TopologyMigrationConfig.from_mapping(migration_mapping)
-        if migration.migration_id != run.migration_id:
+        if TopologyMigrationConfig.from_mapping(migration_mapping).migration_id != run.migration_id:
             raise TopologyManualInterventionError("topology_manual_intervention_migration_contract_mismatch")
 
     @staticmethod
-    def _evidence_payload(
-        *,
-        run: TopologyProvisioningJournalRun,
-        target_topology: Mapping[str, Any],
-        migration_mapping: Mapping[str, Any],
-        contract: Any,
-    ) -> dict[str, Any]:
-        canonical = {
-            "run_id": str(run.run_id),
-            "pipeline": run.pipeline_id,
-            "migration_id": run.migration_id,
-            "resource": run.resource,
-            "state_code": run.state_code,
-            "intent_fingerprint": run.intent_fingerprint,
-            "source_snapshot": run.source_snapshot.to_dict(),
-            "changes": [dict(item) for item in run.changes],
-            "target_topology": _jsonable(target_topology),
-            "migration": _jsonable(migration_mapping),
-            "live": {
-                "matched": contract.matched,
-                "target_status": contract.target.status,
-                "resources": [item.to_dict() for item in contract.target.resources],
-            },
+    def _evidence_payload(*, run: TopologyProvisioningJournalRun, target_topology: Mapping[str, Any], migration_mapping: Mapping[str, Any], contract: Any) -> dict[str, Any]:
+        return {
+            "run_id": str(run.run_id), "pipeline": run.pipeline_id, "migration_id": run.migration_id,
+            "resource": run.resource, "state_code": run.state_code, "intent_fingerprint": run.intent_fingerprint,
+            "source_snapshot": run.source_snapshot.to_dict(), "changes": [dict(item) for item in run.changes],
+            "target_topology": _jsonable(target_topology), "migration": _jsonable(migration_mapping),
+            "live": {"matched": contract.matched, "target_status": contract.target.status,
+                     "resources": [item.to_dict() for item in contract.target.resources]},
         }
-        return canonical
 
-    def detect(
-        self,
-        spec: Any,
-        *,
-        target_topology: Mapping[str, Any],
-        migration_mapping: Mapping[str, Any] | None,
-        observed_at: datetime | None = None,
-    ) -> TopologyManualInterventionReport:
+    def detect(self, spec: Any, *, target_topology: Mapping[str, Any], migration_mapping: Mapping[str, Any] | None, observed_at: datetime | None = None) -> TopologyManualInterventionReport:
         run_id = self.store.manual_run_for_pipeline(spec.pipeline_id)
         if run_id is None:
-            return TopologyManualInterventionReport(
-                "idle", "topology_manual_intervention_not_required", None, False
-            )
+            return TopologyManualInterventionReport("idle", "topology_manual_intervention_not_required", None, False)
         run = self._run(run_id)
         latest = self.store.latest_for_run(run_id)
         if latest is not None and latest.state in {"resolved_source", "resolved_target", "aborted"}:
-            return TopologyManualInterventionReport(
-                "idle", "topology_manual_intervention_already_closed", latest, False
-            )
+            return TopologyManualInterventionReport("idle", "topology_manual_intervention_already_closed", latest, False)
         active = self.store.active_for_run(run_id)
         if active is not None:
-            return TopologyManualInterventionReport(
-                "detected", "topology_manual_intervention_already_active", active, False
-            )
+            return TopologyManualInterventionReport("detected", "topology_manual_intervention_already_active", active, False)
         self._validate_migration(run, migration_mapping)
         try:
-            contract = self.contract_inspector.inspect(
-                spec,
-                target_topology=target_topology,
-                migration_mapping=migration_mapping,
-                observed_at=observed_at,
-            )
+            contract = self.contract_inspector.inspect(spec, target_topology=target_topology,
+                                                       migration_mapping=migration_mapping, observed_at=observed_at)
         except Exception as exc:
             raise TopologyManualInterventionError("topology_manual_intervention_evidence_unavailable") from exc
-        payload = self._evidence_payload(
-            run=run,
-            target_topology=target_topology,
-            migration_mapping=migration_mapping,
-            contract=contract,
-        )
-        evidence = {
-            "observed_at": (observed_at or datetime.now(timezone.utc)).isoformat(),
-            "snapshot": payload,
-        }
-        intervention = self.store.create_detected(
-            run=run,
-            evidence=evidence,
-            evidence_fingerprint=_fingerprint(payload),
-        )
-        return TopologyManualInterventionReport(
-            "detected", "topology_manual_intervention_detected", intervention, False
-        )
+        assert migration_mapping is not None
+        payload = self._evidence_payload(run=run, target_topology=target_topology,
+                                         migration_mapping=migration_mapping, contract=contract)
+        evidence = {"observed_at": (observed_at or datetime.now(timezone.utc)).isoformat(), "snapshot": payload}
+        intervention = self.store.create_detected(run=run, evidence=evidence, evidence_fingerprint=_fingerprint(payload))
+        return TopologyManualInterventionReport("detected", "topology_manual_intervention_detected", intervention, False)
 
     def propose(self, intervention_id: UUID, *, action: InterventionAction, operator: str) -> TopologyManualInterventionReport:
-        intervention = self.store.propose(intervention_id, action=action, operator=operator)
-        return TopologyManualInterventionReport(
-            "proposed", "topology_manual_intervention_proposed", intervention, False
-        )
+        value = self.store.propose(intervention_id, action=action, operator=operator)
+        return TopologyManualInterventionReport("proposed", "topology_manual_intervention_proposed", value, False)
 
     def confirm(self, intervention_id: UUID, *, operator: str) -> TopologyManualInterventionReport:
-        intervention = self.store.confirm(intervention_id, operator=operator)
-        return TopologyManualInterventionReport(
-            "confirmed", "topology_manual_intervention_confirmed", intervention, False
-        )
+        value = self.store.confirm(intervention_id, operator=operator)
+        return TopologyManualInterventionReport("confirmed", "topology_manual_intervention_confirmed", value, False)
 
-    def execute(
-        self,
-        intervention_id: UUID,
-        spec: Any,
-        *,
-        target_topology: Mapping[str, Any],
-        migration_mapping: Mapping[str, Any] | None,
-        canary_verifier: Any,
-        readiness_verifier: Any,
-        observed_at: datetime | None = None,
-    ) -> TopologyManualInterventionReport:
+    def execute(self, intervention_id: UUID, spec: Any, *, target_topology: Mapping[str, Any], migration_mapping: Mapping[str, Any] | None, canary_verifier: Any, readiness_verifier: Any, observed_at: datetime | None = None) -> TopologyManualInterventionReport:
         intervention = self.store.get(intervention_id)
         if intervention is None:
             raise TopologyManualInterventionError("topology_manual_intervention_missing")
@@ -507,121 +363,52 @@ class ExplicitTopologyManualInterventionController:
         run = self._run(intervention.run_id)
         self._validate_migration(run, migration_mapping)
         try:
-            contract = self.contract_inspector.inspect(
-                spec,
-                target_topology=target_topology,
-                migration_mapping=migration_mapping,
-                observed_at=observed_at,
-            )
+            contract = self.contract_inspector.inspect(spec, target_topology=target_topology,
+                                                       migration_mapping=migration_mapping, observed_at=observed_at)
         except Exception as exc:
             raise TopologyManualInterventionError("topology_manual_intervention_evidence_unavailable") from exc
-        payload = self._evidence_payload(
-            run=run,
-            target_topology=target_topology,
-            migration_mapping=migration_mapping,
-            contract=contract,
-        )
+        assert migration_mapping is not None
+        payload = self._evidence_payload(run=run, target_topology=target_topology,
+                                         migration_mapping=migration_mapping, contract=contract)
         if _fingerprint(payload) != intervention.evidence_fingerprint:
-            executing = self.store.mark_executing(intervention_id)
-            failed = self.store.finish(
-                executing.intervention_id,
-                state="failed",
-                code="topology_manual_intervention_evidence_stale",
-            )
-            return TopologyManualInterventionReport(
-                "failed", "topology_manual_intervention_evidence_stale", failed, False
-            )
+            self.store.mark_executing(intervention_id)
+            failed = self.store.finish(intervention_id, state="failed", code="topology_manual_intervention_evidence_stale")
+            return TopologyManualInterventionReport("failed", "topology_manual_intervention_evidence_stale", failed, False)
 
         executing = self.store.mark_executing(intervention_id)
         action = executing.proposed_action
         if action == "abort":
-            closed = self.store.finish(
-                intervention_id,
-                state="aborted",
-                code="topology_manual_intervention_aborted",
-            )
-            return TopologyManualInterventionReport(
-                "aborted", "topology_manual_intervention_aborted", closed, False
-            )
-
+            closed = self.store.finish(intervention_id, state="aborted", code="topology_manual_intervention_aborted")
+            return TopologyManualInterventionReport("aborted", "topology_manual_intervention_aborted", closed, False)
         if action == "accept_target":
             if contract.matched != "target" or contract.target.status != "ok":
-                failed = self.store.finish(
-                    intervention_id,
-                    state="failed",
-                    code="topology_manual_intervention_target_not_exact",
-                )
-                return TopologyManualInterventionReport(
-                    "failed", "topology_manual_intervention_target_not_exact", failed, False
-                )
-            return self._verify_and_finish(
-                intervention_id,
-                target_state="resolved_target",
-                success_code="topology_manual_intervention_target_accepted",
-                canary_verifier=canary_verifier,
-                readiness_verifier=readiness_verifier,
-                mutates_topology=False,
-            )
-
+                failed = self.store.finish(intervention_id, state="failed", code="topology_manual_intervention_target_not_exact")
+                return TopologyManualInterventionReport("failed", "topology_manual_intervention_target_not_exact", failed, False)
+            return self._verify(intervention_id, "resolved_target", "topology_manual_intervention_target_accepted",
+                                canary_verifier, readiness_verifier, False)
         if action != "restore_source":
-            failed = self.store.finish(
-                intervention_id, state="failed", code="topology_manual_intervention_action_invalid"
-            )
-            return TopologyManualInterventionReport(
-                "failed", "topology_manual_intervention_action_invalid", failed, False
-            )
+            failed = self.store.finish(intervention_id, state="failed", code="topology_manual_intervention_action_invalid")
+            return TopologyManualInterventionReport("failed", "topology_manual_intervention_action_invalid", failed, False)
 
         try:
-            self.mutator.rollback_to_snapshot(
-                spec=spec,
-                resource=run.resource,
-                source_snapshot=run.source_snapshot,
-            )
+            self.mutator.rollback_to_snapshot(spec=spec, resource=run.resource, source_snapshot=run.source_snapshot)
         except Exception:
-            failed = self.store.finish(
-                intervention_id,
-                state="failed",
-                code="topology_manual_intervention_restore_source_failed",
-            )
-            return TopologyManualInterventionReport(
-                "failed", "topology_manual_intervention_restore_source_failed", failed, True
-            )
+            failed = self.store.finish(intervention_id, state="failed", code="topology_manual_intervention_restore_source_failed")
+            return TopologyManualInterventionReport("failed", "topology_manual_intervention_restore_source_failed", failed, True)
         try:
-            restored = self.contract_inspector.inspect(
-                spec,
-                target_topology=target_topology,
-                migration_mapping=migration_mapping,
-            )
+            restored = self.contract_inspector.inspect(spec, target_topology=target_topology,
+                                                       migration_mapping=migration_mapping)
         except Exception:
             restored = None
         if restored is None or restored.matched != "source":
-            failed = self.store.finish(
-                intervention_id,
-                state="failed",
-                code="topology_manual_intervention_source_verification_failed",
-            )
-            return TopologyManualInterventionReport(
-                "failed", "topology_manual_intervention_source_verification_failed", failed, True
-            )
-        return self._verify_and_finish(
-            intervention_id,
-            target_state="resolved_source",
-            success_code="topology_manual_intervention_source_restored",
-            canary_verifier=canary_verifier,
-            readiness_verifier=readiness_verifier,
-            mutates_topology=True,
-        )
+            failed = self.store.finish(intervention_id, state="failed", code="topology_manual_intervention_source_verification_failed")
+            return TopologyManualInterventionReport("failed", "topology_manual_intervention_source_verification_failed", failed, True)
+        return self._verify(intervention_id, "resolved_source", "topology_manual_intervention_source_restored",
+                            canary_verifier, readiness_verifier, True)
 
-    def _verify_and_finish(
-        self,
-        intervention_id: UUID,
-        *,
-        target_state: Literal["resolved_source", "resolved_target"],
-        success_code: str,
-        canary_verifier: Any,
-        readiness_verifier: Any,
-        mutates_topology: bool,
-    ) -> TopologyManualInterventionReport:
+    def _verify(self, intervention_id: UUID, target_state: Literal["resolved_source", "resolved_target"],
+                success_code: str, canary_verifier: Any, readiness_verifier: Any,
+                mutates_topology: bool) -> TopologyManualInterventionReport:
         try:
             if _status(canary_verifier()) != "ok":
                 code = "topology_manual_intervention_canary_not_ok"
@@ -647,52 +434,35 @@ class TopologyManualInterventionHealthReport:
     intervention: TopologyManualIntervention | None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "pipeline": self.pipeline_id,
-            "status": self.status,
-            "code": self.code,
-            "collection": {"read_only": True},
-            "intervention": self.intervention.to_dict() if self.intervention else None,
-        }
+        return {"pipeline": self.pipeline_id, "status": self.status, "code": self.code,
+                "collection": {"read_only": True},
+                "intervention": self.intervention.to_dict() if self.intervention else None}
 
 
-def inspect_manual_intervention_health(
-    database_url: str,
-    *,
-    pipeline_id: str,
-) -> TopologyManualInterventionHealthReport:
+def inspect_manual_intervention_health(database_url: str, *, pipeline_id: str) -> TopologyManualInterventionHealthReport:
     pipeline_id = _required_name(pipeline_id, "pipeline_id")
     latest = PostgresTopologyManualInterventionStore(database_url).latest_for_pipeline(pipeline_id)
     if latest is None:
         return TopologyManualInterventionHealthReport(pipeline_id, "clear", None, None)
     if latest.state in ACTIVE_STATES:
-        return TopologyManualInterventionHealthReport(
-            pipeline_id, "critical", "topology_manual_intervention_action_required", latest
-        )
+        return TopologyManualInterventionHealthReport(pipeline_id, "critical", "topology_manual_intervention_action_required", latest)
     if latest.state in {"resolved_source", "resolved_target"}:
-        return TopologyManualInterventionHealthReport(
-            pipeline_id, "warning", "topology_manual_intervention_resolved_cleanup_pending", latest
-        )
+        return TopologyManualInterventionHealthReport(pipeline_id, "warning", "topology_manual_intervention_resolved_cleanup_pending", latest)
     if latest.state == "aborted":
-        return TopologyManualInterventionHealthReport(
-            pipeline_id, "critical", "topology_manual_intervention_aborted_attention", latest
-        )
-    return TopologyManualInterventionHealthReport(
-        pipeline_id, "critical", "topology_manual_intervention_failed", latest
-    )
+        return TopologyManualInterventionHealthReport(pipeline_id, "critical", "topology_manual_intervention_aborted_attention", latest)
+    return TopologyManualInterventionHealthReport(pipeline_id, "critical", "topology_manual_intervention_failed", latest)
 
 
 def render_prometheus(report: TopologyManualInterventionHealthReport) -> str:
     pipeline = report.pipeline_id.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    status_value = {"clear": 0, "warning": 1, "critical": 2}[report.status]
     lines = [
         "# HELP spotwo_wms_event_pipeline_topology_manual_intervention_health Manual intervention health: 0 clear, 1 warning, 2 critical.",
         "# TYPE spotwo_wms_event_pipeline_topology_manual_intervention_health gauge",
-        f'spotwo_wms_event_pipeline_topology_manual_intervention_health{{pipeline="{pipeline}"}} {{"clear":0,"warning":1,"critical":2}[report.status]}',
+        f'spotwo_wms_event_pipeline_topology_manual_intervention_health{{pipeline="{pipeline}"}} {status_value}',
         "# HELP spotwo_wms_event_pipeline_topology_manual_intervention_state Latest bounded intervention state.",
         "# TYPE spotwo_wms_event_pipeline_topology_manual_intervention_state gauge",
     ]
     if report.intervention is not None:
-        lines.append(
-            f'spotwo_wms_event_pipeline_topology_manual_intervention_state{{pipeline="{pipeline}",state="{report.intervention.state}"}} 1'
-        )
+        lines.append(f'spotwo_wms_event_pipeline_topology_manual_intervention_state{{pipeline="{pipeline}",state="{report.intervention.state}"}} 1')
     return "\n".join(lines) + "\n"
