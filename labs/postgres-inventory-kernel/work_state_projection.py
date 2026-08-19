@@ -45,9 +45,9 @@ def _canonical_uuid(value: Any, field: str) -> UUID:
     return parsed
 
 
-def _positive_integer(value: Any, field: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ValueError(f"{field} must be a positive integer")
+def _integer_at_least(value: Any, minimum: int, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ValueError(f"{field} must be an integer >= {minimum}")
     return value
 
 
@@ -129,17 +129,14 @@ class WarehouseWorkStateProjector:
         if previous_state == state:
             raise ValueError("Warehouse Work state event must change state")
 
-        previous_work_version = _positive_integer(
-            event.data.get("previous_work_version") + 1
-            if event.data.get("previous_work_version") == 0
-            else event.data.get("previous_work_version"),
+        previous_work_version = _integer_at_least(
+            event.data.get("previous_work_version"),
+            0,
             "event data previous_work_version",
         )
-        work_version = _positive_integer(
-            event.data.get("work_version"), "event data work_version"
+        work_version = _integer_at_least(
+            event.data.get("work_version"), 1, "event data work_version"
         )
-        if event.data.get("previous_work_version") == 0:
-            previous_work_version = 0
         if work_version != previous_work_version + 1:
             raise ValueError("Warehouse Work internal version must advance exactly once")
 
