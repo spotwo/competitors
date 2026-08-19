@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_readiness import (  # noqa: E402
+    EventPipelineReadinessCollector,
+    load_registry,
+    render_prometheus,
+)
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Evaluate one configured event pipeline deployment readiness gate"
+    )
+    parser.add_argument(
+        "--registry",
+        default=str(DEFAULT_REGISTRY),
+        help="event pipeline deployment registry YAML",
+    )
+    parser.add_argument("--pipeline", required=True, help="configured pipeline id")
+    parser.add_argument(
+        "--database-url",
+        help="lab override for PostgreSQL URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--nats-url",
+        help="lab override for NATS URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--watchdog-state",
+        help="lab override for external watchdog JSON path; otherwise use the registry-named env var",
+    )
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 1 for degraded and 2 for not-ready",
+    )
+    return parser.parse_args()
+
+
+def _read_watchdog_state(path: str | None) -> dict | None:
+    if not path:
+        return None
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def main() -> int:
+    args = parse_args()
+    if args.pretty and args.format != "json":
+        raise SystemExit("--pretty is available only with --format json")
+
+    try:
+        registry = load_registry(args.registry)
+        spec = registry.get(args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
+    watchdog_state = _read_watchdog_state(watchdog_path)
+
+    report = EventPipelineReadinessCollector().collect(
+        spec,
+        database_url=database_url,
+        nats_url=nats_url,
+        watchdog_state=watchdog_state,
+    )
+
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ready": 0, "degraded": 1, "not_ready": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
