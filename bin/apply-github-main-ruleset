@@ -6,6 +6,15 @@ RULESET="$ROOT/.github/rulesets/main.json"
 REPOSITORY="${1:-spotwo/competitors}"
 API_VERSION="2026-03-10"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+VALIDATOR_PYTHON="$PYTHON_BIN"
+TMP_VENV=""
+
+cleanup() {
+  if [[ -n "$TMP_VENV" ]]; then
+    rm -rf "$TMP_VENV"
+  fi
+}
+trap cleanup EXIT
 
 command -v gh >/dev/null 2>&1 || {
   echo "gh CLI is required" >&2
@@ -18,7 +27,25 @@ command -v "$PYTHON_BIN" >/dev/null 2>&1 || {
 }
 
 gh auth status >/dev/null
-"$PYTHON_BIN" "$ROOT/scripts/validate_github_main_ruleset.py"
+
+if ! "$PYTHON_BIN" -c 'import yaml' >/dev/null 2>&1; then
+  echo "Python validator dependencies are missing; creating a temporary virtual environment" >&2
+  TMP_VENV="$(mktemp -d "${TMPDIR:-/tmp}/spotwo-ruleset-validator.XXXXXX")"
+  "$PYTHON_BIN" -m venv "$TMP_VENV" || {
+    echo "Could not create a temporary Python virtual environment" >&2
+    exit 2
+  }
+  VALIDATOR_PYTHON="$TMP_VENV/bin/python"
+  "$VALIDATOR_PYTHON" -m pip install \
+    --disable-pip-version-check \
+    --quiet \
+    -r "$ROOT/requirements.txt" || {
+      echo "Could not install ruleset validator dependencies from requirements.txt" >&2
+      exit 2
+    }
+fi
+
+"$VALIDATOR_PYTHON" "$ROOT/scripts/validate_github_main_ruleset.py"
 
 name="$("$PYTHON_BIN" - "$RULESET" <<'PY'
 import json
