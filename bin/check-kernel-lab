@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LAB="$ROOT/labs/postgres-inventory-kernel"
 COMPOSE=(docker compose -f "$LAB/compose.yaml")
 PERF_PROFILE="${KERNEL_LAB_PERF_PROFILE:-smoke}"
+PYTEST_TARGET="${KERNEL_LAB_PYTEST_TARGET:-$LAB/tests}"
 
 free_port() {
   python - <<'PY'
@@ -116,7 +117,7 @@ for migration in "$LAB"/sql/*.sql; do
     < "$migration"
 done
 
-python -m pytest -q "$LAB/tests"
+python -m pytest -q "$PYTEST_TARGET"
 
 if [[ "$PERF_PROFILE" != "off" ]]; then
   echo "Running PostgreSQL kernel performance profile: $PERF_PROFILE"
