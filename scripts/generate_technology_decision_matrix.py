@@ -75,49 +75,11 @@ def render() -> str:
             + " |"
         )
 
-    lines.extend(["", "## Decision details", ""])
-    for decision in decisions:
-        evidence = decision["evidence"]
-        lines.extend(
-            [
-                f"### {decision['name']} (`{decision['id']}`)",
-                "",
-                f"**Disposition:** `{decision['disposition']}`  ",
-                f"**Confidence:** `{decision['confidence']}`  ",
-                f"**Category:** `{decision['category']}`",
-                "",
-                f"**Scope:** {decision['scope']}",
-                "",
-                f"**Rationale:** {decision['rationale']}",
-                "",
-                "**Evidence:**",
-                "",
-                f"- repository: {', '.join(f'`{ref}`' for ref in evidence['repository_refs']) or 'none'}",
-                f"- open source: {', '.join(f'`{ref}`' for ref in evidence['open_source_project_refs']) or 'none'}",
-                f"- competitor products: {', '.join(f'`{ref}`' for ref in evidence['competitor_product_refs']) or 'none'}",
-                "",
-                "**Constraints:**",
-                "",
-            ]
-        )
-        for constraint in decision["constraints"]:
-            lines.append(f"- {constraint}")
-        lines.extend(["", "**Alternatives:**", ""])
-        for alternative in decision["alternatives"]:
-            lines.append(f"- {alternative}")
-        lines.extend(
-            [
-                "",
-                f"**Next action:** `{decision['next_action']['type']}` - {decision['next_action']['description']}",
-                "",
-                "**Revisit when:**",
-                "",
-            ]
-        )
-        for trigger in decision["revisit_triggers"]:
-            lines.append(f"- {trigger}")
-        lines.append("")
-
+    lines.extend([
+        "",
+        "Full scope, rationale, evidence references, constraints, alternatives, next action text, and revisit triggers live in `decisions/technology/registry.yml`.",
+        "",
+    ])
     return "\n".join(lines)
 
 
