@@ -1,8 +1,8 @@
 # Product Technology Intelligence
 
-Isolated product-level technology research for the competitor knowledge base.
+Product-level technology research for the competitor knowledge base.
 
-This directory is intentionally separate from the existing `companies/`, `evidence/`, `matrices/`, `schema/` and generated-view flows. No root validator, generator, or CI file is changed.
+The source datasets stay isolated under `technology-intelligence/`, while repository validators, technology decisions, and the query layer may consume them. They remain evidence, not automatic architecture authority.
 
 ## Files
 
@@ -21,6 +21,56 @@ Technology evidence join:
 Product identity always reuses the existing repository identity:
 
 `company_id/product_id`
+
+## Query layer
+
+`bin/query-technology` joins product technology, deployment topology, primary-source evidence, open-source research, and scoped Spotwo technology decisions at query time. It does not copy these datasets into a second source of truth.
+
+Examples:
+
+```bash
+bin/query-technology --database postgresql
+bin/query-technology --api rest
+bin/query-technology --deployment self-hosted
+bin/query-technology --decision trial
+bin/query-technology --company manhattan-associates
+bin/query-technology --technology kubernetes --format json
+bin/query-technology --verification research-gap --research-gaps
+```
+
+Filters are case-insensitive and may be repeated. Repeated filters of the same type are ANDed. Different filter types are also ANDed.
+
+The query result has three record kinds:
+
+- `product` - competitor product plus technology fields, deployment topology, resolved primary sources, linked Spotwo decisions, and research gaps;
+- `decision` - the scoped Spotwo technology decision plus repository evidence, resolved competitor-product evidence, resolved market sources, and referenced open-source projects;
+- `open-source` - one research-catalog project plus its Spotwo research metadata and any technology decisions that cite it.
+
+Use `--kind product`, `--kind decision`, or `--kind open-source` when a caller wants only one record type. Without `--kind`, evidence relationships are traversed intentionally. For example, `--company manhattan-associates` can return both the product record and Spotwo decisions that cite that product as market evidence.
+
+Output formats:
+
+```bash
+# Human-oriented TSV table
+bin/query-technology --database postgresql
+
+# Machine-readable envelope with query, summary, and records
+bin/query-technology --database postgresql --format json
+
+# One machine-readable record per line
+bin/query-technology --decision trial --format ndjson
+```
+
+`--validate` checks cross-file joins before returning results. Repository CI runs the same join validation and query semantics tests through `bin/check`.
+
+Important query semantics:
+
+- a database filter searches the explicit `databases` evidence field, not free text in research gaps;
+- an API filter searches product API evidence and explicitly scoped API-contract decisions;
+- a deployment filter searches the deployment matrix, not generic cloud words elsewhere in a product row;
+- `--decision adopt|trial|watch|reject` traverses decision links, so it can return the decision plus products/open-source projects that support it;
+- resolved source objects include their source ID, publisher, type, title, URL, capture date, and supported claim;
+- unknown evidence remains unknown. The query layer never converts a plausible guess into a match.
 
 ## What the technology matrix separates
 
