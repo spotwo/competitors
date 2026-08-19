@@ -168,7 +168,8 @@ def test_active_source_migration_can_keep_readiness_ready(monkeypatch):
 
     assert report.status == "ready"
     assert report.signals[1].status == "ok"
-    assert report.signals[1].code == "topology_migration_source_accepted"
+    assert report.signals[1].code is None
+    assert report.signals[1].details["code"] == "topology_migration_source_accepted"
     assert report.config["topology_migration"] == migration
 
 
