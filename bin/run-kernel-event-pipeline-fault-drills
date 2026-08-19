@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LAB="$ROOT/labs/postgres-inventory-kernel"
+
+export KERNEL_LAB_PERF_PROFILE=off
+export KERNEL_LAB_PYTEST_TARGET="$LAB/tests/test_event_pipeline_fault_drill.py"
+
+exec bash "$ROOT/bin/check-kernel-lab"
