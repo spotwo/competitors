@@ -2,7 +2,7 @@
 
 This lab compares **REST + OpenAPI 3.1** with a semantically equivalent **gRPC / Protocol Buffers** contract for a deliberately small WMS surface.
 
-It lives under `misc/` because the result is evidence, not yet a canonical Spotwo API architecture decision.
+It remains under `misc/` because the example contracts are experimental evidence rather than production API source code. The external contract-style result was later promoted into canonical ADR 0059, while the exact example endpoints and schemas here remain non-authoritative.
 
 ## Question
 
@@ -89,4 +89,4 @@ The external profile values browser/HTTP ubiquity, customer tooling, human debug
 
 No production latency, throughput, CPU, memory, connection-count, proxy behavior, or failure-recovery benchmark is claimed here. The scores in `comparison.yml` are structural engineering judgments, not measured performance numbers.
 
-Before promoting REST/OpenAPI from `trial` to `adopt`, a later canonical decision should review this lab together with real client/server integration evidence and the intended public compatibility policy. gRPC should remain independently scoped rather than becoming an implicit internal default.
+ADR 0059 promotes **REST + OpenAPI 3.1** to `adopt` only for the default external business API contract style. gRPC remains a separately scoped `trial` for internal realtime/service paths until a realistic runtime benchmark exists. This lab stays as preserved evidence and must not be treated as the production Spotwo API definition.
