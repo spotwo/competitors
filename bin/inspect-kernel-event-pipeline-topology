@@ -14,13 +14,11 @@ LAB = ROOT / "labs" / "postgres-inventory-kernel"
 sys.path.insert(0, str(LAB))
 
 from event_pipeline_readiness import load_registry  # noqa: E402
-from event_pipeline_topology import (  # noqa: E402
-    NatsJetStreamTopologyInspector,
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_migration import (  # noqa: E402
+    TopologyContractInspector,
+    pipeline_topology_migration_mapping,
     render_prometheus,
-)
-from event_pipeline_topology_config import (  # noqa: E402
-    DeploymentTopologyConfig,
-    pipeline_topology_mapping,
 )
 
 DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
@@ -28,7 +26,7 @@ DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Compare deployed JetStream topology with the canonical event pipeline registry"
+        description="Compare deployed JetStream topology with the canonical event pipeline contract"
     )
     parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
     parser.add_argument("--pipeline", required=True)
@@ -41,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="exit 2 when deployed topology does not match the registry",
+        help="exit 1 for warning and 2 for critical topology contract state",
     )
     return parser.parse_args()
 
@@ -64,7 +62,7 @@ def main() -> int:
         registry_data = _read_registry_mapping(args.registry)
         spec = registry.get(args.pipeline)
         topology = pipeline_topology_mapping(registry_data, args.pipeline)
-        expectation = DeploymentTopologyConfig.from_mapping(topology).expectation(spec)
+        migration = pipeline_topology_migration_mapping(registry_data, args.pipeline)
     except KeyError as exc:
         raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
     except (OSError, ValueError) as exc:
@@ -77,7 +75,11 @@ def main() -> int:
         )
 
     try:
-        report = NatsJetStreamTopologyInspector(nats_url).inspect(expectation)
+        report = TopologyContractInspector(nats_url).inspect(
+            spec,
+            target_topology=topology,
+            migration_mapping=migration,
+        )
     except Exception as exc:
         raise SystemExit(
             f"JetStream topology inspection unavailable: {type(exc).__name__}"
@@ -97,7 +99,7 @@ def main() -> int:
 
     if not args.check:
         return 0
-    return 0 if report.status == "ok" else 2
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
 
 
 if __name__ == "__main__":
