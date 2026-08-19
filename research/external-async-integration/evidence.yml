@@ -1,0 +1,103 @@
+version: 1
+captured_at: 2026-08-19
+scope: external-async-integration
+
+sources:
+  - id: cloudevents-spec
+    kind: standard
+    publisher: CNCF CloudEvents
+    url: https://github.com/cloudevents/spec
+    claims:
+      - CloudEvents latest stable specification release is v1.0.2.
+      - CloudEvents standardizes event metadata and protocol bindings but does not define persistence, routing ownership, authorization, integrity, or confidentiality by itself.
+      - The HTTP binding supports structured and binary content modes.
+
+  - id: asyncapi-3-1
+    kind: standard
+    publisher: AsyncAPI Initiative
+    url: https://www.asyncapi.com/docs/reference/specification/v3.1.0
+    claims:
+      - AsyncAPI 3.1.0 is a machine-readable specification for message-driven APIs.
+      - AsyncAPI is protocol-agnostic and describes channels, messages, operations, servers, and protocol bindings.
+      - AsyncAPI describes a contract; it does not provide delivery durability or retry behavior by itself.
+
+  - id: standard-webhooks-1-0
+    kind: standard
+    publisher: Standard Webhooks
+    url: https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md
+    claims:
+      - Standard Webhooks defines webhook-id, webhook-timestamp, and webhook-signature metadata.
+      - Its symmetric signing profile uses HMAC-SHA256 over message id, timestamp, and payload.
+      - A stable message id across retries can be used by consumers as an idempotency key.
+      - Timestamp validation is part of replay-attack protection.
+
+  - id: github-webhook-signatures
+    kind: operational-reference
+    publisher: GitHub
+    url: https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
+    claims:
+      - GitHub signs webhook payloads with HMAC-SHA256 using a configured secret.
+      - Consumers are expected to verify signatures before processing payloads.
+
+  - id: github-webhook-redelivery
+    kind: operational-reference
+    publisher: GitHub
+    url: https://docs.github.com/en/webhooks/using-webhooks/handling-failed-webhook-deliveries
+    claims:
+      - Failed webhook delivery and replay are operational concerns separate from payload format.
+      - GitHub exposes explicit redelivery workflows rather than treating initial HTTP delivery as guaranteed processing.
+
+  - id: stripe-webhook-delivery
+    kind: operational-reference
+    publisher: Stripe
+    url: https://docs.stripe.com/webhooks
+    claims:
+      - Webhook consumers must tolerate duplicate events.
+      - Event delivery order is not guaranteed.
+      - Delivery retry behavior and API/event versioning are explicit public-contract concerns.
+
+  - id: svix-webhooks
+    kind: open-source
+    publisher: Svix
+    url: https://github.com/svix/svix-webhooks
+    claims:
+      - Svix is an open-source webhook delivery service with signing, retry, and delivery-management features.
+      - Its implementation demonstrates that reliable webhook delivery is a dedicated subsystem rather than a direct HTTP call from business logic.
+
+  - id: convoy-webhooks
+    kind: open-source
+    publisher: Frain / Convoy
+    url: https://github.com/frain-dev/convoy
+    claims:
+      - Convoy is an open-source webhook gateway with persistence, retries, rate limiting, circuit breaking, and signing.
+      - Its architecture separates ingestion from scheduled delivery workers.
+
+  - id: manhattan-datastream-pubsub
+    kind: commercial-primary
+    publisher: Manhattan Associates
+    url: https://developer.manh.com/docs/how-to/data-stream-for-pubsub-configuration/
+    claims:
+      - Manhattan Active supports near-real-time Data Stream delivery to customer-owned Google Cloud Pub/Sub.
+      - The commercial pattern demonstrates that customer-facing asynchronous integration can be a separate delivery surface from ordinary REST APIs.
+
+  - id: manhattan-activity-stream
+    kind: commercial-primary
+    publisher: Manhattan Associates
+    url: https://developer.manh.com/docs/reference/activity-stream/
+    claims:
+      - Manhattan Activity Stream uses Google Pub/Sub and documents acknowledgement and duplicate-processing concerns.
+      - Consumer acknowledgement timing is part of the delivery contract.
+
+  - id: oracle-wms-integration
+    kind: commercial-primary
+    publisher: Oracle
+    url: https://docs.oracle.com/en/cloud/saas/warehouse-management/26b/owmap/communication-and-data.html
+    claims:
+      - Oracle WMS Cloud documents REST over HTTPS and SFTP as external integration protocols.
+      - The public WMS documentation does not establish CloudEvents or AsyncAPI as a universal warehouse integration contract.
+
+interpretation:
+  - CloudEvents, AsyncAPI, and webhook signing solve different layers and should not be treated as mutually exclusive alternatives.
+  - A public event envelope must remain independent from internal NATS JetStream subjects, streams, durable names, and retention policy.
+  - Reliable webhook delivery requires durable delivery state, retry policy, duplicate tolerance, replay controls, and customer-visible diagnostics.
+  - Commercial evidence is heterogeneous, so Spotwo should own its public asynchronous contract instead of copying one vendor transport.

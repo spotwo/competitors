@@ -1,0 +1,75 @@
+version: 1
+status: trial
+scope: external-async-integration
+
+profile:
+  name: signed-cloudevents-webhook
+  purpose: >-
+    Exercise a public asynchronous notification contract that is independent from internal NATS JetStream topology.
+  envelope:
+    standard: CloudEvents
+    specversion: "1.0"
+    stable_spec_release: "1.0.2"
+    content_mode: structured-json
+    content_type: application/cloudevents+json
+    required_attributes:
+      - specversion
+      - id
+      - source
+      - type
+      - time
+      - datacontenttype
+      - subject
+      - data
+  description:
+    standard: AsyncAPI
+    version: "3.1.0"
+    file: misc/external-async-contract-lab/asyncapi.yaml
+  delivery:
+    mechanism: HTTPS webhook
+    semantics: at-least-once
+    acknowledgement: any-2xx
+    signing_profile: Standard Webhooks 1.0
+    signature_algorithm: HMAC-SHA256
+    headers:
+      id: webhook-id
+      timestamp: webhook-timestamp
+      signature: webhook-signature
+    stable_delivery_id: cloudevents.id
+    retryable_outcomes:
+      - network-error
+      - http-408
+      - http-425
+      - http-429
+      - http-5xx
+    terminal_outcomes:
+      - http-2xx
+      - other-http-4xx
+  consumer:
+    duplicate_tolerance: required
+    ordering_assumption: none
+    process_after_signature_verification: true
+    idempotency_key: cloudevents.id
+  replay:
+    requirement: required-before-adopt
+    mechanism: durable delivery history plus explicit replay; pull feed remains a separate candidate recovery surface
+  security:
+    verify_raw_body: true
+    timestamp_tolerance_seconds: 300
+    endpoint_secret_scope: per-subscription
+    secret_rotation: overlapping-signatures-supported
+  isolation:
+    internal_nats_topology_exposed: false
+    forbidden_public_tokens:
+      - jetstream
+      - durable consumer
+      - nats subject
+      - stream name
+
+unresolved_before_adopt:
+  - Production retry schedule, maximum delivery age, and endpoint disable policy.
+  - Customer-visible replay window and delivery diagnostics API.
+  - Durable pull-feed recovery contract and cursor semantics.
+  - Rate limits, payload-size limits, and backpressure policy.
+  - Key rotation and asymmetric-signature option for high-trust integrations.
+  - Tenant and site subscription authorization model.

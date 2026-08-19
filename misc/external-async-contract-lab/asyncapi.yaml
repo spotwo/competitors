@@ -1,0 +1,74 @@
+asyncapi: '3.1.0'
+info:
+  title: Spotwo External Event Webhook Lab
+  version: '0.1.0'
+  description: >-
+    Non-production contract lab for outbound Spotwo business notifications. Internal NATS topology is intentionally absent.
+defaultContentType: application/cloudevents+json
+servers:
+  exampleCustomerEndpoint:
+    host: customer.example
+    pathname: /webhooks/spotwo
+    protocol: https
+    description: Example customer-owned webhook receiver used only by the lab.
+channels:
+  externalBusinessEvents:
+    address: /webhooks/spotwo
+    messages:
+      inventoryPositionChanged:
+        $ref: '#/components/messages/inventoryPositionChanged'
+operations:
+  deliverExternalBusinessEvent:
+    action: send
+    channel:
+      $ref: '#/channels/externalBusinessEvents'
+    messages:
+      - $ref: '#/channels/externalBusinessEvents/messages/inventoryPositionChanged'
+components:
+  messages:
+    inventoryPositionChanged:
+      name: inventoryPositionChanged
+      title: Inventory position changed
+      summary: Example public projection of a Spotwo inventory fact.
+      contentType: application/cloudevents+json
+      payload:
+        type: object
+        required:
+          - specversion
+          - id
+          - source
+          - type
+          - subject
+          - time
+          - datacontenttype
+          - data
+        properties:
+          specversion:
+            const: '1.0'
+          id:
+            type: string
+          source:
+            type: string
+            format: uri
+          type:
+            const: com.spotwo.inventory.position.changed.v1
+          subject:
+            type: string
+          time:
+            type: string
+            format: date-time
+          datacontenttype:
+            const: application/json
+          data:
+            type: object
+            required:
+              - inventory_position_id
+              - location_id
+              - quantity
+            properties:
+              inventory_position_id:
+                type: string
+              location_id:
+                type: string
+              quantity:
+                type: string

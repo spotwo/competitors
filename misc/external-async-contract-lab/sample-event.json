@@ -1,0 +1,14 @@
+{
+  "specversion": "1.0",
+  "id": "evt_01J7R7YQ3K2M9W4QF6P8T1V0AB",
+  "source": "https://api.spotwo.example/sites/site_kyiv_01",
+  "type": "com.spotwo.inventory.position.changed.v1",
+  "subject": "inventory-positions/ipos_01J7R7Z5GN3H8WQJ0V2D6R4K9M",
+  "time": "2026-08-19T17:40:00Z",
+  "datacontenttype": "application/json",
+  "data": {
+    "inventory_position_id": "ipos_01J7R7Z5GN3H8WQJ0V2D6R4K9M",
+    "location_id": "loc_01J7R80C48H0Q2V3T9A5E6B7DN",
+    "quantity": "12"
+  }
+}
