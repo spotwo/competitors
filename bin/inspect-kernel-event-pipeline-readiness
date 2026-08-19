@@ -7,14 +7,16 @@ import os
 import sys
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 LAB = ROOT / "labs" / "postgres-inventory-kernel"
 sys.path.insert(0, str(LAB))
 
-from event_pipeline_readiness import (  # noqa: E402
-    EventPipelineReadinessCollector,
-    load_registry,
-    render_prometheus,
+from event_pipeline_readiness import load_registry, render_prometheus  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_readiness import (  # noqa: E402
+    TopologyAwareEventPipelineReadinessCollector,
 )
 
 DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
@@ -63,6 +65,14 @@ def _read_watchdog_state(path: str | None) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
+def _read_registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
 def main() -> int:
     args = parse_args()
     if args.pretty and args.format != "json":
@@ -70,7 +80,9 @@ def main() -> int:
 
     try:
         registry = load_registry(args.registry)
+        registry_data = _read_registry_mapping(args.registry)
         spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(registry_data, args.pipeline)
     except KeyError as exc:
         raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
     except (OSError, ValueError) as exc:
@@ -81,8 +93,9 @@ def main() -> int:
     watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
     watchdog_state = _read_watchdog_state(watchdog_path)
 
-    report = EventPipelineReadinessCollector().collect(
+    report = TopologyAwareEventPipelineReadinessCollector().collect(
         spec,
+        topology=topology,
         database_url=database_url,
         nats_url=nats_url,
         watchdog_state=watchdog_state,
