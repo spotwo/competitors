@@ -3,16 +3,17 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, Mapping
+from typing import TYPE_CHECKING, Any, Literal, Mapping
 
-from event_pipeline_topology import (
-    EventPipelineTopologyExpectation,
-    EventPipelineTopologyReport,
-    NatsJetStreamTopologyInspector,
-    TopologyDrift,
-    TopologyResourceSnapshot,
-)
 from event_pipeline_topology_config import DeploymentTopologyConfig
+
+if TYPE_CHECKING:
+    from event_pipeline_topology import (
+        EventPipelineTopologyExpectation,
+        EventPipelineTopologyReport,
+        TopologyDrift,
+        TopologyResourceSnapshot,
+    )
 
 ContractStatus = Literal["ok", "warning", "critical"]
 MigrationPhase = Literal["active", "expired"]
@@ -58,7 +59,9 @@ def _merge_overrides(target: Mapping[str, Any], overrides: Mapping[str, Any]) ->
     return source
 
 
-def _expected_fields(expectation: EventPipelineTopologyExpectation) -> tuple[Mapping[str, Any], ...]:
+def _expected_fields(
+    expectation: EventPipelineTopologyExpectation,
+) -> tuple[Mapping[str, Any], ...]:
     return (
         {
             "subjects": tuple(sorted(expectation.stream.subjects)),
@@ -90,6 +93,8 @@ def _compare_resources(
     expectation: EventPipelineTopologyExpectation,
     resources: tuple[TopologyResourceSnapshot, ...],
 ) -> tuple[TopologyDrift, ...]:
+    from event_pipeline_topology import TopologyDrift
+
     drift: list[TopologyDrift] = []
     for resource, expected in zip(resources, _expected_fields(expectation), strict=True):
         if not resource.exists:
@@ -200,6 +205,8 @@ class TopologyContractInspector:
     """Evaluate exact topology plus an optional time-bounded source-to-target rollout."""
 
     def __init__(self, server_url: str):
+        from event_pipeline_topology import NatsJetStreamTopologyInspector
+
         self.inspector = NatsJetStreamTopologyInspector(server_url)
 
     def inspect(
