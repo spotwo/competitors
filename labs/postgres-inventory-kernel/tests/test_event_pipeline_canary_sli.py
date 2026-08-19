@@ -13,7 +13,6 @@ from event_pipeline_canary import (
     EventPipelineCanaryDbSnapshot,
     EventPipelineCanaryHealthReport,
     EventPipelineCanaryRunSnapshot,
-    PostgresEventPipelineCanaryStore,
 )
 from event_pipeline_canary_sli import (
     EventPipelineCanarySliPolicy,
@@ -29,7 +28,17 @@ CONSUMER = "event_pipeline_canary"
 FILTER = "spotwo.wms.events.health_check.ping"
 
 
-def _success_report(*, canary_id, event_id, started_at, durable: str = DURABLE):
+def _start_tracked(store: PostgresEventPipelineCanarySliStore):
+    return store.start_tracked(
+        tenant_id=lab.TENANT,
+        stream_name=STREAM,
+        durable_name=DURABLE,
+        consumer_name=CONSUMER,
+        timeout_seconds=30,
+    )
+
+
+def _success_report(*, canary_id, event_id, started_at):
     published_at = started_at + timedelta(seconds=1)
     broker_at = started_at + timedelta(seconds=1.2)
     inbox_at = started_at + timedelta(seconds=1.5)
@@ -47,7 +56,7 @@ def _success_report(*, canary_id, event_id, started_at, durable: str = DURABLE):
         inbox_first_seen_at=inbox_at,
         transport_message_id=f"{STREAM}:10",
         stream_name=STREAM,
-        durable_name=durable,
+        durable_name=DURABLE,
         stream_sequence=10,
         consumer_sequence=5,
         delivery_count=1,
@@ -56,7 +65,7 @@ def _success_report(*, canary_id, event_id, started_at, durable: str = DURABLE):
     snapshot = EventPipelineCanaryRunSnapshot(
         observed_at=observed_at,
         expected_stream_name=STREAM,
-        expected_durable_name=durable,
+        expected_durable_name=DURABLE,
         expected_consumer_name=CONSUMER,
         expected_filter_subject=FILTER,
         database=database,
@@ -69,11 +78,7 @@ def _success_report(*, canary_id, event_id, started_at, durable: str = DURABLE):
             last_ack_at=observed_at,
         ),
     )
-    return EventPipelineCanaryHealthReport(
-        status="ok",
-        snapshot=snapshot,
-        timed_out=False,
-    )
+    return EventPipelineCanaryHealthReport(status="ok", snapshot=snapshot, timed_out=False)
 
 
 def _timeout_report(*, canary_id, event_id, started_at):
@@ -126,11 +131,32 @@ def _timeout_report(*, canary_id, event_id, started_at):
     )
 
 
-def test_outcome_recording_is_idempotent_and_fails_closed_on_evidence_collision():
-    identity = PostgresEventPipelineCanaryStore(lab.DATABASE_URL).start(
-        tenant_id=lab.TENANT
-    )
+def test_tracked_start_is_atomic_with_scope_and_deadline():
     store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
+    identity = _start_tracked(store)
+
+    with lab.connect() as conn:
+        run = conn.execute(
+            "SELECT tenant_id, event_id FROM kernel_lab.event_pipeline_canary_runs WHERE canary_id = %s",
+            (identity.canary_id,),
+        ).fetchone()
+        outcome = conn.execute(
+            """
+            SELECT tenant_id, stream_name, durable_name, consumer_name,
+                   outcome, deadline_at > started_at
+            FROM kernel_lab.event_pipeline_canary_outcomes
+            WHERE canary_id = %s
+            """,
+            (identity.canary_id,),
+        ).fetchone()
+
+    assert run == (lab.TENANT, identity.event_id)
+    assert outcome == (lab.TENANT, STREAM, DURABLE, CONSUMER, "pending", True)
+
+
+def test_outcome_recording_is_idempotent_and_fails_closed_on_evidence_collision():
+    store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
+    identity = _start_tracked(store)
     report = _success_report(
         canary_id=identity.canary_id,
         event_id=identity.event_id,
@@ -139,32 +165,28 @@ def test_outcome_recording_is_idempotent_and_fails_closed_on_evidence_collision(
 
     first = store.record(report)
     second = store.record(report)
-
     assert first.created is True
     assert second.created is False
     assert second.finalized_at == first.finalized_at
 
-    conflicting = _success_report(
+    conflicting = _timeout_report(
         canary_id=identity.canary_id,
         event_id=identity.event_id,
         started_at=identity.recorded_at,
-        durable="OTHER_DURABLE",
     )
     with pytest.raises(psycopg.UniqueViolation, match="different evidence"):
         store.record(conflicting)
 
 
-def test_timeout_outcome_records_bounded_failure_code_without_event_labels():
-    identity = PostgresEventPipelineCanaryStore(lab.DATABASE_URL).start(
-        tenant_id=lab.TENANT
-    )
+def test_timeout_outcome_records_bounded_failure_code():
+    store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
+    identity = _start_tracked(store)
     report = _timeout_report(
         canary_id=identity.canary_id,
         event_id=identity.event_id,
         started_at=identity.recorded_at,
     )
-
-    receipt = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL).record(report)
+    receipt = store.record(report)
     assert receipt.created is True
 
     with lab.connect() as conn:
@@ -185,23 +207,18 @@ def _record_direct_outcome(
     end_to_end_seconds: float | None,
     terminal_code: str | None = None,
 ):
-    identity = PostgresEventPipelineCanaryStore(lab.DATABASE_URL).start(
-        tenant_id=lab.TENANT
-    )
+    store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
+    identity = _start_tracked(store)
     with lab.connect() as conn:
         conn.execute(
             """
-            SELECT *
-            FROM kernel_lab.record_event_pipeline_canary_outcome(
-              %s, %s, %s, %s, %s, %s, %s,
-              %s, %s, %s, %s, %s, %s, %s
+            SELECT * FROM kernel_lab.record_event_pipeline_canary_outcome(
+              %s, %s, %s, %s, %s, %s,
+              %s, %s, %s, %s, %s
             )
             """,
             (
                 identity.canary_id,
-                STREAM,
-                DURABLE,
-                CONSUMER,
                 "succeeded" if succeeded else "failed",
                 "ok" if succeeded else "critical",
                 terminal_code,
@@ -260,6 +277,32 @@ def test_sli_windows_compute_ratios_burn_rates_failure_codes_and_quantiles():
     assert quantiles["p99"] == pytest.approx(7.93)
 
 
+def test_expired_pending_probe_counts_as_abandoned_failure():
+    store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
+    identity = _start_tracked(store)
+    with lab.connect() as conn:
+        conn.execute(
+            """
+            UPDATE kernel_lab.event_pipeline_canary_outcomes
+            SET started_at = clock_timestamp() - interval '2 minutes',
+                deadline_at = clock_timestamp() - interval '1 minute'
+            WHERE canary_id = %s
+            """,
+            (identity.canary_id,),
+        )
+        conn.commit()
+
+    window = store.snapshot(
+        stream_name=STREAM,
+        durable_name=DURABLE,
+        consumer_name=CONSUMER,
+    ).window(300)
+    assert window.total_runs == 1
+    assert window.failed_runs == 1
+    assert window.consecutive_failures == 1
+    assert window.failure_codes == {"canary_probe_abandoned": 1}
+
+
 def _window(
     seconds: int,
     *,
@@ -306,37 +349,14 @@ def test_multiwindow_policy_detects_fast_burn_and_stale_series():
         latency_target_ratio=0.99,
         latency_target_seconds=5.0,
         windows=(
-            _window(
-                300,
-                observed_at=observed,
-                last_run_at=observed - timedelta(seconds=10),
-                availability_burn=20.0,
-                latency_burn=0.0,
-                consecutive_failures=1,
-            ),
-            _window(
-                3600,
-                observed_at=observed,
-                last_run_at=observed - timedelta(seconds=10),
-                availability_burn=15.0,
-                latency_burn=0.0,
-                consecutive_failures=1,
-            ),
-            _window(
-                86400,
-                observed_at=observed,
-                last_run_at=observed - timedelta(seconds=10),
-                availability_burn=2.0,
-                latency_burn=0.0,
-                consecutive_failures=1,
-            ),
+            _window(300, observed_at=observed, last_run_at=observed - timedelta(seconds=10), availability_burn=20.0, latency_burn=0.0, consecutive_failures=1),
+            _window(3600, observed_at=observed, last_run_at=observed - timedelta(seconds=10), availability_burn=15.0, latency_burn=0.0, consecutive_failures=1),
+            _window(86400, observed_at=observed, last_run_at=observed - timedelta(seconds=10), availability_burn=2.0, latency_burn=0.0, consecutive_failures=1),
         ),
     )
     report = EventPipelineCanarySliPolicy().evaluate(snapshot)
     assert report.status == "critical"
-    assert [alert.code for alert in report.alerts] == [
-        "canary_sli_availability_fast_burn"
-    ]
+    assert [alert.code for alert in report.alerts] == ["canary_sli_availability_fast_burn"]
 
     stale_snapshot = EventPipelineCanarySliSnapshot(
         stream_name=STREAM,
@@ -346,14 +366,7 @@ def test_multiwindow_policy_detects_fast_burn_and_stale_series():
         latency_target_ratio=0.99,
         latency_target_seconds=5.0,
         windows=tuple(
-            _window(
-                seconds,
-                observed_at=observed,
-                last_run_at=observed - timedelta(seconds=181),
-                availability_burn=0.0,
-                latency_burn=0.0,
-                consecutive_failures=0,
-            )
+            _window(seconds, observed_at=observed, last_run_at=observed - timedelta(seconds=181), availability_burn=0.0, latency_burn=0.0, consecutive_failures=0)
             for seconds in (300, 3600, 86400)
         ),
     )
@@ -372,14 +385,7 @@ def test_prometheus_uses_only_bounded_scope_window_stage_quantile_and_codes():
         latency_target_ratio=0.99,
         latency_target_seconds=5.0,
         windows=tuple(
-            _window(
-                seconds,
-                observed_at=observed,
-                last_run_at=observed,
-                availability_burn=0.0,
-                latency_burn=0.0,
-                consecutive_failures=0,
-            )
+            _window(seconds, observed_at=observed, last_run_at=observed, availability_burn=0.0, latency_burn=0.0, consecutive_failures=0)
             for seconds in (300, 3600, 86400)
         ),
     )
