@@ -259,10 +259,13 @@ class TopologyMigrationFinalizationInspector:
                 readiness_collector = TopologyAwareEventPipelineReadinessCollector()
             else:
                 readiness_collector = self.readiness_collector
+            # Evaluate the steady state that will exist after the compatibility stanza
+            # is removed. This avoids an expired migration contract blocking its own
+            # cleanup when the exact target is already live.
             readiness = readiness_collector.collect(
                 spec,
                 topology=target_topology,
-                topology_migration=migration_mapping,
+                topology_migration=None,
                 database_url=self.database_url,
                 nats_url=self.nats_url,
                 watchdog_state=watchdog_state,
