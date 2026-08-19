@@ -17,6 +17,9 @@ from event_pipeline_canary import (  # noqa: E402
     EventPipelineCanarySloPolicy,
     render_prometheus,
 )
+from event_pipeline_canary_sli import (  # noqa: E402
+    PostgresEventPipelineCanarySliStore,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -118,6 +121,7 @@ def main() -> int:
             timeout_seconds=args.timeout_seconds,
             poll_interval_seconds=args.poll_interval_seconds,
         )
+        PostgresEventPipelineCanarySliStore(args.database_url).record(report)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
 
