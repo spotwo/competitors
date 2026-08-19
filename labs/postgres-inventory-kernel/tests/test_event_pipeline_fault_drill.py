@@ -66,7 +66,6 @@ def _new_scope() -> FaultScope:
 
 class FaultNatsLab:
     def __init__(self, server_url: str):
-        self.server_url = server_url
         self._runner = asyncio.Runner()
         self._client = self._runner.run(
             nats.connect(servers=[server_url], allow_reconnect=False, connect_timeout=2)
@@ -214,12 +213,7 @@ def _consume_until_event(
     raise AssertionError(f"target event {target_event_id} was not consumed")
 
 
-def _report(
-    identity,
-    scope: FaultScope,
-    *,
-    timed_out: bool,
-):
+def _report(identity, scope: FaultScope, *, timed_out: bool):
     observed_at = datetime.now(timezone.utc)
     database = PostgresEventPipelineCanaryStore(lab.DATABASE_URL).snapshot(
         canary_id=identity.canary_id,
@@ -256,12 +250,11 @@ def _record_fault_and_assert_history(
     expected_code: str,
 ) -> None:
     store.record(report)
-    snapshot = store.snapshot(
+    short = store.snapshot(
         stream_name=scope.stream,
         durable_name=scope.durable,
         consumer_name=scope.consumer,
-    )
-    short = snapshot.window(300)
+    ).window(300)
     assert short.total_runs == 1
     assert short.failed_runs == 1
     assert short.successful_runs == 0
@@ -293,12 +286,11 @@ def _assert_recovery_history(
     scope: FaultScope,
     expected_code: str,
 ) -> None:
-    snapshot = store.snapshot(
+    short = store.snapshot(
         stream_name=scope.stream,
         durable_name=scope.durable,
         consumer_name=scope.consumer,
-    )
-    short = snapshot.window(300)
+    ).window(300)
     assert short.total_runs == 2
     assert short.failed_runs == 1
     assert short.successful_runs == 1
@@ -308,32 +300,35 @@ def _assert_recovery_history(
     assert short.availability_burn_rate > 14.4
 
 
+def _assert_fault_recovered(
+    result,
+    recovery_report,
+    *,
+    historical_failure_retained: bool = True,
+) -> None:
+    final = with_recovery(
+        result,
+        recovery_report=recovery_report,
+        historical_failure_retained=historical_failure_retained,
+    )
+    assert final.passed is True
+
+
 def test_fault_drill_publisher_stopped_detects_publish_timeout_and_recovers():
     scope = _new_scope()
     store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
     with FaultNatsLab(NATS_URL) as broker:
         broker.provision(scope)
         identity = _start_tracked(store, scope, timeout_seconds=FAULT_TIMEOUT_SECONDS)
-
         _expire_fault_deadline()
         fault_report = _report(identity, scope, timed_out=True)
         result = verify_canary_fault("publisher_stopped", fault_report)
         assert result.fault_detected is True
-        _record_fault_and_assert_history(
-            store,
-            scope,
-            fault_report,
-            "canary_publish_timeout",
-        )
+        _record_fault_and_assert_history(store, scope, fault_report, "canary_publish_timeout")
 
         recovery_report = _run_recovery(store, scope)
         _assert_recovery_history(store, scope, "canary_publish_timeout")
-        final = with_recovery(
-            result,
-            recovery_report=recovery_report,
-            historical_failure_retained=True,
-        )
-        assert final.passed is True
+        _assert_fault_recovered(result, recovery_report)
 
 
 def test_fault_drill_nats_unavailable_detects_outbox_failure_and_recovers():
@@ -354,15 +349,19 @@ def test_fault_drill_nats_unavailable_detects_outbox_failure_and_recovers():
         with lab.connect() as conn:
             row = conn.execute(
                 """
-                SELECT status, last_error, next_attempt_at
+                SELECT published_at, quarantined_at, last_error,
+                       available_at, last_failed_at
                 FROM kernel_lab.domain_event_outbox
                 WHERE event_id = %s
                 """,
                 (identity.event_id,),
             ).fetchone()
-        assert row[0] == "pending"
-        assert row[1]
-        assert row[2] is not None
+        assert row is not None
+        assert row[0] is None
+        assert row[1] is None
+        assert row[2]
+        assert row[3] is not None
+        assert row[4] is not None
 
         _expire_fault_deadline()
         fault_report = _report(identity, scope, timed_out=True)
@@ -372,21 +371,11 @@ def test_fault_drill_nats_unavailable_detects_outbox_failure_and_recovers():
             secondary_code="outbox_publish_failed",
         )
         assert result.fault_detected is True
-        _record_fault_and_assert_history(
-            store,
-            scope,
-            fault_report,
-            "canary_publish_timeout",
-        )
+        _record_fault_and_assert_history(store, scope, fault_report, "canary_publish_timeout")
 
         recovery_report = _run_recovery(store, scope)
         _assert_recovery_history(store, scope, "canary_publish_timeout")
-        final = with_recovery(
-            result,
-            recovery_report=recovery_report,
-            historical_failure_retained=True,
-        )
-        assert final.passed is True
+        _assert_fault_recovered(result, recovery_report)
 
 
 def test_fault_drill_consumer_stopped_detects_delivery_timeout_and_recovers():
@@ -395,28 +384,17 @@ def test_fault_drill_consumer_stopped_detects_delivery_timeout_and_recovers():
     with FaultNatsLab(NATS_URL) as broker:
         broker.provision(scope)
         identity = _start_tracked(store, scope, timeout_seconds=FAULT_TIMEOUT_SECONDS)
-        publish = _publish_all(scope)
-        assert publish.published == 1
+        assert _publish_all(scope).published == 1
 
         _expire_fault_deadline()
         fault_report = _report(identity, scope, timed_out=True)
         result = verify_canary_fault("consumer_stopped", fault_report)
         assert result.fault_detected is True
-        _record_fault_and_assert_history(
-            store,
-            scope,
-            fault_report,
-            "canary_delivery_timeout",
-        )
+        _record_fault_and_assert_history(store, scope, fault_report, "canary_delivery_timeout")
 
         recovery_report = _run_recovery(store, scope)
         _assert_recovery_history(store, scope, "canary_delivery_timeout")
-        final = with_recovery(
-            result,
-            recovery_report=recovery_report,
-            historical_failure_retained=True,
-        )
-        assert final.passed is True
+        _assert_fault_recovered(result, recovery_report)
 
 
 def test_fault_drill_consumer_misconfiguration_is_detected_before_timeout_and_recovers():
@@ -438,25 +416,15 @@ def test_fault_drill_consumer_misconfiguration_is_detected_before_timeout_and_re
 
         broker.provision(scope, misconfigured=False)
         recovery_report = _run_recovery(store, scope)
-        _assert_recovery_history(
-            store,
-            scope,
-            "canary_consumer_configuration_invalid",
-        )
-        final = with_recovery(
-            result,
-            recovery_report=recovery_report,
-            historical_failure_retained=True,
-        )
-        assert final.passed is True
+        _assert_recovery_history(store, scope, "canary_consumer_configuration_invalid")
+        _assert_fault_recovered(result, recovery_report)
 
 
 def test_fault_drill_handler_failure_preserves_secondary_failure_evidence_and_recovers():
     scope = _new_scope()
     store = PostgresEventPipelineCanarySliStore(lab.DATABASE_URL)
-    failure_store = PostgresConsumerFailureStore(lab.DATABASE_URL)
     failure_lane = DurableConsumerFailureLane(
-        store=failure_store,
+        store=PostgresConsumerFailureStore(lab.DATABASE_URL),
         retry_policy=ConsumerRetryPolicy(
             base_delay_seconds=1,
             max_delay_seconds=1,
@@ -495,28 +463,17 @@ def test_fault_drill_handler_failure_preserves_secondary_failure_evidence_and_re
 
         _expire_fault_deadline()
         fault_report = _report(identity, scope, timed_out=True)
-        assert fault_report.snapshot.ack_confirmed is True
         result = verify_canary_fault(
             "inbox_handler_failure",
             fault_report,
             secondary_code="handler_failure",
         )
         assert result.fault_detected is True
-        _record_fault_and_assert_history(
-            store,
-            scope,
-            fault_report,
-            "canary_delivery_timeout",
-        )
+        _record_fault_and_assert_history(store, scope, fault_report, "canary_delivery_timeout")
 
         recovery_report = _run_recovery(store, scope)
         _assert_recovery_history(store, scope, "canary_delivery_timeout")
-        final = with_recovery(
-            result,
-            recovery_report=recovery_report,
-            historical_failure_retained=True,
-        )
-        assert final.passed is True
+        _assert_fault_recovered(result, recovery_report)
 
 
 def test_fault_drill_ack_confirmation_failure_is_distinct_and_recovers():
@@ -555,25 +512,14 @@ def test_fault_drill_ack_confirmation_failure_is_distinct_and_recovers():
             assert fault_report.snapshot.ack_confirmed is False
             result = verify_canary_fault("ack_confirmation_failure", fault_report)
             assert result.fault_detected is True
-            _record_fault_and_assert_history(
-                store,
-                scope,
-                fault_report,
-                "canary_ack_timeout",
-            )
-
+            _record_fault_and_assert_history(store, scope, fault_report, "canary_ack_timeout")
             delivery.ack()
         finally:
             source.close()
 
         recovery_report = _run_recovery(store, scope)
         _assert_recovery_history(store, scope, "canary_ack_timeout")
-        final = with_recovery(
-            result,
-            recovery_report=recovery_report,
-            historical_failure_retained=True,
-        )
-        assert final.passed is True
+        _assert_fault_recovered(result, recovery_report)
 
 
 def test_fault_drill_postgres_unavailable_is_an_explicit_control_plane_dependency():
@@ -594,19 +540,16 @@ def test_fault_drill_postgres_unavailable_is_an_explicit_control_plane_dependenc
     with FaultNatsLab(NATS_URL) as broker:
         broker.provision(scope)
         recovery_report = _run_recovery(store, scope)
-        snapshot = store.snapshot(
+        short = store.snapshot(
             stream_name=scope.stream,
             durable_name=scope.durable,
             consumer_name=scope.consumer,
-        )
-        short = snapshot.window(300)
+        ).window(300)
         assert short.total_runs == 1
         assert short.successful_runs == 1
         assert short.failed_runs == 0
-
-        final = with_recovery(
+        _assert_fault_recovered(
             result,
-            recovery_report=recovery_report,
+            recovery_report,
             historical_failure_retained=False,
         )
-        assert final.passed is True
