@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import socket
+import sys
+import time
+from pathlib import Path
+from uuid import UUID, uuid4
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_canary_sli import TrackedEventPipelineCanaryProbe  # noqa: E402
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_migration import (  # noqa: E402
+    pipeline_topology_migration_mapping,
+)
+from event_pipeline_topology_readiness import (  # noqa: E402
+    TopologyAwareEventPipelineReadinessCollector,
+)
+from event_pipeline_topology_reconciler import (  # noqa: E402
+    TopologyReconciliationControllerReport,
+    UnattendedTopologyReconciliationController,
+)
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Continuously recover expired crash-safe event pipeline topology executions"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument(
+        "--database-url",
+        help="lab override for PostgreSQL URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--nats-url",
+        help="lab override for NATS URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--watchdog-state",
+        help="lab override for external watchdog JSON path; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--tenant-id",
+        default=os.getenv("KERNEL_LAB_CANARY_TENANT_ID"),
+        help="UUID used only when recovery reaches the mandatory fresh canary gate",
+    )
+    parser.add_argument(
+        "--lease-seconds",
+        type=float,
+        help="recovery lease TTL; defaults to at least canary timeout plus 60 seconds",
+    )
+    parser.add_argument(
+        "--poll-seconds",
+        type=float,
+        default=30.0,
+        help="seconds between controller ticks in continuous mode",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="run one recovery-only controller tick and exit",
+    )
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    return parser.parse_args()
+
+
+def _read_registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def _read_watchdog_state(path: str | None) -> dict | None:
+    if not path:
+        return None
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _owner_id() -> str:
+    configured = os.getenv("KERNEL_TOPOLOGY_RECONCILER_OWNER")
+    if configured:
+        return configured
+    return f"reconciler:{socket.gethostname()}:{os.getpid()}:{uuid4()}"
+
+
+def _emit(report: TopologyReconciliationControllerReport, *, pretty: bool) -> None:
+    print(
+        json.dumps(
+            report.to_dict(),
+            indent=2 if pretty else None,
+            sort_keys=True,
+            separators=None if pretty else (",", ":"),
+        ),
+        flush=True,
+    )
+
+
+def _tick(args: argparse.Namespace, *, owner_id: str) -> TopologyReconciliationControllerReport:
+    try:
+        registry = load_registry(args.registry)
+        registry_data = _read_registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(registry_data, args.pipeline)
+        migration = pipeline_topology_migration_mapping(registry_data, args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
+
+    if not database_url:
+        raise SystemExit(
+            f"--database-url or registry-named environment variable {spec.runtime.database_url_env} is required"
+        )
+    if not nats_url:
+        raise SystemExit(
+            f"--nats-url or registry-named environment variable {spec.runtime.nats_url_env} is required"
+        )
+    if not args.tenant_id:
+        raise SystemExit("--tenant-id or KERNEL_LAB_CANARY_TENANT_ID is required")
+    try:
+        tenant_id = UUID(args.tenant_id)
+    except ValueError as exc:
+        raise SystemExit("--tenant-id must be a UUID") from exc
+
+    lease_seconds = args.lease_seconds
+    if lease_seconds is None:
+        lease_seconds = max(120.0, float(spec.canary.timeout_seconds) + 60.0)
+    if lease_seconds <= float(spec.canary.timeout_seconds):
+        raise SystemExit("--lease-seconds must exceed the configured canary timeout")
+
+    readiness_collector = TopologyAwareEventPipelineReadinessCollector()
+
+    def readiness_verifier():
+        return readiness_collector.collect(
+            spec,
+            topology=topology,
+            topology_migration=migration,
+            database_url=database_url,
+            nats_url=nats_url,
+            watchdog_state=_read_watchdog_state(watchdog_path),
+        )
+
+    canary_probe = TrackedEventPipelineCanaryProbe(
+        database_url=database_url,
+        nats_server_url=nats_url,
+    )
+
+    def canary_verifier():
+        return canary_probe.run(
+            tenant_id=tenant_id,
+            stream_name=spec.transport.stream,
+            durable_name=spec.canary.durable,
+            consumer_name=spec.canary.consumer_name,
+            subject_prefix=spec.transport.subject_prefix,
+            timeout_seconds=spec.canary.timeout_seconds,
+        )
+
+    controller = UnattendedTopologyReconciliationController(
+        database_url=database_url,
+        nats_url=nats_url,
+        owner_id=owner_id,
+        lease_seconds=lease_seconds,
+    )
+    return controller.reconcile_once(
+        spec,
+        target_topology=topology,
+        migration_mapping=migration,
+        readiness_verifier=readiness_verifier,
+        canary_verifier=canary_verifier,
+    )
+
+
+def main() -> int:
+    args = parse_args()
+    if args.poll_seconds <= 0:
+        raise SystemExit("--poll-seconds must be positive")
+
+    owner_id = _owner_id()
+    try:
+        while True:
+            report = _tick(args, owner_id=owner_id)
+            _emit(report, pretty=args.pretty)
+            if args.once:
+                return 0 if report.successful else 2
+            time.sleep(args.poll_seconds)
+    except KeyboardInterrupt:
+        return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
