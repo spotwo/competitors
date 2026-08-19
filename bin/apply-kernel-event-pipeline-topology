@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from uuid import UUID
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_canary_sli import TrackedEventPipelineCanaryProbe  # noqa: E402
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_migration import (  # noqa: E402
+    pipeline_topology_migration_mapping,
+)
+from event_pipeline_topology_provisioner import (  # noqa: E402
+    AuthorizedEventPipelineTopologyProvisioner,
+)
+from event_pipeline_topology_readiness import (  # noqa: E402
+    TopologyAwareEventPipelineReadinessCollector,
+)
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Apply one explicitly authorized in-place event pipeline topology migration"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument(
+        "--apply-migration",
+        required=True,
+        metavar="MIGRATION_ID",
+        help="exact reviewed topology_migration.id to authorize",
+    )
+    parser.add_argument(
+        "--database-url",
+        help="lab override for PostgreSQL URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--nats-url",
+        help="lab override for NATS URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--watchdog-state",
+        help="lab override for external watchdog JSON path; otherwise use the registry-named env var",
+    )
+    parser.add_argument(
+        "--tenant-id",
+        default=os.getenv("KERNEL_LAB_CANARY_TENANT_ID"),
+        help="UUID used only for the mandatory fresh synthetic canary",
+    )
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    return parser.parse_args()
+
+
+def _read_registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def _read_watchdog_state(path: str | None) -> dict | None:
+    if not path:
+        return None
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        registry = load_registry(args.registry)
+        registry_data = _read_registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(registry_data, args.pipeline)
+        migration = pipeline_topology_migration_mapping(registry_data, args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
+    watchdog_state = _read_watchdog_state(watchdog_path)
+
+    if not database_url:
+        raise SystemExit(
+            f"--database-url or registry-named environment variable {spec.runtime.database_url_env} is required"
+        )
+    if not nats_url:
+        raise SystemExit(
+            f"--nats-url or registry-named environment variable {spec.runtime.nats_url_env} is required"
+        )
+    if not args.tenant_id:
+        raise SystemExit("--tenant-id or KERNEL_LAB_CANARY_TENANT_ID is required")
+    try:
+        tenant_id = UUID(args.tenant_id)
+    except ValueError as exc:
+        raise SystemExit("--tenant-id must be a UUID") from exc
+
+    readiness_collector = TopologyAwareEventPipelineReadinessCollector()
+
+    def readiness_verifier():
+        return readiness_collector.collect(
+            spec,
+            topology=topology,
+            topology_migration=migration,
+            database_url=database_url,
+            nats_url=nats_url,
+            watchdog_state=watchdog_state,
+        )
+
+    canary_probe = TrackedEventPipelineCanaryProbe(
+        database_url=database_url,
+        nats_server_url=nats_url,
+    )
+
+    def canary_verifier():
+        return canary_probe.run(
+            tenant_id=tenant_id,
+            stream_name=spec.transport.stream,
+            durable_name=spec.canary.durable,
+            consumer_name=spec.canary.consumer_name,
+            subject_prefix=spec.transport.subject_prefix,
+            timeout_seconds=spec.canary.timeout_seconds,
+        )
+
+    try:
+        report = AuthorizedEventPipelineTopologyProvisioner(nats_url).execute(
+            spec,
+            target_topology=topology,
+            migration_mapping=migration,
+            authorized_migration_id=args.apply_migration,
+            readiness_verifier=readiness_verifier,
+            canary_verifier=canary_verifier,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    except Exception as exc:
+        raise SystemExit(
+            f"authorized topology provisioning unavailable: {type(exc).__name__}"
+        ) from exc
+
+    print(
+        json.dumps(
+            report.to_dict(),
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+            separators=None if args.pretty else (",", ":"),
+        )
+    )
+    return 0 if report.status == "succeeded" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
