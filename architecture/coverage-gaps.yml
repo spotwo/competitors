@@ -109,50 +109,72 @@ coverage:
 
   - boundary_ref: external-async-integration
     priority: P0
-    overall: missing
+    overall: partial
     rationale: >-
-      The boundary is explicit but the repository intentionally has not selected a public asynchronous contract.
-      Internal JetStream topology is not acceptable evidence for a customer-facing event contract.
+      The public asynchronous boundary now has a candidate signed CloudEvents webhook contract, captured standards and
+      implementation references, and executable durable-delivery evidence. Commercial evidence remains incomplete and
+      production authorization, network, backpressure, diagnostics, retention, and pull-recovery questions are still open.
     lenses:
       standards:
         requirement: useful
-        status: missing
-        evidence_refs: []
-        research_targets:
-          - CloudEvents
-          - AsyncAPI
-          - standards-based event subscription profiles used by logistics platforms
+        status: covered
+        evidence_refs:
+          - kind: standard
+            ref: CloudEvents 1.0
+          - kind: standard
+            ref: AsyncAPI 3.1.0
+          - kind: standard
+            ref: Standard Webhooks 1.0
+          - kind: repository
+            ref: research/external-async-integration/evidence.yml
+        research_targets: []
         gaps:
-          - Compare event-envelope and contract-description standards without assuming either is the delivery mechanism.
+          - Define the production compatibility and deprecation policy for public event types and payloads.
       open_source:
         requirement: required
-        status: missing
-        evidence_refs: []
-        research_targets:
-          - webhook delivery engines with replay and signature semantics
-          - durable subscription and pull-feed reference implementations
+        status: covered
+        evidence_refs:
+          - kind: repository
+            ref: research/external-async-integration/evidence.yml
+        research_targets: []
         gaps:
-          - Capture at least two maintained implementations with explicit retry, replay, and dead-letter semantics.
+          - Keep Svix and Convoy as implementation references without importing their product boundaries automatically.
       commercial:
         requirement: required
-        status: missing
-        evidence_refs: []
+        status: partial
+        evidence_refs:
+          - kind: repository
+            ref: research/external-async-integration/evidence.yml
+          - kind: competitor-product
+            ref: manhattan-associates/activewarehouse
+          - kind: competitor-product
+            ref: oracle/warehouse-management-cloud
         research_targets:
-          - Manhattan Active event or webhook integration model
           - Blue Yonder integration event model
           - SAP EWM event and webhook surfaces
           - Logiwa outbound event model
         gaps:
-          - Capture product-specific public evidence for delivery guarantees, replay, subscription scope, and compatibility.
+          - Capture at least one additional WMS product with explicit acknowledgement, duplicate, replay, authorization, or compatibility semantics comparable to the Manhattan evidence.
       executable:
         requirement: required
-        status: missing
-        evidence_refs: []
+        status: covered
+        evidence_refs:
+          - kind: repository
+            ref: misc/external-async-contract-lab/contract.yml
+          - kind: repository
+            ref: decisions/domain/0063-trial-signed-cloudevents-webhooks-for-external-events.md
+          - kind: repository
+            ref: decisions/domain/0064-prove-durable-external-webhook-delivery.md
+          - kind: repository
+            ref: labs/postgres-inventory-kernel/tests/test_external_webhook_delivery.py
+          - kind: repository
+            ref: decisions/domain/0065-promote-external-async-integration-to-candidate.md
         research_targets:
-          - signed webhook lab
-          - durable pull-feed lab
+          - real HTTP/TLS delivery and failure lab
+          - durable pull-feed recovery comparison
         gaps:
-          - Compare duplicate delivery, replay windows, acknowledgement, rate limiting, and dead-letter ownership.
+          - Prove endpoint ownership, scoped authorization, secret-manager integration, rate limiting, backpressure, diagnostics, retention, observability, and SLO behavior with real HTTP delivery.
+          - Decide whether a pull-feed recovery surface is required in addition to push webhooks.
 
   - boundary_ref: edge-control-and-sync
     priority: P0
