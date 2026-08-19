@@ -97,7 +97,17 @@ def validate() -> list[str]:
     if delivery.get("stable_delivery_id") != "cloudevents.id" or consumer.get("idempotency_key") != "cloudevents.id":
         errors.append("CloudEvents id must remain stable across retries and be usable for consumer deduplication")
 
-    expected_statuses = {200: "success", 204: "success", 408: "retry", 425: "retry", 429: "retry", 500: "retry", 503: "retry", 400: "terminal", 404: "terminal"}
+    expected_statuses = {
+        200: "success",
+        204: "success",
+        408: "retry",
+        425: "retry",
+        429: "retry",
+        500: "retry",
+        503: "retry",
+        400: "terminal",
+        404: "terminal",
+    }
     for status, expected in expected_statuses.items():
         if classify_http_status(status) != expected:
             errors.append(f"HTTP {status} must classify as {expected}")
@@ -111,15 +121,14 @@ def validate() -> list[str]:
     if channel_ref != "#/channels/externalBusinessEvents":
         errors.append("AsyncAPI send operation must reference the external business event channel")
 
-    serialized = "\n".join(
+    public_artifacts = "\n".join(
         [
-            CONTRACT.read_text(encoding="utf-8"),
             ASYNCAPI.read_text(encoding="utf-8"),
             SAMPLE.read_text(encoding="utf-8"),
         ]
     ).casefold()
     for token in isolation.get("forbidden_public_tokens", []):
-        if token.casefold() in serialized:
+        if token.casefold() in public_artifacts:
             errors.append(f"public lab artifact leaks forbidden internal topology token: {token!r}")
 
     source_ids = {source.get("id") for source in evidence.get("sources", [])}
