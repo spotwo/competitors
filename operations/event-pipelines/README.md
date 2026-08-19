@@ -58,7 +58,9 @@ The topology section currently declares:
 - `max_ack_pending`;
 - `max_deliver`.
 
-The business durable must remain an explicit-ACK pull consumer filtered to `<subject_prefix>.>`. The canary durable must remain an explicit-ACK pull consumer filtered only to `<subject_prefix>.health_check.ping`.
+Both durables must remain explicit-ACK pull consumers. The business filter must stay within the publisher subject prefix **and must not match the synthetic canary subject**. For the Position projector the canonical business filter is `spotwo.wms.events.inventory.position.changed`. The canary durable is filtered only to `spotwo.wms.events.health_check.ping`.
+
+This isolation matters because the Position projector accepts only `inventory.position.changed`; a broad business wildcard would also deliver synthetic canary traffic to the domain projector.
 
 This is desired-state configuration, not a provisioning mechanism. The registry does not create, update, or repair JetStream resources.
 
@@ -76,7 +78,7 @@ or the full repository gate:
 bin/check
 ```
 
-Validation includes JSON Schema shape checks plus cross-field invariants such as unique pipeline IDs, warning/critical ordering, SLI freshness versus canary cadence, watchdog timeout versus canary timeout, stream subject coverage, exact consumer filters, pull-consumer mode, and explicit ACK.
+Validation includes JSON Schema shape checks plus cross-field invariants such as unique pipeline IDs, warning/critical ordering, SLI freshness versus canary cadence, watchdog timeout versus canary timeout, stream subject coverage, business/canary subject isolation, pull-consumer mode, and explicit ACK.
 
 ## Topology drift inspection
 
