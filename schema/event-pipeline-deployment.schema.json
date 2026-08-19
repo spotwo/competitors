@@ -36,6 +36,67 @@
       "type": "integer",
       "minimum": 1
     },
+    "consumerTopology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delivery_mode",
+        "deliver_policy",
+        "ack_policy",
+        "filter_subject",
+        "max_ack_pending",
+        "max_deliver"
+      ],
+      "properties": {
+        "delivery_mode": {"enum": ["pull", "push"]},
+        "deliver_policy": {
+          "enum": [
+            "all",
+            "last",
+            "new",
+            "by_start_sequence",
+            "by_start_time",
+            "last_per_subject"
+          ]
+        },
+        "ack_policy": {"enum": ["explicit", "all", "none"]},
+        "filter_subject": {"$ref": "#/$defs/name"},
+        "max_ack_pending": {"$ref": "#/$defs/positiveInteger"},
+        "max_deliver": {"$ref": "#/$defs/positiveInteger"}
+      }
+    },
+    "topology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream", "business_consumer", "canary_consumer"],
+      "properties": {
+        "stream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "subjects",
+            "storage",
+            "retention",
+            "replicas",
+            "duplicate_window_seconds"
+          ],
+          "properties": {
+            "subjects": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/name"}
+            },
+            "storage": {"enum": ["file", "memory"]},
+            "retention": {"enum": ["limits", "interest", "workqueue"]},
+            "replicas": {"$ref": "#/$defs/positiveInteger"},
+            "duplicate_window_seconds": {"$ref": "#/$defs/positiveNumber"}
+          }
+        },
+        "business_consumer": {"$ref": "#/$defs/consumerTopology"},
+        "canary_consumer": {"$ref": "#/$defs/consumerTopology"}
+      }
+    },
     "pipeline": {
       "type": "object",
       "additionalProperties": false,
@@ -46,6 +107,7 @@
         "transport",
         "consumer",
         "canary",
+        "topology",
         "slo",
         "watchdog"
       ],
@@ -109,6 +171,7 @@
             "timeout_seconds": {"$ref": "#/$defs/positiveNumber"}
           }
         },
+        "topology": {"$ref": "#/$defs/topology"},
         "slo": {
           "type": "object",
           "additionalProperties": false,

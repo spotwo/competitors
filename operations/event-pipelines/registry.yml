@@ -24,6 +24,29 @@ pipelines:
       cadence_seconds: 60
       timeout_seconds: 30
 
+    topology:
+      stream:
+        subjects:
+          - spotwo.wms.events.>
+        storage: file
+        retention: limits
+        replicas: 1
+        duplicate_window_seconds: 120
+      business_consumer:
+        delivery_mode: pull
+        deliver_policy: all
+        ack_policy: explicit
+        filter_subject: spotwo.wms.events.inventory.position.changed
+        max_ack_pending: 10
+        max_deliver: 3
+      canary_consumer:
+        delivery_mode: pull
+        deliver_policy: all
+        ack_policy: explicit
+        filter_subject: spotwo.wms.events.health_check.ping
+        max_ack_pending: 10
+        max_deliver: 3
+
     slo:
       availability_target: 0.999
       latency_target_ratio: 0.99
