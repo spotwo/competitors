@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -27,7 +28,7 @@ from event_pipeline_topology import (
 )
 from event_pipeline_topology_config import DeploymentTopologyConfig
 
-NATS_URL = lab.os.getenv("KERNEL_LAB_NATS_URL", "nats://127.0.0.1:54222") if hasattr(lab, "os") else "nats://127.0.0.1:54222"
+NATS_URL = os.getenv("KERNEL_LAB_NATS_URL", "nats://127.0.0.1:54222")
 
 
 def expectation(
@@ -51,7 +52,7 @@ def expectation(
             delivery_mode="pull",
             deliver_policy="all",
             ack_policy="explicit",
-            filter_subject=f"{subject_prefix}.>",
+            filter_subject=f"{subject_prefix}.inventory.position.changed",
             max_ack_pending=10,
             max_deliver=3,
         ),
@@ -87,7 +88,7 @@ def consumer_info(*, canary: bool = False, **overrides):
         "filter_subject": (
             "spotwo.wms.events.health_check.ping"
             if canary
-            else "spotwo.wms.events.>"
+            else "spotwo.wms.events.inventory.position.changed"
         ),
         "max_ack_pending": 10,
         "max_deliver": 3,
@@ -118,6 +119,7 @@ def test_exact_topology_match_is_healthy_and_prometheus_labels_are_bounded():
         "POSITION_PROJECTOR",
         "EVENT_PIPELINE_CANARY",
         "spotwo.wms.events.>",
+        "inventory.position.changed",
         "health_check.ping",
     ):
         assert forbidden not in prometheus
@@ -161,7 +163,7 @@ def test_drift_reports_exact_resource_fields_without_suppressing_other_mismatche
     ]
 
 
-def test_topology_config_binds_subject_contract_to_deployment_identity():
+def deployment_spec():
     registry_data = {
         "version": 1,
         "pipelines": [
@@ -209,8 +211,11 @@ def test_topology_config_binds_subject_contract_to_deployment_identity():
             }
         ],
     }
-    spec = EventPipelineDeploymentRegistry.from_mapping(registry_data).pipelines[0]
-    topology = {
+    return EventPipelineDeploymentRegistry.from_mapping(registry_data).pipelines[0]
+
+
+def topology_mapping():
+    return {
         "stream": {
             "subjects": ["spotwo.wms.events.>"],
             "storage": "file",
@@ -222,7 +227,7 @@ def test_topology_config_binds_subject_contract_to_deployment_identity():
             "delivery_mode": "pull",
             "deliver_policy": "all",
             "ack_policy": "explicit",
-            "filter_subject": "spotwo.wms.events.>",
+            "filter_subject": "spotwo.wms.events.inventory.position.changed",
             "max_ack_pending": 10,
             "max_deliver": 3,
         },
@@ -236,9 +241,15 @@ def test_topology_config_binds_subject_contract_to_deployment_identity():
         },
     }
 
+
+def test_topology_config_binds_subject_contract_to_deployment_identity():
+    spec = deployment_spec()
+    topology = topology_mapping()
+
     parsed = DeploymentTopologyConfig.from_mapping(topology).expectation(spec)
     assert parsed.stream_name == "WMS_EVENTS"
     assert parsed.business_consumer.durable_name == "POSITION_PROJECTOR"
+    assert parsed.business_consumer.filter_subject.endswith("inventory.position.changed")
     assert parsed.canary_consumer.durable_name == "EVENT_PIPELINE_CANARY"
 
     topology["canary_consumer"]["filter_subject"] = "spotwo.wms.events.>"
@@ -248,6 +259,19 @@ def test_topology_config_binds_subject_contract_to_deployment_identity():
         assert "exact synthetic canary subject" in str(exc)
     else:
         raise AssertionError("invalid canary filter must be rejected")
+
+
+def test_topology_config_rejects_business_filter_that_matches_canary_subject():
+    spec = deployment_spec()
+    topology = topology_mapping()
+    topology["business_consumer"]["filter_subject"] = "spotwo.wms.events.>"
+
+    try:
+        DeploymentTopologyConfig.from_mapping(topology).validate(spec)
+    except ValueError as exc:
+        assert "exclude the synthetic canary subject" in str(exc)
+    else:
+        raise AssertionError("business consumer must not receive canary traffic")
 
 
 class LiveTopologyProbe:
@@ -314,7 +338,7 @@ class LiveTopologyProbe:
                 ack_policy=AckPolicy.EXPLICIT,
                 max_deliver=3,
                 max_ack_pending=10,
-                filter_subject=f"{subject_prefix}.>",
+                filter_subject=f"{subject_prefix}.inventory.position.changed",
             ),
         )
         await self._jetstream.add_consumer(
