@@ -4,6 +4,8 @@ set -euo pipefail
 python scripts/validate.py
 python scripts/validate_open_source_research.py
 python scripts/validate_technology_decisions.py
+python scripts/query_technology_intelligence.py --validate --limit 1 --format json >/dev/null
+python -m unittest scripts.test_technology_intelligence_query
 python scripts/validate_misc_api_contract_lab.py
 python scripts/validate_event_pipeline_deployments.py
 python scripts/validate_topology_finalization_references.py
