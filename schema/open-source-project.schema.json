@@ -21,27 +21,16 @@
   },
   "$defs": {
     "yesNoMaybe": {
-      "type": "string",
-      "enum": ["yes", "no", "maybe"]
+      "oneOf": [
+        {"type": "boolean"},
+        {"type": "string", "const": "maybe"}
+      ]
     },
-    "yesNo": {
-      "type": "string",
-      "enum": ["yes", "no"]
-    },
+    "yesNo": {"type": "boolean"},
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "organization",
-        "category",
-        "kind",
-        "upstream_url",
-        "layers",
-        "status",
-        "spotwo"
-      ],
+      "required": ["id", "name", "organization", "category", "kind", "upstream_url", "layers", "status", "spotwo"],
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
         "name": {"type": "string", "minLength": 1},
@@ -49,18 +38,7 @@
         "category": {"type": "string", "minLength": 1},
         "kind": {
           "type": "string",
-          "enum": [
-            "application",
-            "framework",
-            "library",
-            "platform",
-            "reference-implementation",
-            "routing-engine",
-            "runtime",
-            "specification",
-            "tool",
-            "workflow-engine"
-          ]
+          "enum": ["application", "framework", "library", "platform", "reference-implementation", "routing-engine", "runtime", "specification", "tool", "workflow-engine"]
         },
         "upstream_url": {"type": "string", "format": "uri"},
         "layers": {
@@ -69,33 +47,18 @@
           "uniqueItems": true,
           "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"}
         },
-        "status": {
-          "type": "string",
-          "enum": ["active", "archived", "watch"]
-        },
+        "status": {"type": "string", "enum": ["active", "archived", "watch"]},
         "spotwo": {"$ref": "#/$defs/spotwoAssessment"}
       }
     },
     "spotwoAssessment": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "relevance",
-        "priority",
-        "disposition",
-        "use_directly",
-        "study_architecture",
-        "prototype",
-        "rationale",
-        "ideas"
-      ],
+      "required": ["relevance", "priority", "disposition", "use_directly", "study_architecture", "prototype", "rationale", "ideas"],
       "properties": {
         "relevance": {"type": "integer", "minimum": 1, "maximum": 5},
         "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
-        "disposition": {
-          "type": "string",
-          "enum": ["adopt", "prototype", "study", "watch"]
-        },
+        "disposition": {"type": "string", "enum": ["adopt", "prototype", "study", "watch"]},
         "use_directly": {"$ref": "#/$defs/yesNoMaybe"},
         "study_architecture": {"$ref": "#/$defs/yesNo"},
         "prototype": {"$ref": "#/$defs/yesNo"},
