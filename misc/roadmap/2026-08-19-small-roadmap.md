@@ -60,4 +60,4 @@ After the reusable kernel is proven, define production deployment profiles, secr
 
 ## Side experiment captured with this roadmap
 
-The REST/OpenAPI versus gRPC comparison under `misc/api-contract-lab/` is deliberately a side experiment, not a new roadmap step. It tests one architectural question before any API technology is promoted from `trial` to `adopt`.
+The REST/OpenAPI versus gRPC comparison under `misc/api-contract-lab/` remains a side experiment rather than a roadmap step. Its external-business result was promoted by ADR 0059: REST + OpenAPI 3.1 is now the adopted default external API contract style, while gRPC remains a separately scoped internal realtime trial pending runtime measurements. The exact MISC example contracts remain non-production evidence.
