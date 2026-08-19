@@ -126,12 +126,12 @@
             "availability_target": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "maximum": 1
+              "exclusiveMaximum": 1
             },
             "latency_target_ratio": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "maximum": 1
+              "exclusiveMaximum": 1
             },
             "latency_target_seconds": {"$ref": "#/$defs/positiveNumber"},
             "stale_after_seconds": {"$ref": "#/$defs/positiveNumber"},
