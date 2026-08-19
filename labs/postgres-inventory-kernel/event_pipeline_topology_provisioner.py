@@ -11,10 +11,7 @@ from nats.aio.client import Client as NatsClient
 from nats.js.errors import NotFoundError
 
 from event_pipeline_topology import TopologyResourceSnapshot
-from event_pipeline_topology_migration import (
-    TopologyContractInspector,
-    TopologyMigrationConfig,
-)
+from event_pipeline_topology_migration import TopologyContractInspector, TopologyMigrationConfig
 from event_pipeline_topology_preflight import (
     EventPipelineTopologyPreflightPlanner,
     EventPipelineTopologyPreflightReport,
@@ -40,17 +37,22 @@ def _required_name(value: Any, field: str) -> str:
 def _enum_value(value: Any) -> str | None:
     if value is None:
         return None
-    raw = getattr(value, "value", value)
-    return str(raw).lower()
+    return str(getattr(value, "value", value)).lower()
 
 
 def _seconds(value: Any) -> float | None:
     if value is None:
         return None
     total_seconds = getattr(value, "total_seconds", None)
-    if callable(total_seconds):
-        return float(total_seconds())
-    return float(value)
+    return float(total_seconds()) if callable(total_seconds) else float(value)
+
+
+def _resource_name(spec: Any, resource: ResourceKind) -> str:
+    if resource == "stream":
+        return spec.transport.stream
+    if resource == "business_consumer":
+        return spec.consumer.durable
+    return spec.canary.durable
 
 
 def _resource_snapshot(
@@ -83,43 +85,44 @@ def _resource_snapshot(
     return TopologyResourceSnapshot(resource, name, True, fields)
 
 
-def _snapshot_matches(left: TopologyResourceSnapshot, right: TopologyResourceSnapshot) -> bool:
-    if left.resource != right.resource or left.name != right.name or left.exists != right.exists:
+def _snapshot_matches(
+    actual: TopologyResourceSnapshot,
+    expected: TopologyResourceSnapshot,
+) -> bool:
+    if (
+        actual.resource != expected.resource
+        or actual.name != expected.name
+        or actual.exists != expected.exists
+    ):
         return False
-    if not left.exists:
+    if not actual.exists:
         return True
-    left_fields = dict(left.fields)
-    right_fields = dict(right.fields)
-    if left_fields.keys() != right_fields.keys():
+    if actual.fields.keys() != expected.fields.keys():
         return False
-    for field, expected in right_fields.items():
-        actual = left_fields[field]
-        if field == "duplicate_window_seconds" and actual is not None and expected is not None:
-            if abs(float(actual) - float(expected)) <= 1e-6:
-                continue
-        if actual != expected:
+    for field, expected_value in expected.fields.items():
+        actual_value = actual.fields[field]
+        if (
+            field == "duplicate_window_seconds"
+            and actual_value is not None
+            and expected_value is not None
+            and abs(float(actual_value) - float(expected_value)) <= 1e-6
+        ):
+            continue
+        if actual_value != expected_value:
             return False
     return True
 
 
-def _resource_name(spec: Any, resource: ResourceKind) -> str:
-    if resource == "stream":
-        return spec.transport.stream
-    if resource == "business_consumer":
-        return spec.consumer.durable
-    if resource == "canary_consumer":
-        return spec.canary.durable
-    raise ValueError(f"unsupported resource: {resource}")
-
-
-def _target_value(change: TopologyPlanChange) -> Any:
-    if change.field == "replicas":
-        return int(change.target)
-    if change.field in ("max_ack_pending", "max_deliver"):
+def _target_value(change: TopologyPlanChange) -> int | float:
+    if change.field in ("replicas", "max_ack_pending", "max_deliver"):
         return int(change.target)
     if change.field == "duplicate_window_seconds":
         return float(change.target)
     raise ValueError(f"unsupported topology mutation field: {change.resource}.{change.field}")
+
+
+def _status(report: Any) -> str | None:
+    return getattr(report, "status", None)
 
 
 class ReadinessVerifier(Protocol):
@@ -203,18 +206,12 @@ class AuthorizedTopologyProvisioningReport:
             },
             "preflight": self.preflight.to_dict(),
             "readiness_before": (
-                self.readiness_before.to_dict()
-                if self.readiness_before is not None
-                else None
+                self.readiness_before.to_dict() if self.readiness_before is not None else None
             ),
             "mutation": self.mutation.to_dict() if self.mutation is not None else None,
-            "canary_after": (
-                self.canary_after.to_dict() if self.canary_after is not None else None
-            ),
+            "canary_after": self.canary_after.to_dict() if self.canary_after is not None else None,
             "readiness_after": (
-                self.readiness_after.to_dict()
-                if self.readiness_after is not None
-                else None
+                self.readiness_after.to_dict() if self.readiness_after is not None else None
             ),
             "rollback": self.rollback.to_dict(),
             "cleanup": {
@@ -238,7 +235,7 @@ class TopologyMutationError(RuntimeError):
 
 
 class NatsJetStreamTopologyMutator:
-    """Perform one guarded in-place JetStream resource update and preserve rollback config."""
+    """Apply one guarded in-place update and retain the exact rollback config."""
 
     def __init__(
         self,
@@ -274,13 +271,7 @@ class NatsJetStreamTopologyMutator:
         finally:
             runner.close()
 
-    def rollback(
-        self,
-        *,
-        spec: Any,
-        resource: ResourceKind,
-        source_config: Any,
-    ) -> None:
+    def rollback(self, *, spec: Any, resource: ResourceKind, source_config: Any) -> None:
         runner = asyncio.Runner()
         try:
             runner.run(
@@ -307,20 +298,55 @@ class NatsJetStreamTopologyMutator:
         )
 
     async def _read_info(self, jetstream: Any, spec: Any, resource: ResourceKind) -> Any:
-        if resource == "stream":
-            try:
-                return await jetstream.stream_info(spec.transport.stream)
-            except NotFoundError:
-                return None
-        durable = (
-            spec.consumer.durable
-            if resource == "business_consumer"
-            else spec.canary.durable
-        )
         try:
+            if resource == "stream":
+                return await jetstream.stream_info(spec.transport.stream)
+            durable = (
+                spec.consumer.durable
+                if resource == "business_consumer"
+                else spec.canary.durable
+            )
             return await jetstream.consumer_info(spec.transport.stream, durable)
         except NotFoundError:
             return None
+
+    async def _write_config(
+        self,
+        jetstream: Any,
+        spec: Any,
+        resource: ResourceKind,
+        config: Any,
+    ) -> None:
+        if resource == "stream":
+            await jetstream.update_stream(config)
+            return
+        # nats-py uses the durable consumer create endpoint as create-or-update.
+        # The provisioner reaches this call only after proving the durable exists.
+        await jetstream.add_consumer(spec.transport.stream, config)
+
+    @staticmethod
+    def _apply_changes(
+        resource: ResourceKind,
+        config: Any,
+        changes: tuple[TopologyPlanChange, ...],
+    ) -> None:
+        for change in changes:
+            if change.resource != resource:
+                raise ValueError("mutation changes must target exactly one resource")
+            if change.field not in SUPPORTED_MUTATION_FIELDS[resource]:
+                raise ValueError(
+                    f"unsupported topology mutation field: {resource}.{change.field}"
+                )
+            value = _target_value(change)
+            if resource == "stream":
+                if change.field == "replicas":
+                    config.num_replicas = value
+                else:
+                    config.duplicate_window = value
+            elif change.field == "max_ack_pending":
+                config.max_ack_pending = value
+            else:
+                config.max_deliver = value
 
     async def _apply(
         self,
@@ -353,30 +379,9 @@ class NatsJetStreamTopologyMutator:
 
             source_config = deepcopy(info.config)
             target_config = deepcopy(info.config)
-            for change in changes:
-                if change.resource != resource:
-                    raise ValueError("mutation changes must target exactly one resource")
-                if change.field not in SUPPORTED_MUTATION_FIELDS[resource]:
-                    raise ValueError(
-                        f"unsupported topology mutation field: {resource}.{change.field}"
-                    )
-                value = _target_value(change)
-                if resource == "stream":
-                    if change.field == "replicas":
-                        target_config.num_replicas = value
-                    elif change.field == "duplicate_window_seconds":
-                        target_config.duplicate_window = value
-                else:
-                    if change.field == "max_ack_pending":
-                        target_config.max_ack_pending = value
-                    elif change.field == "max_deliver":
-                        target_config.max_deliver = value
-
+            self._apply_changes(resource, target_config, changes)
             try:
-                if resource == "stream":
-                    await jetstream.update_stream(target_config)
-                else:
-                    await jetstream.update_consumer(spec.transport.stream, target_config)
+                await self._write_config(jetstream, spec, resource, target_config)
             except Exception as exc:
                 raise TopologyMutationError(
                     "topology_mutation_failed",
@@ -401,24 +406,18 @@ class NatsJetStreamTopologyMutator:
         client: NatsClient | None = None
         try:
             client = await self._connect()
-            jetstream = client.jetstream()
-            if resource == "stream":
-                await jetstream.update_stream(deepcopy(source_config))
-            else:
-                await jetstream.update_consumer(
-                    spec.transport.stream,
-                    deepcopy(source_config),
-                )
+            await self._write_config(
+                client.jetstream(),
+                spec,
+                resource,
+                deepcopy(source_config),
+            )
         finally:
             if client is not None and not client.is_closed:
                 try:
                     await client.close()
                 except Exception:
                     pass
-
-
-def _report_status(value: Any) -> str | None:
-    return getattr(value, "status", None)
 
 
 class AuthorizedEventPipelineTopologyProvisioner:
@@ -436,10 +435,37 @@ class AuthorizedEventPipelineTopologyProvisioner:
         self.preflight_planner = preflight_planner or EventPipelineTopologyPreflightPlanner(
             server_url
         )
-        self.contract_inspector = contract_inspector or TopologyContractInspector(
-            server_url
-        )
+        self.contract_inspector = contract_inspector or TopologyContractInspector(server_url)
         self.mutator = mutator or NatsJetStreamTopologyMutator(server_url)
+
+    @staticmethod
+    def _terminal(
+        *,
+        observed_at: datetime,
+        spec: Any,
+        status: ProvisioningStatus,
+        code: str,
+        migration_id: str,
+        preflight: EventPipelineTopologyPreflightReport,
+        readiness_before: Any | None = None,
+        mutation: MutationReceipt | None = None,
+        canary_after: Any | None = None,
+        readiness_after: Any | None = None,
+        rollback: RollbackReceipt | None = None,
+    ) -> AuthorizedTopologyProvisioningReport:
+        return AuthorizedTopologyProvisioningReport(
+            observed_at=observed_at,
+            pipeline_id=spec.pipeline_id,
+            status=status,
+            code=code,
+            authorized_migration_id=migration_id,
+            preflight=preflight,
+            readiness_before=readiness_before,
+            mutation=mutation,
+            canary_after=canary_after,
+            readiness_after=readiness_after,
+            rollback=rollback or RollbackReceipt(False, False, False, None),
+        )
 
     def execute(
         self,
@@ -453,9 +479,7 @@ class AuthorizedEventPipelineTopologyProvisioner:
         observed_at: datetime | None = None,
     ) -> AuthorizedTopologyProvisioningReport:
         observed_at = observed_at or datetime.now(timezone.utc)
-        authorized_migration_id = _required_name(
-            authorized_migration_id, "authorized_migration_id"
-        )
+        migration_id = _required_name(authorized_migration_id, "authorized_migration_id")
         preflight = self.preflight_planner.plan(
             spec,
             target_topology=target_topology,
@@ -463,98 +487,70 @@ class AuthorizedEventPipelineTopologyProvisioner:
             observed_at=observed_at,
         )
 
-        empty_rollback = RollbackReceipt(False, False, False, None)
         if migration_mapping is None:
-            return AuthorizedTopologyProvisioningReport(
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="blocked",
                 code="topology_migration_required",
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
-                readiness_before=None,
-                mutation=None,
-                canary_after=None,
-                readiness_after=None,
-                rollback=empty_rollback,
             )
 
         migration = TopologyMigrationConfig.from_mapping(migration_mapping)
-        if migration.migration_id != authorized_migration_id:
-            return AuthorizedTopologyProvisioningReport(
+        if migration.migration_id != migration_id:
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="blocked",
                 code="topology_migration_authorization_mismatch",
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
-                readiness_before=None,
-                mutation=None,
-                canary_after=None,
-                readiness_after=None,
-                rollback=empty_rollback,
             )
-
         if preflight.decision != "safe_to_apply":
-            return AuthorizedTopologyProvisioningReport(
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="blocked",
                 code=preflight.code,
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
-                readiness_before=None,
-                mutation=None,
-                canary_after=None,
-                readiness_after=None,
-                rollback=empty_rollback,
             )
 
         resources = tuple(dict.fromkeys(change.resource for change in preflight.changes))
         if len(resources) != 1:
             raise RuntimeError("safe preflight must contain exactly one resource")
         resource = resources[0]
-        unsupported = tuple(
-            change
+        if any(
+            change.field not in SUPPORTED_MUTATION_FIELDS.get(resource, frozenset())
             for change in preflight.changes
-            if change.field not in SUPPORTED_MUTATION_FIELDS.get(resource, frozenset())
-        )
-        if unsupported:
-            return AuthorizedTopologyProvisioningReport(
+        ):
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="blocked",
                 code="topology_mutation_not_supported",
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
-                readiness_before=None,
-                mutation=None,
-                canary_after=None,
-                readiness_after=None,
-                rollback=empty_rollback,
             )
 
         readiness_before = readiness_verifier()
-        if _report_status(readiness_before) != "ready":
-            return AuthorizedTopologyProvisioningReport(
+        if _status(readiness_before) != "ready":
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="blocked",
                 code="topology_preapply_readiness_not_ready",
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
                 readiness_before=readiness_before,
-                mutation=None,
-                canary_after=None,
-                readiness_after=None,
-                rollback=empty_rollback,
             )
 
         source_snapshot = next(
             item for item in preflight.contract.target.resources if item.resource == resource
         )
         source_config: Any | None = None
-        mutation_receipt: MutationReceipt | None = None
+        mutation: MutationReceipt | None = None
         canary_after: Any | None = None
         readiness_after: Any | None = None
 
@@ -565,7 +561,7 @@ class AuthorizedEventPipelineTopologyProvisioner:
                 changes=preflight.changes,
                 expected_source=source_snapshot,
             )
-            mutation_receipt = MutationReceipt(
+            mutation = MutationReceipt(
                 resource=resource,
                 fields=tuple(change.field for change in preflight.changes),
                 source=actual_source,
@@ -579,38 +575,36 @@ class AuthorizedEventPipelineTopologyProvisioner:
             )
             if contract_after.matched != "target" or contract_after.target.status != "ok":
                 raise RuntimeError("topology_target_verification_failed")
-            mutation_receipt = MutationReceipt(
+            mutation = MutationReceipt(
                 resource=resource,
-                fields=mutation_receipt.fields,
+                fields=mutation.fields,
                 source=actual_source,
                 target_verified=True,
             )
 
             canary_after = canary_verifier()
-            if _report_status(canary_after) != "ok":
+            if _status(canary_after) != "ok":
                 raise RuntimeError("topology_postapply_canary_not_ok")
 
             readiness_after = readiness_verifier()
-            if _report_status(readiness_after) != "ready":
+            if _status(readiness_after) != "ready":
                 raise RuntimeError("topology_postapply_readiness_not_ready")
 
-            return AuthorizedTopologyProvisioningReport(
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="succeeded",
                 code="topology_target_applied_and_verified",
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
                 readiness_before=readiness_before,
-                mutation=mutation_receipt,
+                mutation=mutation,
                 canary_after=canary_after,
                 readiness_after=readiness_after,
-                rollback=empty_rollback,
             )
         except Exception as exc:
             if isinstance(exc, TopologyMutationError):
-                if source_config is None:
-                    source_config = exc.source_config
+                source_config = source_config or exc.source_config
                 failure_code = exc.code
             else:
                 failure_code = str(exc)
@@ -624,18 +618,17 @@ class AuthorizedEventPipelineTopologyProvisioner:
                 failure_code = "topology_mutation_failed"
 
             if source_config is None:
-                return AuthorizedTopologyProvisioningReport(
+                return self._terminal(
                     observed_at=observed_at,
-                    pipeline_id=spec.pipeline_id,
+                    spec=spec,
                     status="failed",
                     code=failure_code,
-                    authorized_migration_id=authorized_migration_id,
+                    migration_id=migration_id,
                     preflight=preflight,
                     readiness_before=readiness_before,
-                    mutation=mutation_receipt,
+                    mutation=mutation,
                     canary_after=canary_after,
                     readiness_after=readiness_after,
-                    rollback=empty_rollback,
                 )
 
             try:
@@ -644,20 +637,21 @@ class AuthorizedEventPipelineTopologyProvisioner:
                     resource=resource,
                     source_config=source_config,
                 )
-                restored = True
             except Exception:
-                return AuthorizedTopologyProvisioningReport(
+                return self._terminal(
                     observed_at=observed_at,
-                    pipeline_id=spec.pipeline_id,
+                    spec=spec,
                     status="failed",
                     code="topology_rollback_failed",
-                    authorized_migration_id=authorized_migration_id,
+                    migration_id=migration_id,
                     preflight=preflight,
                     readiness_before=readiness_before,
-                    mutation=mutation_receipt,
+                    mutation=mutation,
                     canary_after=canary_after,
                     readiness_after=readiness_after,
-                    rollback=RollbackReceipt(True, False, False, "topology_rollback_failed"),
+                    rollback=RollbackReceipt(
+                        True, False, False, "topology_rollback_failed"
+                    ),
                 )
 
             try:
@@ -671,34 +665,34 @@ class AuthorizedEventPipelineTopologyProvisioner:
                 source_verified = False
 
             if not source_verified:
-                return AuthorizedTopologyProvisioningReport(
+                return self._terminal(
                     observed_at=observed_at,
-                    pipeline_id=spec.pipeline_id,
+                    spec=spec,
                     status="failed",
                     code="topology_rollback_verification_failed",
-                    authorized_migration_id=authorized_migration_id,
+                    migration_id=migration_id,
                     preflight=preflight,
                     readiness_before=readiness_before,
-                    mutation=mutation_receipt,
+                    mutation=mutation,
                     canary_after=canary_after,
                     readiness_after=readiness_after,
                     rollback=RollbackReceipt(
                         True,
-                        restored,
+                        True,
                         False,
                         "topology_rollback_verification_failed",
                     ),
                 )
 
-            return AuthorizedTopologyProvisioningReport(
+            return self._terminal(
                 observed_at=observed_at,
-                pipeline_id=spec.pipeline_id,
+                spec=spec,
                 status="rolled_back",
                 code=failure_code,
-                authorized_migration_id=authorized_migration_id,
+                migration_id=migration_id,
                 preflight=preflight,
                 readiness_before=readiness_before,
-                mutation=mutation_receipt,
+                mutation=mutation,
                 canary_after=canary_after,
                 readiness_after=readiness_after,
                 rollback=RollbackReceipt(True, True, True, None),
