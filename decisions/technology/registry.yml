@@ -1,0 +1,430 @@
+version: 1
+updated_at: 2026-08-19
+
+policy:
+  purpose: Turn competitor, open-source, lab, and ADR evidence into scoped Spotwo technology decisions.
+  dispositions:
+    adopt: Use as the current default inside the stated scope.
+    trial: Build or continue a bounded prototype before adoption.
+    watch: Keep as a researched option or architecture reference without committing runtime dependency.
+    reject: Do not use inside the stated scope; rejection does not extend beyond that scope.
+  evidence_rules:
+    market_usage_is_signal_not_authority: true
+    open_source_popularity_is_signal_not_authority: true
+    accepted_repository_decisions_take_precedence: true
+    unknown_beats_guess: true
+    every_decision_is_scoped: true
+
+# A decision is intentionally narrower than a universal statement about a technology.
+# For example, rejecting Cloudflare Queues as the canonical WMS domain-event transport
+# does not reject Cloudflare Queues for Workers-native background jobs.
+decisions:
+  - id: postgresql
+    name: PostgreSQL
+    category: database
+    scope: Canonical transactional database for the Spotwo WMS kernel and durable control-plane journals.
+    disposition: adopt
+    confidence: high
+    rationale: The WMS kernel is already modeled, tested, and contention-tested on PostgreSQL, and the repository uses PostgreSQL semantics for transactional state, Outbox, Inbox, leases, and provisioning journals. Competitor usage is supporting evidence only, not the reason for adoption.
+    evidence:
+      repository_refs:
+        - decisions/domain/0019-postgresql-performance-contention-lab.md
+        - decisions/domain/0020-wms-kernel-v0.1.md
+      open_source_project_refs: []
+      competitor_product_refs:
+        - odoo/inventory
+    constraints:
+      - Do not treat PostgreSQL as a universal storage engine for telemetry, search, analytics, or time-series workloads without separate evidence.
+      - Preserve the option to introduce specialized stores behind explicit subsystem boundaries.
+    alternatives:
+      - MySQL / MariaDB
+      - Microsoft SQL Server
+    next_action:
+      type: continue
+      description: Keep PostgreSQL as the default OLTP database and extend contention, recovery, and backup labs as workload realism grows.
+    revisit_triggers:
+      - A measured workload cannot meet latency or throughput SLOs after schema, indexing, and transaction-boundary optimization.
+      - A subsystem needs storage semantics that are materially different from OLTP relational state.
+
+  - id: nats-jetstream
+    name: NATS JetStream
+    category: event-transport
+    scope: Canonical default transport for operational Spotwo WMS domain events across warehouse, edge, on-premise, and cloud deployments.
+    disposition: adopt
+    confidence: high
+    rationale: The repository already selected NATS JetStream through a weighted transport decision and has implemented transport, health, canary, recovery, topology, and migration controls around that choice while preserving a broker-neutral domain boundary.
+    evidence:
+      repository_refs:
+        - decisions/domain/0023-domain-event-transport-selection.md
+        - decisions/domain/0024-nats-jetstream-transport-adapter.md
+        - kernel/transports.yml
+      open_source_project_refs: []
+      competitor_product_refs: []
+    constraints:
+      - Stable event identity and consumer idempotency remain authoritative even when the broker offers deduplication features.
+      - Do not make Inventory or Work domain semantics depend on NATS-specific subjects, consumers, or delivery APIs.
+    alternatives:
+      - Redpanda / Kafka API
+      - Amazon SNS FIFO + SQS FIFO
+      - Cloudflare Queues
+    next_action:
+      type: continue
+      description: Reuse the existing event-pipeline contract for a second real consumer before adding more broker-specific features.
+    revisit_triggers:
+      - Long-retention streaming, data-platform integration, or throughput requirements dominate warehouse-local simplicity.
+      - A deployment profile requires a managed-cloud transport with materially different operational constraints.
+
+  - id: rest-openapi
+    name: REST + OpenAPI
+    category: api-contract
+    scope: Default external HTTP API contract style for Spotwo business integrations; not a decision for every internal service-to-service call.
+    disposition: trial
+    confidence: medium
+    rationale: REST APIs are repeatedly visible in verified WMS products and open-source warehouse systems, and OpenAPI gives Spotwo a language-neutral contract that can be generated, validated, and consumed by agents and customers. The repository has not yet completed a dedicated REST versus gRPC contract benchmark, so this remains a trial rather than a final platform-wide mandate.
+    evidence:
+      repository_refs:
+        - technology-intelligence/matrix.csv
+        - technology-intelligence/sources.csv
+      open_source_project_refs: []
+      competitor_product_refs:
+        - logiwa/logiwa-io
+        - openboxes/openboxes
+        - oracle/warehouse-management-cloud
+        - erpnext/stock-and-warehouse
+    constraints:
+      - Public API compatibility and domain semantics must be versioned independently of implementation language or framework.
+      - Internal high-frequency control paths may use another protocol after a measured comparison.
+    alternatives:
+      - gRPC
+      - GraphQL
+      - Async event contracts
+    next_action:
+      type: prototype
+      description: Define a small canonical WMS REST/OpenAPI contract and benchmark ergonomics, versioning, generated clients, and agent tooling against a gRPC equivalent.
+    revisit_triggers:
+      - Internal latency or streaming requirements make HTTP request-response semantics a poor fit.
+      - Customer integration evidence strongly favors another public contract style.
+
+  - id: gs1-epcis
+    name: GS1 EPCIS
+    category: logistics-standard
+    scope: External supply-chain visibility and traceability interoperability; never the canonical internal Spotwo domain-event model.
+    disposition: trial
+    confidence: medium
+    rationale: EPCIS provides a mature external vocabulary for WHAT, WHEN, WHERE, WHY, and HOW supply-chain events. The open-source research catalog rates it as P0 because it can become a stable interoperability boundary while Spotwo preserves its own internal event semantics.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - gs1-epcis
+      competitor_product_refs: []
+    constraints:
+      - Implement EPCIS as a projection or adapter from canonical Spotwo events.
+      - Do not force internal warehouse execution semantics into the EPCIS object model.
+    alternatives:
+      - Custom partner event schemas
+    next_action:
+      type: prototype
+      description: Build a one-way EPCIS projection for a narrow inventory or handling-unit traceability scenario and validate semantic loss explicitly.
+    revisit_triggers:
+      - Target customers do not require EPCIS or GS1 interoperability.
+      - The projection cannot preserve required Spotwo traceability semantics without excessive custom extensions.
+
+  - id: vda-5050
+    name: VDA 5050
+    category: robotics
+    scope: Vendor-neutral command and state boundary between Spotwo orchestration and compatible AMR or AGV fleets.
+    disposition: trial
+    confidence: medium
+    rationale: VDA 5050 can prevent vendor-specific robot commands from leaking into Spotwo orchestration. It is a P0 research item and should be proven with a simulator before becoming a required robotics contract.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - vda-5050
+      competitor_product_refs: []
+    constraints:
+      - Keep Spotwo missions and tasks independent from VDA 5050 message shapes.
+      - Require explicit capability and protocol-version negotiation per fleet adapter.
+    alternatives:
+      - Vendor-native robot APIs
+      - MassRobotics interoperability model
+    next_action:
+      type: prototype
+      description: Build a VDA 5050 simulator lab and map Spotwo mission lifecycle to orders, states, errors, and capability negotiation.
+    revisit_triggers:
+      - Target robot vendors do not support VDA 5050.
+      - Real deployments require semantics that cannot be expressed cleanly through the standard.
+
+  - id: apache-plc4x
+    name: Apache PLC4X
+    category: industrial-connectivity
+    scope: Candidate protocol adapter layer between Spotwo WCS or Edge components and PLCs.
+    disposition: trial
+    confidence: medium
+    rationale: PLC4X may reduce repeated vendor-specific Siemens, Modbus, and other PLC integration work while preserving a Spotwo-owned PLC port. It is high relevance but must prove device compatibility and failure semantics in a lab.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - apache-plc4x
+      competitor_product_refs: []
+    constraints:
+      - Spotwo domain code must depend on a Spotwo-owned PLC interface, not directly on PLC4X classes.
+      - Validate protocol coverage against actual target controllers before adoption.
+    alternatives:
+      - Native vendor SDKs
+      - Direct protocol libraries
+    next_action:
+      type: prototype
+      description: Build Siemens S7 and Modbus read/write labs with disconnect, timeout, reconnect, and stale-state tests behind a Spotwo PLC adapter.
+    revisit_triggers:
+      - Required controllers or protocol features are unsupported or unreliable.
+      - Native SDKs provide materially safer diagnostics or lifecycle control for the target hardware.
+
+  - id: sparkplug-mqtt
+    name: MQTT + Sparkplug
+    category: industrial-telemetry
+    scope: Device and machine telemetry, desired or reported state, and industrial online/offline semantics; separate from WMS business events.
+    disposition: trial
+    confidence: medium
+    rationale: Sparkplug adds stateful industrial conventions to MQTT and creates a clean conceptual boundary between physical-device telemetry and business event transport. The research catalog rates it P0 and explicitly recommends a telemetry lab.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - eclipse-tahu-sparkplug
+      competitor_product_refs: []
+    constraints:
+      - Do not use MQTT or Sparkplug as the canonical WMS business-event transport merely because devices already speak MQTT.
+      - Keep device identity and capability mapping in Spotwo-owned ontology and adapters.
+    alternatives:
+      - Raw MQTT topics
+      - OPC UA telemetry
+    next_action:
+      type: prototype
+      description: Build a simulated device lab covering birth, death, reported state, reconnect, and stale telemetry detection.
+    revisit_triggers:
+      - Target devices expose a different standard with stronger native state semantics.
+      - Sparkplug complexity exceeds the value for the first supported device fleet.
+
+  - id: google-or-tools
+    name: Google OR-Tools
+    category: optimization
+    scope: Baseline solver for routing, assignment, scheduling, packing, and wave-planning experiments before custom optimization engines.
+    disposition: trial
+    confidence: medium
+    rationale: OR-Tools is a mature optimization toolkit and the research catalog marks it P0. Using it as a benchmark avoids prematurely inventing custom solvers while keeping optimization behind Spotwo-owned problem and result contracts.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - google-or-tools
+      competitor_product_refs: []
+    constraints:
+      - Optimization models remain Spotwo-owned and serializable independently of OR-Tools APIs.
+      - Operational decisions need deterministic fallback behavior when a solver times out or returns no feasible result.
+    alternatives:
+      - Timefold Solver
+      - Custom heuristics
+    next_action:
+      type: prototype
+      description: Benchmark one warehouse assignment or wave-planning problem with OR-Tools and a simple heuristic baseline using the same input and score contract.
+    revisit_triggers:
+      - Incremental replanning or constraint explainability dominates raw solver capability.
+      - Solver runtime or deployment footprint is unsuitable for target warehouse hardware.
+
+  - id: ocado-ocava
+    name: Ocava
+    category: simulation
+    scope: Reference and prototype framework for discrete-event warehouse execution simulation and simulation-clock design.
+    disposition: trial
+    confidence: medium
+    rationale: Deterministic accelerated simulation can validate WES and WCS decisions before physical deployment. Ocava is a strong architecture reference, but direct runtime adoption must be proven against Spotwo language, deployment, and scenario needs.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - ocado-ocava
+      competitor_product_refs: []
+    constraints:
+      - Production domain logic must not become inseparable from one simulation framework.
+      - The same scenario semantics should be executable against simulated and real adapters where practical.
+    alternatives:
+      - Spotwo-native discrete-event simulator
+      - General simulation frameworks
+    next_action:
+      type: prototype
+      description: Reproduce one golden warehouse scenario with an abstract clock and compare Ocava-inspired simulation structure with a minimal Spotwo-native harness.
+    revisit_triggers:
+      - Framework integration cost exceeds the value of direct reuse.
+      - Spotwo requires simulation semantics that are easier to own natively.
+
+  - id: openwms
+    name: OpenWMS
+    category: warehouse-reference
+    scope: Architecture and domain-model reference for warehouse locations, transport units, transport orders, movements, routing, and material-flow control.
+    disposition: watch
+    confidence: medium
+    rationale: OpenWMS is a close domain match and therefore valuable for comparison, but importing its runtime or model directly would risk coupling Spotwo to another product's domain assumptions.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - openwms
+      competitor_product_refs: []
+    constraints:
+      - Compare concepts semantically rather than copying entity names or inheritance structures blindly.
+      - Spotwo ontology and kernel invariants remain authoritative.
+    alternatives:
+      - OpenWES
+      - Existing Spotwo domain ontology
+    next_action:
+      type: research
+      description: Map OpenWMS TransportUnit, TransportOrder, Location, routing, and MFC concepts to Spotwo HandlingUnit, Task, Mission, Location, and execution boundaries.
+    revisit_triggers:
+      - A specific OpenWMS module becomes a clearly replaceable implementation behind a Spotwo-owned port.
+
+  - id: open-rmf
+    name: Open-RMF
+    category: robotics
+    scope: Architecture reference for heterogeneous fleet orchestration, traffic coordination, and shared infrastructure.
+    disposition: watch
+    confidence: medium
+    rationale: Open-RMF provides useful patterns for multi-fleet scheduling, doors, elevators, and traffic conflicts, but direct adoption is premature before Spotwo proves its first robot interoperability boundary.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - open-rmf
+      competitor_product_refs: []
+    constraints:
+      - Do not force ROS or RMF runtime assumptions into the generic Spotwo mission model.
+      - Prefer adapters that allow non-RMF fleets to coexist.
+    alternatives:
+      - openTCS
+      - Vendor fleet managers
+    next_action:
+      type: research
+      description: Study task allocation and shared-resource coordination after the VDA 5050 simulator establishes the lower-level robot boundary.
+    revisit_triggers:
+      - A customer requires heterogeneous fleets or shared doors and elevators.
+      - Direct RMF integration materially reduces orchestration effort for a target deployment.
+
+  - id: opentcs
+    name: openTCS
+    category: robotics
+    scope: Candidate transport-control platform for a simulated AMR lab and dispatch or routing experiments.
+    disposition: trial
+    confidence: medium
+    rationale: openTCS is practical enough to exercise transport-order lifecycle, routing, and dispatch behavior without waiting for production robot hardware, while Spotwo still owns the higher-level mission contract.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - opentcs
+      competitor_product_refs: []
+    constraints:
+      - Treat openTCS as a lab or adapter target, not the canonical Spotwo mission model.
+      - Keep the robot interface replaceable by VDA 5050 or vendor-native adapters.
+    alternatives:
+      - Open-RMF
+      - Vendor fleet simulators
+    next_action:
+      type: prototype
+      description: Connect a simulated fleet or transport-order flow to the Spotwo robot adapter lab and compare responsibilities with VDA 5050.
+    revisit_triggers:
+      - The platform duplicates responsibilities better owned by Spotwo WES.
+      - Target robot vendors provide stronger simulation and test environments.
+
+  - id: uber-h3
+    name: H3
+    category: geospatial
+    scope: Candidate geospatial index for future yard, TMS, service-area, and last-mile capabilities; outside the immediate WMS kernel.
+    disposition: watch
+    confidence: medium
+    rationale: H3 is useful for spatial aggregation and territory models, but the current WMS kernel does not yet need a geospatial indexing dependency.
+    evidence:
+      repository_refs: []
+      open_source_project_refs:
+        - uber-h3
+      competitor_product_refs: []
+    constraints:
+      - Do not introduce H3 into ordinary warehouse location addressing where hierarchical warehouse coordinates are sufficient.
+    alternatives:
+      - PostGIS
+      - Plain geographic coordinates
+    next_action:
+      type: research
+      description: Revisit when yard management, delivery territories, depot analytics, or last-mile routing becomes an active product slice.
+    revisit_triggers:
+      - Yard or TMS work requires efficient spatial bucketing or neighborhood queries.
+
+  - id: kubernetes-default
+    name: Kubernetes
+    category: deployment-orchestration
+    scope: Default deployment orchestrator for the Spotwo WMS core across all customers.
+    disposition: watch
+    confidence: medium
+    rationale: Kubernetes is visible in strong cloud-native products and official ERPNext deployment tooling, but competitor usage does not justify imposing cluster operational cost on small warehouse installations. Spotwo should keep container portability while delaying a universal Kubernetes requirement.
+    evidence:
+      repository_refs:
+        - technology-intelligence/matrix.csv
+        - technology-intelligence/deployment-matrix.csv
+      open_source_project_refs: []
+      competitor_product_refs:
+        - manhattan-associates/activewarehouse
+        - erpnext/stock-and-warehouse
+    constraints:
+      - A simple single-site deployment must remain possible without Kubernetes unless product requirements prove otherwise.
+      - Kubernetes-specific service discovery and lifecycle concepts must not leak into business-domain contracts.
+    alternatives:
+      - Docker Compose
+      - systemd-managed services
+      - Nomad
+    next_action:
+      type: research
+      description: Keep Kubernetes as an enterprise or multi-service deployment profile and measure the operational break-even point before promoting it to a default.
+    revisit_triggers:
+      - Multi-service HA, rolling deployment, tenancy, or fleet scale makes manual orchestration materially riskier than operating a cluster.
+
+  - id: redpanda-kafka-secondary
+    name: Redpanda / Kafka API
+    category: event-transport
+    scope: Secondary transport profile for long-retention, high-volume streaming and data-platform integration; not the canonical operational WMS default.
+    disposition: watch
+    confidence: high
+    rationale: The existing weighted transport decision ranks Kafka-compatible streaming strongly for retention, replay, ecosystem, and ordering, but below NATS for small and hybrid warehouse operations.
+    evidence:
+      repository_refs:
+        - decisions/domain/0023-domain-event-transport-selection.md
+        - kernel/transports.yml
+      open_source_project_refs: []
+      competitor_product_refs: []
+    constraints:
+      - Do not add Kafka-specific semantics to the frozen domain-event contract.
+      - Adopt only for a deployment profile whose measured requirements justify the larger operational footprint.
+    alternatives:
+      - NATS JetStream
+    next_action:
+      type: research
+      description: Keep the adapter boundary ready and benchmark only when a real workload needs long retention, analytics integration, or Kafka ecosystem compatibility.
+    revisit_triggers:
+      - Event retention and replay become a primary product capability.
+      - Data-platform consumers require Kafka compatibility at operational scale.
+
+  - id: cloudflare-queues-domain-events
+    name: Cloudflare Queues
+    category: event-transport
+    scope: Canonical transport for operational WMS domain events.
+    disposition: reject
+    confidence: high
+    rationale: The weighted transport decision found Cloudflare Queues well suited to Workers-native asynchronous jobs but a poor canonical fit for warehouse-local domain-event delivery because of cloud dependency, ordering limits, and fan-out differences.
+    evidence:
+      repository_refs:
+        - decisions/domain/0023-domain-event-transport-selection.md
+        - kernel/transports.yml
+      open_source_project_refs: []
+      competitor_product_refs: []
+    constraints:
+      - This rejection applies only to the canonical operational WMS domain-event transport scope.
+      - Cloudflare Queues remains a valid option for Workers-native asynchronous workloads outside this scope.
+    alternatives:
+      - NATS JetStream
+      - Redpanda / Kafka API
+    next_action:
+      type: none
+      description: Do not pursue as the canonical WMS event transport; use only in a separately reviewed Workers-native workload.
+    revisit_triggers:
+      - Cloudflare changes the service semantics enough to satisfy warehouse-local, replay, ordering, and fan-out requirements.
