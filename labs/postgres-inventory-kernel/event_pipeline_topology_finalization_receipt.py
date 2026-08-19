@@ -59,7 +59,7 @@ def target_contract_payload(spec: Any, target_topology: Mapping[str, Any]) -> di
             "storage": expectation.stream.storage,
             "retention": expectation.stream.retention,
             "replicas": expectation.stream.replicas,
-            "duplicate_window_seconds": expectation.stream.duplicate_window_seconds,
+            "duplicate_window_seconds": float(expectation.stream.duplicate_window_seconds),
         },
         "business_consumer": {
             "name": expectation.business_consumer.durable_name,
@@ -223,7 +223,10 @@ class PostgresTopologyFinalizationReceiptStore:
                 SELECT * FROM kernel_lab.event_pipeline_topology_finalization_receipts
                 WHERE pipeline_id = %s AND migration_id = %s
                 """,
-                (_required_name(pipeline_id, "pipeline_id"), _required_name(migration_id, "migration_id")),
+                (
+                    _required_name(pipeline_id, "pipeline_id"),
+                    _required_name(migration_id, "migration_id"),
+                ),
             ).fetchone()
         return None if row is None else self._receipt(row)
 
@@ -273,11 +276,19 @@ class PostgresTopologyFinalizationReceiptStore:
                     ) RETURNING *
                     """,
                     (
-                        uuid4(), pipeline_id, migration_id, run_id, lineage,
-                        json.dumps(_jsonable(target_topology)), target_fingerprint,
-                        json.dumps(_jsonable(migration_contract)), migration_fingerprint,
-                        json.dumps(_jsonable(live_topology)), live_fingerprint,
-                        readiness_status, finalization_code,
+                        uuid4(),
+                        pipeline_id,
+                        migration_id,
+                        run_id,
+                        lineage,
+                        json.dumps(_jsonable(target_topology)),
+                        target_fingerprint,
+                        json.dumps(_jsonable(migration_contract)),
+                        migration_fingerprint,
+                        json.dumps(_jsonable(live_topology)),
+                        live_fingerprint,
+                        readiness_status,
+                        finalization_code,
                     ),
                 ).fetchone()
             return self._receipt(row)
@@ -314,9 +325,14 @@ class PostgresTopologyFinalizationReceiptStore:
                     RETURNING *
                     """,
                     (
-                        uuid4(), receipt_id, status, code,
-                        registry_target_fingerprint, live_fingerprint,
-                        readiness_status, json.dumps(_jsonable(evidence)),
+                        uuid4(),
+                        receipt_id,
+                        status,
+                        code,
+                        registry_target_fingerprint,
+                        live_fingerprint,
+                        readiness_status,
+                        json.dumps(_jsonable(evidence)),
                     ),
                 ).fetchone()
             return self._verification(row)
@@ -356,7 +372,11 @@ class TopologyFinalizationReceiptIssueReport:
             "status": self.status,
             "code": self.code,
             "receipt": self.receipt.to_dict() if self.receipt else None,
-            "side_effects": {"git": False, "jetstream": False, "postgres_receipt": self.successful},
+            "side_effects": {
+                "git": False,
+                "jetstream": False,
+                "postgres_receipt": self.successful,
+            },
         }
 
 
@@ -378,7 +398,11 @@ class TopologyPostMergeVerificationReport:
             "migration_closed": self.closed,
             "receipt": self.receipt.to_dict() if self.receipt else None,
             "verification": self.verification.to_dict() if self.verification else None,
-            "side_effects": {"git": False, "jetstream": False, "postgres_verification": self.verification is not None},
+            "side_effects": {
+                "git": False,
+                "jetstream": False,
+                "postgres_verification": self.verification is not None,
+            },
         }
 
 
@@ -411,7 +435,9 @@ class TopologyFinalizationReceiptController:
     def _readiness_collector(self) -> Any:
         if self.readiness_collector is not None:
             return self.readiness_collector
-        from event_pipeline_topology_readiness import TopologyAwareEventPipelineReadinessCollector
+        from event_pipeline_topology_readiness import (
+            TopologyAwareEventPipelineReadinessCollector,
+        )
 
         return TopologyAwareEventPipelineReadinessCollector()
 
@@ -475,7 +501,9 @@ class TopologyFinalizationReceiptController:
                 "blocked", finalization.code, existing
             )
 
-        provisioning = PostgresTopologyProvisioningHealthStore(self.database_url).snapshot(
+        provisioning = PostgresTopologyProvisioningHealthStore(
+            self.database_url
+        ).snapshot(
             pipeline_id=spec.pipeline_id,
             observed_at=observed_at,
         )
@@ -499,7 +527,9 @@ class TopologyFinalizationReceiptController:
             )
         except Exception:
             return TopologyFinalizationReceiptIssueReport(
-                "blocked", "topology_finalization_receipt_live_evidence_unavailable", existing
+                "blocked",
+                "topology_finalization_receipt_live_evidence_unavailable",
+                existing,
             )
         if contract.matched != "target" or contract.target.status != "ok":
             return TopologyFinalizationReceiptIssueReport(
@@ -591,7 +621,10 @@ class TopologyFinalizationReceiptController:
             )
         if receipt.pipeline_id != spec.pipeline_id:
             return TopologyPostMergeVerificationReport(
-                "blocked", "topology_finalization_receipt_pipeline_mismatch", receipt, None
+                "blocked",
+                "topology_finalization_receipt_pipeline_mismatch",
+                receipt,
+                None,
             )
         closed = self.store.closed_verification(receipt_id)
         if closed is not None:
@@ -643,12 +676,18 @@ class TopologyFinalizationReceiptController:
                 receipt=receipt,
                 code="topology_finalization_post_merge_topology_not_target",
                 registry_target_fingerprint=target_fingerprint,
-                evidence={"matched": contract.matched, "target_status": contract.target.status},
+                evidence={
+                    "matched": contract.matched,
+                    "target_status": contract.target.status,
+                },
             )
 
         live_payload = live_contract_payload(spec, contract)
         live_fingerprint = canonical_fingerprint(live_payload)
-        if live_fingerprint != receipt.live_fingerprint or live_fingerprint != receipt.target_fingerprint:
+        if (
+            live_fingerprint != receipt.live_fingerprint
+            or live_fingerprint != receipt.target_fingerprint
+        ):
             return self._blocked_verification(
                 receipt=receipt,
                 code="topology_finalization_post_merge_live_fingerprint_changed",
@@ -708,7 +747,11 @@ class TopologyFinalizationReceiptController:
 
 def render_prometheus(report: TopologyPostMergeVerificationReport) -> str:
     pipeline = report.receipt.pipeline_id if report.receipt else "unknown"
-    pipeline = pipeline.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    pipeline = (
+        pipeline.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+    )
     state = report.status
     return "\n".join(
         [
