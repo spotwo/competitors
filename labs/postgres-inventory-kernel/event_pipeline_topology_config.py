@@ -33,6 +33,21 @@ def _positive_number(value: Any, field: str) -> float:
     return float(value)
 
 
+def _subject_matches(filter_subject: str, subject: str) -> bool:
+    filter_tokens = filter_subject.split(".")
+    subject_tokens = subject.split(".")
+    subject_index = 0
+    for filter_index, token in enumerate(filter_tokens):
+        if token == ">":
+            return filter_index == len(filter_tokens) - 1 and subject_index < len(subject_tokens)
+        if subject_index >= len(subject_tokens):
+            return False
+        if token != "*" and token != subject_tokens[subject_index]:
+            return False
+        subject_index += 1
+    return subject_index == len(subject_tokens)
+
+
 @dataclass(frozen=True)
 class DeploymentTopologyConfig:
     stream: Mapping[str, Any]
@@ -77,9 +92,9 @@ class DeploymentTopologyConfig:
                 "topology.stream.subjects must include the publisher subject prefix wildcard"
             )
 
-        for name, consumer, expected_filter in (
-            ("business_consumer", self.business_consumer, broad_subject),
-            ("canary_consumer", self.canary_consumer, canary_subject),
+        for name, consumer in (
+            ("business_consumer", self.business_consumer),
+            ("canary_consumer", self.canary_consumer),
         ):
             if consumer.get("delivery_mode") != "pull":
                 raise ValueError(f"topology.{name} must remain a pull consumer")
@@ -94,19 +109,29 @@ class DeploymentTopologyConfig:
                 "last_per_subject",
             ):
                 raise ValueError(f"topology.{name}.deliver_policy is unsupported")
-            if consumer.get("filter_subject") != expected_filter:
-                if name == "canary_consumer":
-                    raise ValueError(
-                        "topology.canary_consumer.filter_subject must match the exact synthetic canary subject"
-                    )
-                raise ValueError(
-                    "topology.business_consumer.filter_subject must match the publisher subject wildcard"
-                )
             _positive_int(
                 consumer.get("max_ack_pending"),
                 f"topology.{name}.max_ack_pending",
             )
             _positive_int(consumer.get("max_deliver"), f"topology.{name}.max_deliver")
+
+        business_filter = self.business_consumer.get("filter_subject")
+        if not isinstance(business_filter, str) or not business_filter.startswith(
+            f"{spec.transport.subject_prefix}."
+        ):
+            raise ValueError(
+                "topology.business_consumer.filter_subject must stay within the publisher subject prefix"
+            )
+        if _subject_matches(business_filter, canary_subject):
+            raise ValueError(
+                "topology.business_consumer.filter_subject must exclude the synthetic canary subject"
+            )
+
+        canary_filter = self.canary_consumer.get("filter_subject")
+        if canary_filter != canary_subject:
+            raise ValueError(
+                "topology.canary_consumer.filter_subject must match the exact synthetic canary subject"
+            )
 
     def expectation(self, spec: Any):
         self.validate(spec)
