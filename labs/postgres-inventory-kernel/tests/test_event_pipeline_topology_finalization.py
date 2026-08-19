@@ -23,7 +23,7 @@ REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
 BASE = datetime(2026, 8, 19, 13, 0, tzinfo=timezone.utc)
 RUN_ID = UUID("00000000-0000-0000-0000-00000000f001")
 INTERVENTION_ID = UUID("00000000-0000-0000-0000-00000000f101")
-MIGRATION_ID = "business-ack-window-10-to-20"
+MIGRATION_ID = "business-ack-window-5-to-10"
 
 
 def configured_pipeline():
@@ -38,7 +38,7 @@ def migration(migration_id: str = MIGRATION_ID) -> dict:
     return {
         "id": migration_id,
         "valid_until": "2099-01-01T00:00:00Z",
-        "from_overrides": {"business_consumer": {"max_ack_pending": 10}},
+        "from_overrides": {"business_consumer": {"max_ack_pending": 5}},
     }
 
 
@@ -53,8 +53,8 @@ def insert_run(*, state: str, migration_id: str = MIGRATION_ID) -> None:
               lease_owner, lease_expires_at, started_at, updated_at, state_changed_at
             ) VALUES (
               %s, 'inventory-position-projection', %s, 'business_consumer', %s, NULL,
-              '{"resource":"business_consumer","name":"POSITION_PROJECTOR","exists":true,"fields":{"max_ack_pending":10}}'::jsonb,
-              '[{"resource":"business_consumer","field":"max_ack_pending","current":10,"target":20}]'::jsonb,
+              '{"resource":"business_consumer","name":"POSITION_PROJECTOR","exists":true,"fields":{"max_ack_pending":5}}'::jsonb,
+              '[{"resource":"business_consumer","field":"max_ack_pending","current":5,"target":10}]'::jsonb,
               %s, %s, %s, %s, %s, %s
             )
             """,
@@ -113,8 +113,10 @@ class FakeContractInspector:
 class FakeReadinessCollector:
     def __init__(self, status: str = "ready"):
         self.status = status
+        self.migration_arguments: list[object] = []
 
-    def collect(self, *_args, **_kwargs):
+    def collect(self, *_args, **kwargs):
+        self.migration_arguments.append(kwargs.get("topology_migration"))
         return SimpleNamespace(status=self.status)
 
 
@@ -129,7 +131,7 @@ def inspector(*, matched: str = "target", target_status: str = "ok", readiness: 
     )
 
 
-def inspect_current(*, migration_mapping=... , **kwargs):
+def inspect_current(*, migration_mapping=..., **kwargs):
     spec, topology = configured_pipeline()
     if migration_mapping is ...:
         migration_mapping = migration()
@@ -216,6 +218,27 @@ def test_completed_run_exact_target_and_ready_pipeline_is_safe_to_finalize():
     assert report.to_dict()["registry_change"]["operation"] == "remove_topology_migration"
 
 
+def test_finalization_readiness_is_evaluated_as_the_post_removal_steady_state():
+    spec, topology = configured_pipeline()
+    insert_run(state="completed")
+    readiness = FakeReadinessCollector("ready")
+    report = TopologyMigrationFinalizationInspector(
+        database_url=lab.DATABASE_URL,
+        nats_url="nats://not-used",
+        contract_inspector=FakeContractInspector(),
+        readiness_collector=readiness,
+    ).inspect(
+        spec,
+        target_topology=topology,
+        migration_mapping=migration(),
+        watchdog_state={},
+        observed_at=BASE,
+    )
+
+    assert report.status == "ready"
+    assert readiness.migration_arguments == [None]
+
+
 def test_source_still_live_keeps_migration_compatibility_contract():
     insert_run(state="completed")
     report = inspect_current(matched="source", target_status="critical")
@@ -285,7 +308,6 @@ def test_cli_current_registry_without_migration_is_finalized_and_needs_no_runtim
         text=True,
         capture_output=True,
         check=False,
-        env={},
     )
 
     assert result.returncode == 0
