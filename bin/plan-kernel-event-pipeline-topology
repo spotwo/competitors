@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_migration import (  # noqa: E402
+    pipeline_topology_migration_mapping,
+)
+from event_pipeline_topology_preflight import (  # noqa: E402
+    EventPipelineTopologyPreflightPlanner,
+)
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build a read-only preflight plan for one event pipeline topology rollout"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument(
+        "--nats-url",
+        help="lab override for NATS URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 1 for warning and 2 when rollout preflight is blocked",
+    )
+    return parser.parse_args()
+
+
+def _read_registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        registry = load_registry(args.registry)
+        registry_data = _read_registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(registry_data, args.pipeline)
+        migration = pipeline_topology_migration_mapping(registry_data, args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    if not nats_url:
+        raise SystemExit(
+            f"--nats-url or registry-named environment variable {spec.runtime.nats_url_env} is required"
+        )
+
+    try:
+        report = EventPipelineTopologyPreflightPlanner(nats_url).plan(
+            spec,
+            target_topology=topology,
+            migration_mapping=migration,
+        )
+    except Exception as exc:
+        raise SystemExit(
+            f"event pipeline topology preflight unavailable: {type(exc).__name__}"
+        ) from exc
+
+    print(
+        json.dumps(
+            report.to_dict(),
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+            separators=None if args.pretty else (",", ":"),
+        )
+    )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
