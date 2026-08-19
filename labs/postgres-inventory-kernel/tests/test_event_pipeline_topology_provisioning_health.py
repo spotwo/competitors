@@ -206,7 +206,7 @@ def test_latest_failed_and_manual_intervention_are_critical_history():
 
     with psycopg.connect(lab.DATABASE_URL) as conn:
         conn.execute(
-            "TRUNCATE kernel_lab.event_pipeline_topology_provisioning_runs"
+            "TRUNCATE kernel_lab.event_pipeline_topology_provisioning_runs CASCADE"
         )
     insert_run(
         state="manual_intervention",
