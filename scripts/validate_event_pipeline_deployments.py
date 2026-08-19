@@ -15,6 +15,9 @@ LAB = ROOT / "labs" / "postgres-inventory-kernel"
 sys.path.insert(0, str(LAB))
 
 from event_pipeline_readiness import EventPipelineDeploymentRegistry  # noqa: E402
+from event_pipeline_registry_validation import (  # noqa: E402
+    validate_global_consumer_identities,
+)
 from event_pipeline_topology_config import (  # noqa: E402
     DeploymentTopologyConfig,
     pipeline_topology_mapping,
@@ -23,23 +26,6 @@ from event_pipeline_topology_migration import (  # noqa: E402
     TopologyMigrationConfig,
     pipeline_topology_migration_mapping,
 )
-
-
-def validate_global_consumer_identities(
-    registry: EventPipelineDeploymentRegistry,
-) -> None:
-    durable_names: list[str] = []
-    inbox_names: list[str] = []
-    for pipeline in registry.pipelines:
-        durable_names.extend((pipeline.consumer.durable, pipeline.canary.durable))
-        inbox_names.extend(
-            (pipeline.consumer.inbox_consumer_name, pipeline.canary.consumer_name)
-        )
-
-    if len(durable_names) != len(set(durable_names)):
-        raise ValueError("JetStream durable identities must be unique across pipelines")
-    if len(inbox_names) != len(set(inbox_names)):
-        raise ValueError("Inbox consumer identities must be unique across pipelines")
 
 
 def main() -> int:
