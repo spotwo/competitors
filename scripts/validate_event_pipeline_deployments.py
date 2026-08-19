@@ -19,6 +19,10 @@ from event_pipeline_topology_config import (  # noqa: E402
     DeploymentTopologyConfig,
     pipeline_topology_mapping,
 )
+from event_pipeline_topology_migration import (  # noqa: E402
+    TopologyMigrationConfig,
+    pipeline_topology_migration_mapping,
+)
 
 
 def main() -> int:
@@ -27,7 +31,10 @@ def main() -> int:
     with SCHEMA.open("r", encoding="utf-8") as handle:
         schema = json.load(handle)
 
-    validator = jsonschema.Draft202012Validator(schema)
+    validator = jsonschema.Draft202012Validator(
+        schema,
+        format_checker=jsonschema.FormatChecker(),
+    )
     errors = sorted(
         validator.iter_errors(registry_data),
         key=lambda error: tuple(str(part) for part in error.absolute_path),
@@ -46,6 +53,15 @@ def main() -> int:
         for spec in registry.pipelines:
             topology = pipeline_topology_mapping(registry_data, spec.pipeline_id)
             DeploymentTopologyConfig.from_mapping(topology).validate(spec)
+            migration = pipeline_topology_migration_mapping(
+                registry_data,
+                spec.pipeline_id,
+            )
+            if migration is not None:
+                TopologyMigrationConfig.from_mapping(migration).source_topology(
+                    topology,
+                    spec,
+                )
     except (KeyError, ValueError) as exc:
         print(f"event pipeline deployment invariant error: {exc}", file=sys.stderr)
         return 1
