@@ -174,7 +174,7 @@ def test_outcome_recording_is_idempotent_and_fails_closed_on_evidence_collision(
         event_id=identity.event_id,
         started_at=identity.recorded_at,
     )
-    with pytest.raises(psycopg.UniqueViolation, match="different evidence"):
+    with pytest.raises(psycopg.errors.UniqueViolation, match="different evidence"):
         store.record(conflicting)
 
 
