@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from uuid import UUID
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_canary_sli import TrackedEventPipelineCanaryProbe  # noqa: E402
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_config import pipeline_topology_mapping  # noqa: E402
+from event_pipeline_topology_manual_intervention import (  # noqa: E402
+    ExplicitTopologyManualInterventionController,
+    TopologyManualInterventionError,
+)
+from event_pipeline_topology_migration import pipeline_topology_migration_mapping  # noqa: E402
+from event_pipeline_topology_readiness import TopologyAwareEventPipelineReadinessCollector  # noqa: E402
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Explicitly resolve an event pipeline topology manual intervention")
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument("--database-url")
+    parser.add_argument("--nats-url")
+    parser.add_argument("--watchdog-state")
+    parser.add_argument("--pretty", action="store_true")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("detect")
+
+    propose = sub.add_parser("propose")
+    propose.add_argument("--intervention", required=True)
+    propose.add_argument("--action", required=True, choices=("restore_source", "accept_target", "abort"))
+    propose.add_argument("--operator", required=True)
+
+    confirm = sub.add_parser("confirm")
+    confirm.add_argument("--intervention", required=True)
+    confirm.add_argument("--operator", required=True)
+
+    execute = sub.add_parser("execute")
+    execute.add_argument("--intervention", required=True)
+    execute.add_argument("--tenant-id", default=os.getenv("KERNEL_LAB_CANARY_TENANT_ID"))
+    return parser.parse_args()
+
+
+def _registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def _watchdog_state(path: str | None) -> dict | None:
+    if not path:
+        return None
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _uuid(value: str, field: str) -> UUID:
+    try:
+        return UUID(value)
+    except ValueError as exc:
+        raise SystemExit(f"{field} must be a UUID") from exc
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        registry = load_registry(args.registry)
+        raw = _registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        topology = pipeline_topology_mapping(raw, args.pipeline)
+        migration = pipeline_topology_migration_mapping(raw, args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
+    if not database_url:
+        raise SystemExit(
+            f"--database-url or registry-named environment variable {spec.runtime.database_url_env} is required"
+        )
+    if args.command in {"detect", "execute"} and not nats_url:
+        raise SystemExit(
+            f"--nats-url or registry-named environment variable {spec.runtime.nats_url_env} is required"
+        )
+
+    controller = ExplicitTopologyManualInterventionController(
+        database_url=database_url,
+        nats_url=nats_url or "nats://not-used",
+    )
+    try:
+        if args.command == "detect":
+            report = controller.detect(
+                spec,
+                target_topology=topology,
+                migration_mapping=migration,
+            )
+        elif args.command == "propose":
+            report = controller.propose(
+                _uuid(args.intervention, "--intervention"),
+                action=args.action,
+                operator=args.operator,
+            )
+        elif args.command == "confirm":
+            report = controller.confirm(
+                _uuid(args.intervention, "--intervention"),
+                operator=args.operator,
+            )
+        else:
+            if not args.tenant_id:
+                raise SystemExit("--tenant-id or KERNEL_LAB_CANARY_TENANT_ID is required")
+            tenant_id = _uuid(args.tenant_id, "--tenant-id")
+            watchdog_path = args.watchdog_state or os.getenv(spec.runtime.watchdog_state_path_env)
+            readiness_collector = TopologyAwareEventPipelineReadinessCollector()
+
+            def readiness_verifier():
+                return readiness_collector.collect(
+                    spec,
+                    topology=topology,
+                    topology_migration=migration,
+                    database_url=database_url,
+                    nats_url=nats_url,
+                    watchdog_state=_watchdog_state(watchdog_path),
+                )
+
+            canary = TrackedEventPipelineCanaryProbe(
+                database_url=database_url,
+                nats_server_url=nats_url,
+            )
+
+            def canary_verifier():
+                return canary.run(
+                    tenant_id=tenant_id,
+                    stream_name=spec.transport.stream,
+                    durable_name=spec.canary.durable,
+                    consumer_name=spec.canary.consumer_name,
+                    subject_prefix=spec.transport.subject_prefix,
+                    timeout_seconds=spec.canary.timeout_seconds,
+                )
+
+            report = controller.execute(
+                _uuid(args.intervention, "--intervention"),
+                spec,
+                target_topology=topology,
+                migration_mapping=migration,
+                canary_verifier=canary_verifier,
+                readiness_verifier=readiness_verifier,
+            )
+    except TopologyManualInterventionError as exc:
+        print(json.dumps({"status": "blocked", "code": exc.code}, sort_keys=True))
+        return 2
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    print(json.dumps(report.to_dict(), indent=2 if args.pretty else None, sort_keys=True))
+    return 0 if report.successful else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
