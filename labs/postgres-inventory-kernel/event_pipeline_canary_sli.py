@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Mapping
+from uuid import UUID
 
 import psycopg
 
-from event_pipeline_canary import EventPipelineCanaryHealthReport
+from event_pipeline_canary import (
+    CANARY_EVENT_TYPE,
+    EventPipelineCanaryHealthReport,
+    EventPipelineCanaryIdentity,
+    EventPipelineCanaryRunSnapshot,
+    EventPipelineCanarySloPolicy,
+    NatsJetStreamCanaryAckObserver,
+    PostgresEventPipelineCanaryStore,
+)
 
 SliHealthStatus = Literal["ok", "warning", "critical"]
 SliAlertSeverity = Literal["warning", "critical"]
@@ -26,6 +36,7 @@ TERMINAL_FAILURE_CODES = frozenset(
         "canary_incomplete_timeout",
         "canary_ack_observer_unavailable",
         "canary_incomplete",
+        "canary_probe_abandoned",
     }
 )
 TERMINAL_FAILURE_PRIORITY = (
@@ -98,10 +109,7 @@ class EventPipelineCanaryOutcomeReceipt:
     finalized_at: datetime
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "created": self.created,
-            "finalized_at": self.finalized_at.isoformat(),
-        }
+        return {"created": self.created, "finalized_at": self.finalized_at.isoformat()}
 
 
 @dataclass(frozen=True)
@@ -150,9 +158,7 @@ class EventPipelineCanarySliWindow:
                 "quantiles_seconds": self.latency_quantiles,
             },
             "last_run_at": self.last_run_at.isoformat() if self.last_run_at else None,
-            "last_success_at": (
-                self.last_success_at.isoformat() if self.last_success_at else None
-            ),
+            "last_success_at": self.last_success_at.isoformat() if self.last_success_at else None,
             "last_run_age_seconds": self.last_run_age_seconds,
             "consecutive_failures": self.consecutive_failures,
             "failure_codes": dict(self.failure_codes),
@@ -232,7 +238,7 @@ class EventPipelineCanarySliReport:
 
 
 class PostgresEventPipelineCanarySliStore:
-    """Durable canary outcome history and read-only SLI window snapshots."""
+    """Durable tracked canary lifecycle and read-only SLI window snapshots."""
 
     def __init__(self, database_url: str):
         self.database_url = _required_name(database_url, "database_url")
@@ -243,31 +249,51 @@ class PostgresEventPipelineCanarySliStore:
         conn.execute("SET lock_timeout = '5s'")
         return conn
 
-    def record(
+    def start_tracked(
         self,
-        report: EventPipelineCanaryHealthReport,
-    ) -> EventPipelineCanaryOutcomeReceipt:
+        *,
+        tenant_id: UUID,
+        stream_name: str,
+        durable_name: str,
+        consumer_name: str,
+        timeout_seconds: float,
+    ) -> EventPipelineCanaryIdentity:
+        if not isinstance(tenant_id, UUID):
+            raise ValueError("tenant_id must be a UUID")
+        _required_name(stream_name, "stream_name")
+        _required_name(durable_name, "durable_name")
+        _required_name(consumer_name, "consumer_name")
+        timeout_seconds = _positive(timeout_seconds, "timeout_seconds")
+        if timeout_seconds > 300:
+            raise ValueError("timeout_seconds must not exceed 300")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM kernel_lab.start_tracked_event_pipeline_canary(%s, %s, %s, %s, %s)",
+                (tenant_id, stream_name, durable_name, consumer_name, timeout_seconds),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("tracked canary start returned no identity")
+        return EventPipelineCanaryIdentity(
+            canary_id=row[0], event_id=row[1], recorded_at=row[2]
+        )
+
+    def record(self, report: EventPipelineCanaryHealthReport) -> EventPipelineCanaryOutcomeReceipt:
         snapshot = report.snapshot
         database = snapshot.database
         terminal_code = _terminal_code(report)
         outcome = "succeeded" if snapshot.complete else "failed"
         if terminal_code is not None and terminal_code not in TERMINAL_FAILURE_CODES:
             raise ValueError("canary terminal code is not bounded")
-
         with self._connect() as conn:
             row = conn.execute(
                 """
                 SELECT created, finalized_at
                 FROM kernel_lab.record_event_pipeline_canary_outcome(
-                  %s, %s, %s, %s, %s, %s, %s,
-                  %s, %s, %s, %s, %s, %s, %s
+                  %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 """,
                 (
                     database.canary_id,
-                    snapshot.expected_stream_name,
-                    snapshot.expected_durable_name,
-                    snapshot.expected_consumer_name,
                     outcome,
                     report.status,
                     terminal_code,
@@ -280,7 +306,6 @@ class PostgresEventPipelineCanarySliStore:
                     _optional_nonnegative(database.end_to_end_projection_seconds),
                 ),
             ).fetchone()
-
         if row is None:
             raise RuntimeError("canary outcome persistence returned no result")
         return EventPipelineCanaryOutcomeReceipt(created=row[0], finalized_at=row[1])
@@ -304,15 +329,9 @@ class PostgresEventPipelineCanarySliStore:
         _positive(latency_target_seconds, "latency_target_seconds")
         if window_seconds not in DEFAULT_WINDOWS:
             raise ValueError("window_seconds must be one of 300, 3600, or 86400")
-
         with self._connect() as conn:
             row = conn.execute(
-                """
-                SELECT *
-                FROM kernel_lab.read_event_pipeline_canary_sli(
-                  %s, %s, %s, %s, %s, %s, %s
-                )
-                """,
+                "SELECT * FROM kernel_lab.read_event_pipeline_canary_sli(%s, %s, %s, %s, %s, %s, %s)",
                 (
                     stream_name,
                     durable_name,
@@ -323,25 +342,17 @@ class PostgresEventPipelineCanarySliStore:
                     latency_target_seconds,
                 ),
             ).fetchone()
-
         if row is None:
             raise RuntimeError("canary SLI snapshot returned no result")
-        failure_codes = {
-            str(code): int(count) for code, count in dict(row[13] or {}).items()
-        }
+        failure_codes = {str(code): int(count) for code, count in dict(row[13] or {}).items()}
         raw_quantiles = dict(row[14] or {})
         latency_quantiles: dict[str, dict[str, float | None]] = {}
         for stage in LATENCY_STAGES:
             raw_stage = dict(raw_quantiles.get(stage) or {})
             latency_quantiles[stage] = {
-                quantile: (
-                    float(raw_stage[quantile])
-                    if raw_stage.get(quantile) is not None
-                    else None
-                )
+                quantile: float(raw_stage[quantile]) if raw_stage.get(quantile) is not None else None
                 for quantile in QUANTILES
             }
-
         return EventPipelineCanarySliWindow(
             observed_at=row[0],
             window_seconds=row[1],
@@ -393,6 +404,86 @@ class PostgresEventPipelineCanarySliStore:
         )
 
 
+class TrackedEventPipelineCanaryProbe:
+    """Run one canary with scope and deadline persisted atomically with event start."""
+
+    def __init__(
+        self,
+        *,
+        database_url: str,
+        nats_server_url: str,
+        policy: EventPipelineCanarySloPolicy | None = None,
+    ):
+        self.canary_store = PostgresEventPipelineCanaryStore(database_url)
+        self.sli_store = PostgresEventPipelineCanarySliStore(database_url)
+        self.nats_server_url = _required_name(nats_server_url, "nats_server_url")
+        self.policy = policy or EventPipelineCanarySloPolicy()
+
+    def run(
+        self,
+        *,
+        tenant_id: UUID,
+        stream_name: str,
+        durable_name: str,
+        consumer_name: str,
+        subject_prefix: str = "spotwo.wms.events",
+        timeout_seconds: float = 30.0,
+        poll_interval_seconds: float = 0.25,
+    ) -> EventPipelineCanaryHealthReport:
+        stream_name = _required_name(stream_name, "stream_name")
+        durable_name = _required_name(durable_name, "durable_name")
+        consumer_name = _required_name(consumer_name, "consumer_name")
+        subject_prefix = _required_name(subject_prefix, "subject_prefix")
+        timeout_seconds = _positive(timeout_seconds, "timeout_seconds")
+        poll_interval_seconds = _positive(poll_interval_seconds, "poll_interval_seconds")
+        if timeout_seconds > 300:
+            raise ValueError("timeout_seconds must not exceed 300")
+        if poll_interval_seconds > timeout_seconds:
+            raise ValueError("poll interval cannot exceed timeout")
+
+        expected_filter_subject = f"{subject_prefix}.{CANARY_EVENT_TYPE}"
+        identity = self.sli_store.start_tracked(
+            tenant_id=tenant_id,
+            stream_name=stream_name,
+            durable_name=durable_name,
+            consumer_name=consumer_name,
+            timeout_seconds=timeout_seconds,
+        )
+        deadline = time.monotonic() + timeout_seconds
+        with NatsJetStreamCanaryAckObserver(
+            server_url=self.nats_server_url,
+            stream_name=stream_name,
+            durable_name=durable_name,
+            expected_filter_subject=expected_filter_subject,
+        ) as observer:
+            while True:
+                observed_at = datetime.now(timezone.utc)
+                database = self.canary_store.snapshot(
+                    canary_id=identity.canary_id,
+                    consumer_name=consumer_name,
+                )
+                ack = observer.snapshot(observed_at=observed_at)
+                snapshot = EventPipelineCanaryRunSnapshot(
+                    observed_at=observed_at,
+                    expected_stream_name=stream_name,
+                    expected_durable_name=durable_name,
+                    expected_consumer_name=consumer_name,
+                    expected_filter_subject=expected_filter_subject,
+                    database=database,
+                    ack=ack,
+                )
+                report = self.policy.evaluate(snapshot, timed_out=False)
+                if snapshot.complete or (ack.available and not ack.configuration_valid):
+                    self.sli_store.record(report)
+                    return report
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    report = self.policy.evaluate(snapshot, timed_out=True)
+                    self.sli_store.record(report)
+                    return report
+                time.sleep(min(poll_interval_seconds, remaining))
+
+
 @dataclass(frozen=True)
 class EventPipelineCanarySliPolicy:
     stale_after_seconds: float = 180.0
@@ -410,99 +501,34 @@ class EventPipelineCanarySliPolicy:
         if not 0 < self.warning_slow_burn_rate <= self.critical_fast_burn_rate:
             raise ValueError("burn-rate thresholds must be positive and ordered")
 
-    def evaluate(
-        self,
-        snapshot: EventPipelineCanarySliSnapshot,
-    ) -> EventPipelineCanarySliReport:
+    def evaluate(self, snapshot: EventPipelineCanarySliSnapshot) -> EventPipelineCanarySliReport:
         alerts: list[EventPipelineCanarySliAlert] = []
         short = snapshot.window(300)
         hour = snapshot.window(3600)
         day = snapshot.window(86400)
-
         last_run_age = short.last_run_age_seconds
         if last_run_age is None:
-            alerts.append(
-                EventPipelineCanarySliAlert(
-                    "canary_sli_no_observations",
-                    "critical",
-                    "missing",
-                    self.stale_after_seconds,
-                )
-            )
+            alerts.append(EventPipelineCanarySliAlert("canary_sli_no_observations", "critical", "missing", self.stale_after_seconds))
         elif last_run_age >= self.stale_after_seconds:
-            alerts.append(
-                EventPipelineCanarySliAlert(
-                    "canary_sli_stale",
-                    "critical",
-                    last_run_age,
-                    self.stale_after_seconds,
-                )
-            )
+            alerts.append(EventPipelineCanarySliAlert("canary_sli_stale", "critical", last_run_age, self.stale_after_seconds))
 
         streak = short.consecutive_failures
         if streak >= self.critical_consecutive_failures:
-            alerts.append(
-                EventPipelineCanarySliAlert(
-                    "canary_sli_consecutive_failures",
-                    "critical",
-                    streak,
-                    self.critical_consecutive_failures,
-                )
-            )
+            alerts.append(EventPipelineCanarySliAlert("canary_sli_consecutive_failures", "critical", streak, self.critical_consecutive_failures))
         elif streak >= self.warning_consecutive_failures:
-            alerts.append(
-                EventPipelineCanarySliAlert(
-                    "canary_sli_consecutive_failures",
-                    "warning",
-                    streak,
-                    self.warning_consecutive_failures,
-                )
-            )
+            alerts.append(EventPipelineCanarySliAlert("canary_sli_consecutive_failures", "warning", streak, self.warning_consecutive_failures))
 
-        self._evaluate_burn_pair(
-            alerts,
-            code="canary_sli_availability_fast_burn",
-            severity="critical",
-            short_rate=short.availability_burn_rate,
-            long_rate=hour.availability_burn_rate,
-            threshold=self.critical_fast_burn_rate,
-        )
-        self._evaluate_burn_pair(
-            alerts,
-            code="canary_sli_availability_slow_burn",
-            severity="warning",
-            short_rate=hour.availability_burn_rate,
-            long_rate=day.availability_burn_rate,
-            threshold=self.warning_slow_burn_rate,
-        )
-        self._evaluate_burn_pair(
-            alerts,
-            code="canary_sli_latency_fast_burn",
-            severity="critical",
-            short_rate=short.latency_burn_rate,
-            long_rate=hour.latency_burn_rate,
-            threshold=self.critical_fast_burn_rate,
-        )
-        self._evaluate_burn_pair(
-            alerts,
-            code="canary_sli_latency_slow_burn",
-            severity="warning",
-            short_rate=hour.latency_burn_rate,
-            long_rate=day.latency_burn_rate,
-            threshold=self.warning_slow_burn_rate,
-        )
-
+        self._evaluate_burn_pair(alerts, code="canary_sli_availability_fast_burn", severity="critical", short_rate=short.availability_burn_rate, long_rate=hour.availability_burn_rate, threshold=self.critical_fast_burn_rate)
+        self._evaluate_burn_pair(alerts, code="canary_sli_availability_slow_burn", severity="warning", short_rate=hour.availability_burn_rate, long_rate=day.availability_burn_rate, threshold=self.warning_slow_burn_rate)
+        self._evaluate_burn_pair(alerts, code="canary_sli_latency_fast_burn", severity="critical", short_rate=short.latency_burn_rate, long_rate=hour.latency_burn_rate, threshold=self.critical_fast_burn_rate)
+        self._evaluate_burn_pair(alerts, code="canary_sli_latency_slow_burn", severity="warning", short_rate=hour.latency_burn_rate, long_rate=day.latency_burn_rate, threshold=self.warning_slow_burn_rate)
         if any(alert.severity == "critical" for alert in alerts):
             status: SliHealthStatus = "critical"
         elif alerts:
             status = "warning"
         else:
             status = "ok"
-        return EventPipelineCanarySliReport(
-            status=status,
-            snapshot=snapshot,
-            alerts=tuple(alerts),
-        )
+        return EventPipelineCanarySliReport(status=status, snapshot=snapshot, alerts=tuple(alerts))
 
     @staticmethod
     def _evaluate_burn_pair(
@@ -514,31 +540,18 @@ class EventPipelineCanarySliPolicy:
         long_rate: float | None,
         threshold: float,
     ) -> None:
-        if short_rate is None or long_rate is None:
-            return
-        if short_rate >= threshold and long_rate >= threshold:
-            alerts.append(
-                EventPipelineCanarySliAlert(
-                    code,
-                    severity,
-                    max(short_rate, long_rate),
-                    threshold,
-                )
-            )
+        if short_rate is not None and long_rate is not None and short_rate >= threshold and long_rate >= threshold:
+            alerts.append(EventPipelineCanarySliAlert(code, severity, max(short_rate, long_rate), threshold))
 
 
 def render_prometheus(report: EventPipelineCanarySliReport) -> str:
     snapshot = report.snapshot
-    base_scope = {
-        "stream": snapshot.stream_name,
-        "durable": snapshot.durable_name,
-        "consumer": snapshot.consumer_name,
-    }
+    base_scope = {"stream": snapshot.stream_name, "durable": snapshot.durable_name, "consumer": snapshot.consumer_name}
     lines = [
         "# HELP spotwo_wms_event_pipeline_canary_sli_health_status Canary SLI health: 0 ok, 1 warning, 2 critical.",
         "# TYPE spotwo_wms_event_pipeline_canary_sli_health_status gauge",
         f"spotwo_wms_event_pipeline_canary_sli_health_status{_labels(base_scope)} {_status_number(report.status)}",
-        "# HELP spotwo_wms_event_pipeline_canary_sli_runs Canary outcomes observed in the window.",
+        "# HELP spotwo_wms_event_pipeline_canary_sli_runs Canary terminal outcomes observed in the window.",
         "# TYPE spotwo_wms_event_pipeline_canary_sli_runs gauge",
         "# HELP spotwo_wms_event_pipeline_canary_sli_availability_success_ratio Availability success ratio for the window.",
         "# TYPE spotwo_wms_event_pipeline_canary_sli_availability_success_ratio gauge",
@@ -550,100 +563,53 @@ def render_prometheus(report: EventPipelineCanarySliReport) -> str:
         "# TYPE spotwo_wms_event_pipeline_canary_sli_latency_burn_rate gauge",
         "# HELP spotwo_wms_event_pipeline_canary_sli_latency_seconds Canary latency quantiles by bounded stage and quantile.",
         "# TYPE spotwo_wms_event_pipeline_canary_sli_latency_seconds gauge",
+        "# HELP spotwo_wms_event_pipeline_canary_sli_failures Failed canary outcomes by bounded terminal code.",
+        "# TYPE spotwo_wms_event_pipeline_canary_sli_failures gauge",
     ]
-
     for window in snapshot.windows:
         window_scope = dict(base_scope, window=window.window_label)
-        for outcome, value in (
-            ("total", window.total_runs),
-            ("succeeded", window.successful_runs),
-            ("failed", window.failed_runs),
-        ):
-            lines.append(
-                "spotwo_wms_event_pipeline_canary_sli_runs"
-                f"{_labels(dict(window_scope, outcome=outcome))} {value}"
-            )
+        for outcome, value in (("total", window.total_runs), ("succeeded", window.successful_runs), ("failed", window.failed_runs)):
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_runs{_labels(dict(window_scope, outcome=outcome))} {value}")
         if window.availability_success_ratio is not None:
-            lines.append(
-                "spotwo_wms_event_pipeline_canary_sli_availability_success_ratio"
-                f"{_labels(window_scope)} {_number(window.availability_success_ratio)}"
-            )
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_availability_success_ratio{_labels(window_scope)} {_number(window.availability_success_ratio)}")
         if window.availability_burn_rate is not None:
-            lines.append(
-                "spotwo_wms_event_pipeline_canary_sli_availability_burn_rate"
-                f"{_labels(window_scope)} {_number(window.availability_burn_rate)}"
-            )
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_availability_burn_rate{_labels(window_scope)} {_number(window.availability_burn_rate)}")
         if window.latency_success_ratio is not None:
-            lines.append(
-                "spotwo_wms_event_pipeline_canary_sli_latency_success_ratio"
-                f"{_labels(window_scope)} {_number(window.latency_success_ratio)}"
-            )
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_latency_success_ratio{_labels(window_scope)} {_number(window.latency_success_ratio)}")
         if window.latency_burn_rate is not None:
-            lines.append(
-                "spotwo_wms_event_pipeline_canary_sli_latency_burn_rate"
-                f"{_labels(window_scope)} {_number(window.latency_burn_rate)}"
-            )
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_latency_burn_rate{_labels(window_scope)} {_number(window.latency_burn_rate)}")
         for stage in LATENCY_STAGES:
             stage_values = window.latency_quantiles.get(stage, {})
             for quantile in QUANTILES:
                 value = stage_values.get(quantile)
-                if value is None:
-                    continue
-                labels = dict(
-                    window_scope,
-                    stage=stage,
-                    quantile=quantile,
-                )
-                lines.append(
-                    "spotwo_wms_event_pipeline_canary_sli_latency_seconds"
-                    f"{_labels(labels)} {_number(value)}"
-                )
-
+                if value is not None:
+                    lines.append(f"spotwo_wms_event_pipeline_canary_sli_latency_seconds{_labels(dict(window_scope, stage=stage, quantile=quantile))} {_number(value)}")
         for code, count in sorted(window.failure_codes.items()):
             bounded_code = code if code in TERMINAL_FAILURE_CODES else "other"
-            labels = dict(window_scope, code=bounded_code)
-            lines.append(
-                "spotwo_wms_event_pipeline_canary_sli_failures"
-                f"{_labels(labels)} {count}"
-            )
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_failures{_labels(dict(window_scope, code=bounded_code))} {count}")
 
     short = snapshot.window(300)
-    lines.extend(
-        [
-            "# HELP spotwo_wms_event_pipeline_canary_sli_consecutive_failures Consecutive failed canary outcomes for the deployment scope.",
-            "# TYPE spotwo_wms_event_pipeline_canary_sli_consecutive_failures gauge",
-            f"spotwo_wms_event_pipeline_canary_sli_consecutive_failures{_labels(base_scope)} {short.consecutive_failures}",
-            "# HELP spotwo_wms_event_pipeline_canary_sli_last_run_age_seconds Age of the latest recorded canary outcome.",
-            "# TYPE spotwo_wms_event_pipeline_canary_sli_last_run_age_seconds gauge",
-        ]
-    )
+    lines.extend([
+        "# HELP spotwo_wms_event_pipeline_canary_sli_consecutive_failures Consecutive failed canary outcomes for the deployment scope.",
+        "# TYPE spotwo_wms_event_pipeline_canary_sli_consecutive_failures gauge",
+        f"spotwo_wms_event_pipeline_canary_sli_consecutive_failures{_labels(base_scope)} {short.consecutive_failures}",
+        "# HELP spotwo_wms_event_pipeline_canary_sli_last_run_age_seconds Age of the latest started tracked canary.",
+        "# TYPE spotwo_wms_event_pipeline_canary_sli_last_run_age_seconds gauge",
+    ])
     if short.last_run_age_seconds is not None:
-        lines.append(
-            "spotwo_wms_event_pipeline_canary_sli_last_run_age_seconds"
-            f"{_labels(base_scope)} {_number(short.last_run_age_seconds)}"
-        )
-
+        lines.append(f"spotwo_wms_event_pipeline_canary_sli_last_run_age_seconds{_labels(base_scope)} {_number(short.last_run_age_seconds)}")
     if report.alerts:
-        lines.extend(
-            [
-                "# HELP spotwo_wms_event_pipeline_canary_sli_alert Active bounded canary SLI alert.",
-                "# TYPE spotwo_wms_event_pipeline_canary_sli_alert gauge",
-            ]
-        )
+        lines.extend([
+            "# HELP spotwo_wms_event_pipeline_canary_sli_alert Active bounded canary SLI alert.",
+            "# TYPE spotwo_wms_event_pipeline_canary_sli_alert gauge",
+        ])
         for alert in report.alerts:
-            labels = dict(base_scope, code=alert.code, severity=alert.severity)
-            lines.append(
-                f"spotwo_wms_event_pipeline_canary_sli_alert{_labels(labels)} 1"
-            )
-
+            lines.append(f"spotwo_wms_event_pipeline_canary_sli_alert{_labels(dict(base_scope, code=alert.code, severity=alert.severity))} 1")
     return "\n".join(lines) + "\n"
 
 
 def _labels(values: Mapping[str, str]) -> str:
-    body = ",".join(
-        f'{key}="{_escape_label(value)}"' for key, value in values.items()
-    )
-    return "{" + body + "}"
+    return "{" + ",".join(f'{key}="{_escape_label(value)}"' for key, value in values.items()) + "}"
 
 
 def _escape_label(value: str) -> str:
@@ -651,9 +617,7 @@ def _escape_label(value: str) -> str:
 
 
 def _number(value: int | float) -> str:
-    if isinstance(value, int):
-        return str(value)
-    return format(value, ".15g")
+    return str(value) if isinstance(value, int) else format(value, ".15g")
 
 
 def _status_number(status: SliHealthStatus) -> int:
