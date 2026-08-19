@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
@@ -31,6 +32,14 @@ BASE = datetime(2026, 8, 19, 13, 30, tzinfo=timezone.utc)
 RUN_ID = UUID("00000000-0000-0000-0000-00000000aa01")
 INTERVENTION_ID = UUID("00000000-0000-0000-0000-00000000aa02")
 MIGRATION_ID = "business-ack-window-5-to-10"
+
+
+def cli_env() -> dict[str, str]:
+    env = dict(os.environ)
+    env.pop("KERNEL_LAB_DATABASE_URL", None)
+    env.pop("KERNEL_LAB_NATS_URL", None)
+    env.pop("KERNEL_LAB_CANARY_WATCHDOG_STATE_PATH", None)
+    return env
 
 
 def configured_pipeline():
@@ -562,7 +571,7 @@ def test_current_steady_state_cli_refuses_to_issue_a_receipt_without_a_migration
         text=True,
         capture_output=True,
         check=False,
-        env={},
+        env=cli_env(),
     )
 
     assert result.returncode == 2
@@ -588,7 +597,7 @@ def test_post_merge_cli_fails_closed_for_unknown_receipt_before_touching_nats():
         text=True,
         capture_output=True,
         check=False,
-        env={},
+        env=cli_env(),
     )
 
     assert result.returncode == 2
