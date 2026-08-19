@@ -41,7 +41,7 @@ status = issued
 code   = topology_finalization_receipt_issued
 ```
 
-Record the returned `receipt_id` in the cleanup pull request or deployment record.
+Record the returned `receipt_id`.
 
 The receipt binds the reviewed migration to:
 
@@ -58,15 +58,67 @@ The target and live topology fingerprints must be identical at receipt issuance.
 
 Re-running the command with exactly the same evidence returns the same receipt and `topology_finalization_receipt_already_issued`. The same migration ID cannot be rebound to different evidence.
 
-## Phase 2 - Review and merge the Git cleanup
+## Phase 2 - Export the Git cleanup reference
 
-The cleanup change should remove only the temporary `topology_migration` compatibility stanza unless another reviewed change is intentionally part of the rollout.
+While `topology_migration` is still present, export the exact immutable receipt into the bounded Git reference format:
+
+```bash
+bin/export-kernel-event-pipeline-topology-finalization-reference \
+  --pipeline inventory-position-projection \
+  --receipt '<receipt-uuid>' \
+  --show-path \
+  > operations/event-pipelines/finalizations/inventory-position-projection/<migration-id>.yml
+```
+
+The exporter reads the immutable PostgreSQL receipt and fails closed unless:
+
+- the receipt belongs to the requested pipeline;
+- its migration ID equals the current registry migration ID;
+- its target fingerprint still equals the current reviewed target;
+- its live fingerprint equals that same target;
+- its migration fingerprint equals the current migration contract.
+
+The exporter does not mutate Git, PostgreSQL, or JetStream.
+
+## Phase 3 - Open the narrow Git cleanup PR
+
+The cleanup PR must remove only the temporary `topology_migration` stanza from the affected pipeline and add its deterministic finalization reference file. Do not mix documentation, refactoring, target topology changes, identity changes, or unrelated repository files into this PR.
+
+Add this exact trailer to the pull request body:
+
+```text
+Topology-Finalization-Receipt: <receipt-uuid>
+```
+
+For multiple migrations, use one trailer per receipt.
+
+The `Topology finalization cleanup guard` GitHub Action compares the PR base and head commits and verifies:
+
+```text
+base migration exists
+        +
+head migration absent
+        +
+all other parsed pipeline data unchanged
+        +
+only registry + deterministic reference files changed
+        +
+reference target fingerprint == exact head target fingerprint
+        +
+reference live fingerprint == exact head target fingerprint
+        +
+reference migration fingerprint == removed migration fingerprint
+        +
+reference receipt payload fingerprint valid
+        +
+PR body receipt trailer matches reference
+```
+
+The guard deliberately does not receive production database credentials. It binds Git review to the exported immutable receipt reference; runtime receipt existence is handled by the exporter and post-merge verifier.
 
 Do not treat the Git merge itself as proof that the migration lifecycle is closed.
 
-The receipt verifier will reject the cleanup if the current target contract fingerprint differs from the receipt. This includes changes to stream or durable consumer identity, even if the nested `topology` object remains unchanged.
-
-## Phase 3 - Verify after the cleanup merge
+## Phase 4 - Verify after the cleanup merge
 
 After the cleanup commit is on the deployed registry revision, run:
 
@@ -109,7 +161,7 @@ Only then is an append-only `closed` verification written.
 
 ## Blocker codes
 
-Common blockers include:
+Common runtime blockers include:
 
 ```text
 topology_finalization_receipt_missing
@@ -148,6 +200,10 @@ Metrics expose only bounded pipeline/state labels. Receipt IDs, run IDs, migrati
 
 Do not remove `topology_migration`. Investigate the finalization gate, provisioning lineage, live topology, or readiness blocker first.
 
+### Cleanup PR guard is blocked
+
+Do not bypass the guard. Split unrelated changes out of the cleanup PR, restore the exact reviewed target, regenerate the reference from the immutable receipt if necessary, and ensure the PR body trailer matches.
+
 ### Cleanup was merged but post-merge verification is blocked
 
 Do not mark the migration closed. Keep the receipt and blocked verification evidence. Determine whether the deployed registry target changed, JetStream drifted, readiness degraded, or runtime evidence is unavailable.
@@ -177,7 +233,9 @@ Both are protected by database triggers against row update or delete. Test clean
 A topology migration is closed only when all of the following are true:
 
 1. a successful immutable receipt was issued before Git cleanup;
-2. the reviewed cleanup removed `topology_migration`;
-3. the exact receipt was verified after merge;
-4. a `closed` append-only verification exists;
-5. live topology still equals the target and deployment readiness is `READY` without migration compatibility.
+2. its bounded cleanup reference was exported while the migration contract was still present;
+3. the narrow cleanup PR passed the topology finalization cleanup guard;
+4. the reviewed cleanup removed `topology_migration`;
+5. the exact receipt was verified after merge;
+6. a `closed` append-only verification exists;
+7. live topology still equals the target and deployment readiness is `READY` without migration compatibility.
