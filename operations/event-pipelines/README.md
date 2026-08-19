@@ -2,14 +2,14 @@
 
 This directory is the canonical machine-readable deployment contract for operational event pipelines.
 
-The registry deliberately stores **identities, desired topology, policy, and environment-variable names**, not database URLs, NATS credentials, tokens, or other secrets. Runtime endpoints remain deployment inputs supplied through the named environment variables.
+The registry deliberately stores **identities, desired topology, bounded migration intent, policy, and environment-variable names**, not database URLs, NATS credentials, tokens, or other secrets. Runtime endpoints remain deployment inputs supplied through the named environment variables.
 
-Each pipeline now binds five operational views:
+Each pipeline binds five operational views:
 
 ```text
 static deployment configuration
         +
-JetStream topology match
+JetStream topology contract
         +
 current component health
         +
@@ -34,12 +34,13 @@ The registry makes those values one reviewed contract and gives the readiness ga
 - `consumer.inbox_consumer_name` is the logical PostgreSQL Inbox/projection consumer identity. It is intentionally separate from the NATS durable name.
 - `canary.durable` and `canary.consumer_name` identify the dedicated synthetic canary path.
 - `canary.cadence_seconds` is defined once and is also the expected watchdog cadence.
-- `topology` declares the reviewed live JetStream configuration that must exist for the deployment to be ready.
+- `topology` declares the singular steady-state JetStream target.
+- optional `topology_migration` authorizes one reviewed source topology only until a deadline.
 - `runtime.*_env` values name environment variables; they do not contain secrets.
 
 ## Topology contract
 
-The topology section currently declares:
+The topology section declares:
 
 ### Stream
 
@@ -64,6 +65,27 @@ This isolation matters because the Position projector accepts only `inventory.po
 
 This is desired-state configuration, not a provisioning mechanism. The registry does not create, update, or repair JetStream resources.
 
+## Bounded topology migration
+
+For an intentional rollout, keep `topology` as the new steady-state target and describe only the old fields that differ:
+
+```yaml
+topology_migration:
+  id: replicas-1-to-3
+  valid_until: "2026-08-19T12:00:00Z"
+  from_overrides:
+    stream:
+      replicas: 1
+```
+
+The runtime reconstructs and validates the complete source topology from those overrides.
+
+While the deadline is active, exact source or exact target are acceptable. A third state is critical drift. After the deadline only target is accepted; a source still deployed is critical. If target is already live but the expired migration declaration remains in Git, topology becomes warning until the stale declaration is removed.
+
+There is deliberately no stored `phase` value. Active versus expired is derived from `observed_at` and `valid_until`, so a stale string cannot extend a rollout indefinitely.
+
+See `labs/postgres-inventory-kernel/EVENT_PIPELINE_TOPOLOGY_MIGRATION.md` for the rollout runbook.
+
 ## Validation
 
 Run:
@@ -78,11 +100,11 @@ or the full repository gate:
 bin/check
 ```
 
-Validation includes JSON Schema shape checks plus cross-field invariants such as unique pipeline IDs, warning/critical ordering, SLI freshness versus canary cadence, watchdog timeout versus canary timeout, stream subject coverage, business/canary subject isolation, pull-consumer mode, and explicit ACK.
+Validation includes JSON Schema shape checks plus cross-field invariants such as unique pipeline IDs, warning/critical ordering, SLI freshness versus canary cadence, watchdog timeout versus canary timeout, stream subject coverage, business/canary subject isolation, pull-consumer mode, explicit ACK, and validity of any reconstructed migration source topology.
 
-## Topology drift inspection
+## Topology inspection
 
-Compare the live broker with the registry:
+Compare the live broker with the steady-state target and any active migration contract:
 
 ```bash
 bin/inspect-kernel-event-pipeline-topology \
@@ -91,9 +113,11 @@ bin/inspect-kernel-event-pipeline-topology \
   --check
 ```
 
+Exit codes are `0` ok, `1` warning, and `2` critical.
+
 The inspector is read-only. It calls JetStream metadata APIs only and never creates, updates, deletes, publishes, fetches, ACKs, purges, or repairs resources.
 
-Any mismatch is reported with bounded resource/field/code identity and makes topology health critical. Missing required streams or consumers are drift. Broker unavailability is reported as inspection unavailable rather than as a false match.
+Missing required streams or consumers are drift. Broker unavailability is reported as inspection unavailable rather than as a false match.
 
 ## Operational readiness
 
@@ -106,16 +130,16 @@ bin/inspect-kernel-event-pipeline-readiness \
   --check
 ```
 
-The command resolves runtime endpoints from the environment-variable names in this registry and resolves the external watchdog JSON file from `runtime.watchdog_state_path_env`. Explicit CLI endpoint overrides exist for labs, but the logical identities, topology, and policy still come only from this registry.
+The command resolves runtime endpoints from the environment-variable names in this registry and resolves the external watchdog JSON file from `runtime.watchdog_state_path_env`. Explicit CLI endpoint overrides exist for labs, but the logical identities, topology, migration intent, and policy still come only from this registry.
 
 The readiness result is fail-closed:
 
-- `READY` - configuration is enabled, live topology matches, and all required runtime signals are available and healthy.
+- `READY` - configuration is enabled, topology contract is ok, and all required runtime signals are available and healthy.
 - `DEGRADED` - at least one signal is warning and none is critical.
-- `NOT_READY` - configuration is disabled/invalid, topology drifts, a required signal is unavailable, or any signal is critical.
+- `NOT_READY` - configuration is disabled/invalid, topology is unauthorized, a required signal is unavailable, or any signal is critical.
 
 The readiness gate is an operational deployment decision. It does not mutate the WMS database, NATS stream, consumer, Inbox, projection, SLI history, or external watchdog state.
 
 ## Intentional changes
 
-Change the registry and provisioning as one reviewed rollout. Exact topology matching is deliberately strict, so changing only one side produces visible drift. A future staged-migration contract may allow explicitly declared old/new topology during a bounded rollout window without weakening steady-state drift detection.
+Change the registry and provisioning as one reviewed rollout. For a topology transition, merge the target plus a short migration deadline before changing the broker. Once live topology matches target, remove `topology_migration` so steady-state exact matching is again the only accepted state.
