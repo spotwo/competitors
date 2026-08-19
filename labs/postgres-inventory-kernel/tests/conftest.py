@@ -179,6 +179,6 @@ def clean_database():
         )
         conn.execute(
             "INSERT INTO kernel_lab.inventory_conditions (id, tenant_id, code) VALUES (%s, %s, 'NORMAL')",
-            (CONDITION,),
+            (CONDITION, TENANT),
         )
     yield
