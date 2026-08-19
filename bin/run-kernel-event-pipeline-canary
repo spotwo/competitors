@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from uuid import UUID
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_canary import (  # noqa: E402
+    EventPipelineCanaryProbe,
+    EventPipelineCanarySloPolicy,
+    render_prometheus,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run one synthetic WMS event pipeline canary and measure latency"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument(
+        "--nats-url",
+        default=os.getenv("KERNEL_LAB_NATS_URL"),
+        help="NATS server URL (or KERNEL_LAB_NATS_URL)",
+    )
+    parser.add_argument(
+        "--tenant-id",
+        default=os.getenv("KERNEL_LAB_CANARY_TENANT_ID"),
+        help="tenant UUID used only to own the synthetic Outbox event",
+    )
+    parser.add_argument(
+        "--stream",
+        default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"),
+    )
+    parser.add_argument(
+        "--durable",
+        default=os.getenv("KERNEL_LAB_CANARY_DURABLE", "EVENT_PIPELINE_CANARY"),
+    )
+    parser.add_argument(
+        "--consumer-name",
+        default=os.getenv(
+            "KERNEL_LAB_CANARY_CONSUMER_NAME", "event_pipeline_canary"
+        ),
+    )
+    parser.add_argument(
+        "--subject-prefix",
+        default=os.getenv("KERNEL_LAB_NATS_SUBJECT_PREFIX", "spotwo.wms.events"),
+    )
+    parser.add_argument("--timeout-seconds", type=float, default=30.0)
+    parser.add_argument("--poll-interval-seconds", type=float, default=0.25)
+    parser.add_argument("--warning-publish-seconds", type=float, default=2.0)
+    parser.add_argument("--critical-publish-seconds", type=float, default=5.0)
+    parser.add_argument("--warning-delivery-seconds", type=float, default=2.0)
+    parser.add_argument("--critical-delivery-seconds", type=float, default=5.0)
+    parser.add_argument("--warning-projection-seconds", type=float, default=1.0)
+    parser.add_argument("--critical-projection-seconds", type=float, default=3.0)
+    parser.add_argument("--warning-end-to-end-seconds", type=float, default=5.0)
+    parser.add_argument("--critical-end-to-end-seconds", type=float, default=15.0)
+    parser.add_argument("--clock-skew-tolerance-seconds", type=float, default=1.0)
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 1 for warning and 2 for critical canary health",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+    if not args.nats_url:
+        raise SystemExit("--nats-url or KERNEL_LAB_NATS_URL is required")
+    if not args.tenant_id:
+        raise SystemExit("--tenant-id or KERNEL_LAB_CANARY_TENANT_ID is required")
+    if args.pretty and args.format != "json":
+        raise SystemExit("--pretty is available only with --format json")
+
+    try:
+        tenant_id = UUID(args.tenant_id)
+    except ValueError as exc:
+        raise SystemExit("--tenant-id must be a UUID") from exc
+
+    try:
+        policy = EventPipelineCanarySloPolicy(
+            warning_publish_seconds=args.warning_publish_seconds,
+            critical_publish_seconds=args.critical_publish_seconds,
+            warning_delivery_seconds=args.warning_delivery_seconds,
+            critical_delivery_seconds=args.critical_delivery_seconds,
+            warning_projection_seconds=args.warning_projection_seconds,
+            critical_projection_seconds=args.critical_projection_seconds,
+            warning_end_to_end_seconds=args.warning_end_to_end_seconds,
+            critical_end_to_end_seconds=args.critical_end_to_end_seconds,
+            clock_skew_tolerance_seconds=args.clock_skew_tolerance_seconds,
+        )
+        report = EventPipelineCanaryProbe(
+            database_url=args.database_url,
+            nats_server_url=args.nats_url,
+            policy=policy,
+        ).run(
+            tenant_id=tenant_id,
+            stream_name=args.stream,
+            durable_name=args.durable,
+            consumer_name=args.consumer_name,
+            subject_prefix=args.subject_prefix,
+            timeout_seconds=args.timeout_seconds,
+            poll_interval_seconds=args.poll_interval_seconds,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

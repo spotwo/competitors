@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import signal
+import socket
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from consumer_failure import (  # noqa: E402
+    DurableConsumerFailureLane,
+    PostgresConsumerFailureStore,
+)
+from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore  # noqa: E402
+from event_pipeline_canary import (  # noqa: E402
+    CANARY_EVENT_TYPE,
+    EventPipelineCanaryHandler,
+    NatsJetStreamCanaryAckObserver,
+)
+from malformed_delivery import PostgresNatsMalformedDeliveryQuarantine  # noqa: E402
+from nats_consumer import NatsJetStreamPullSource  # noqa: E402
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the dedicated synthetic event pipeline canary consumer"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("KERNEL_LAB_DATABASE_URL"),
+        help="PostgreSQL URL (or KERNEL_LAB_DATABASE_URL)",
+    )
+    parser.add_argument(
+        "--nats-url",
+        default=os.getenv("KERNEL_LAB_NATS_URL"),
+        help="NATS server URL (or KERNEL_LAB_NATS_URL)",
+    )
+    parser.add_argument(
+        "--stream",
+        default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"),
+        help="pre-provisioned JetStream stream name",
+    )
+    parser.add_argument(
+        "--durable",
+        default=os.getenv("KERNEL_LAB_CANARY_DURABLE", "EVENT_PIPELINE_CANARY"),
+        help="pre-provisioned dedicated canary durable name",
+    )
+    parser.add_argument(
+        "--consumer-name",
+        default=os.getenv(
+            "KERNEL_LAB_CANARY_CONSUMER_NAME", "event_pipeline_canary"
+        ),
+        help="logical PostgreSQL Inbox consumer identity",
+    )
+    parser.add_argument(
+        "--subject-prefix",
+        default=os.getenv("KERNEL_LAB_NATS_SUBJECT_PREFIX", "spotwo.wms.events"),
+        help="publisher subject prefix used to derive the exact canary filter",
+    )
+    parser.add_argument(
+        "--client-name",
+        default=f"event-pipeline-canary:{socket.gethostname()}:{os.getpid()}",
+        help="NATS client name for this process",
+    )
+    parser.add_argument("--fetch-timeout-seconds", type=float, default=1.0)
+    parser.add_argument("--idle-sleep-seconds", type=float, default=0.25)
+    parser.add_argument("--once", action="store_true", help="run one fetch cycle")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.database_url:
+        raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
+    if not args.nats_url:
+        raise SystemExit("--nats-url or KERNEL_LAB_NATS_URL is required")
+    if args.fetch_timeout_seconds <= 0:
+        raise SystemExit("--fetch-timeout-seconds must be positive")
+    if args.idle_sleep_seconds < 0:
+        raise SystemExit("--idle-sleep-seconds must be nonnegative")
+
+    expected_filter = f"{args.subject_prefix}.{CANARY_EVENT_TYPE}"
+    with NatsJetStreamCanaryAckObserver(
+        server_url=args.nats_url,
+        stream_name=args.stream,
+        durable_name=args.durable,
+        expected_filter_subject=expected_filter,
+        client_name=f"{args.client_name}:preflight",
+    ) as observer:
+        preflight = observer.snapshot()
+    if not preflight.available:
+        raise SystemExit(
+            "dedicated canary durable consumer is unavailable; provision it before starting the worker"
+        )
+    if not preflight.configuration_valid:
+        raise SystemExit(
+            "dedicated canary durable must be an explicit-ACK pull consumer filtered exactly to "
+            + expected_filter
+        )
+
+    stopping = False
+
+    def stop(_signum, _frame):
+        nonlocal stopping
+        stopping = True
+
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
+
+    handler = EventPipelineCanaryHandler(consumer_name=args.consumer_name)
+    failure_lane = DurableConsumerFailureLane(
+        store=PostgresConsumerFailureStore(args.database_url)
+    )
+    malformed_lane = PostgresNatsMalformedDeliveryQuarantine(args.database_url)
+
+    with NatsJetStreamPullSource(
+        server_url=args.nats_url,
+        stream_name=args.stream,
+        durable_name=args.durable,
+        client_name=args.client_name,
+        fetch_timeout_seconds=args.fetch_timeout_seconds,
+    ) as source:
+        runtime = InboxConsumerRuntime(
+            source=source,
+            store=PostgresInboxStore(args.database_url),
+            consumer_name=args.consumer_name,
+            handler=handler,
+            failure_lane=failure_lane,
+            malformed_lane=malformed_lane,
+        )
+
+        while not stopping:
+            result = runtime.run_once()
+            print(
+                json.dumps(
+                    {
+                        "canary_consumer_cycle": {
+                            "received": result.received,
+                            "applied": result.applied,
+                            "duplicate": result.duplicate,
+                            "deferred": result.deferred,
+                            "quarantined": result.quarantined,
+                            "malformed": result.malformed,
+                            "acknowledged": result.acknowledged,
+                            "event_id": (
+                                str(result.event_id) if result.event_id else None
+                            ),
+                            "transport_message_id": result.transport_message_id,
+                            "delivery_count": result.delivery_count,
+                            "failure_code": result.failure_code,
+                        }
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            if args.once:
+                break
+            if result.received == 0 and args.idle_sleep_seconds:
+                time.sleep(args.idle_sleep_seconds)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

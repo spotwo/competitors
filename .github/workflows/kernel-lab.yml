@@ -21,6 +21,8 @@ on:
       - 'bin/inspect-kernel-nats-consumer'
       - 'bin/inspect-kernel-nats-stream'
       - 'bin/inspect-kernel-event-pipeline'
+      - 'bin/run-kernel-event-pipeline-canary'
+      - 'bin/run-kernel-event-pipeline-canary-consumer'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -48,6 +50,7 @@ on:
       - 'decisions/domain/0038-nats-durable-consumer-operational-health.md'
       - 'decisions/domain/0039-nats-jetstream-stream-operational-health.md'
       - 'decisions/domain/0040-event-pipeline-operational-health.md'
+      - 'decisions/domain/0041-event-pipeline-canary-latency-slo.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -78,6 +81,8 @@ on:
       - 'bin/inspect-kernel-nats-consumer'
       - 'bin/inspect-kernel-nats-stream'
       - 'bin/inspect-kernel-event-pipeline'
+      - 'bin/run-kernel-event-pipeline-canary'
+      - 'bin/run-kernel-event-pipeline-canary-consumer'
       - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
       - 'decisions/domain/0015-inventory-commitment-engine.md'
       - 'decisions/domain/0016-inventory-holds-eligibility.md'
@@ -105,6 +110,7 @@ on:
       - 'decisions/domain/0038-nats-durable-consumer-operational-health.md'
       - 'decisions/domain/0039-nats-jetstream-stream-operational-health.md'
       - 'decisions/domain/0040-event-pipeline-operational-health.md'
+      - 'decisions/domain/0041-event-pipeline-canary-latency-slo.md'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -168,6 +174,8 @@ jobs:
             bin/inspect-kernel-nats-consumer \
             bin/inspect-kernel-nats-stream \
             bin/inspect-kernel-event-pipeline \
+            bin/run-kernel-event-pipeline-canary \
+            bin/run-kernel-event-pipeline-canary-consumer \
             decisions/domain/0014-inventory-key-stock-dimensions.md \
             decisions/domain/0015-inventory-commitment-engine.md \
             decisions/domain/0016-inventory-holds-eligibility.md \
@@ -195,6 +203,7 @@ jobs:
             decisions/domain/0038-nats-durable-consumer-operational-health.md \
             decisions/domain/0039-nats-jetstream-stream-operational-health.md \
             decisions/domain/0040-event-pipeline-operational-health.md \
+            decisions/domain/0041-event-pipeline-canary-latency-slo.md \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
