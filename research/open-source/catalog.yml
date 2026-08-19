@@ -1,0 +1,688 @@
+version: 1
+updated_at: 2026-08-19
+
+categories:
+  - warehouse
+  - simulation
+  - robotics
+  - industrial
+  - logistics-standards
+  - optimization
+  - edge
+  - api-governance
+  - events
+  - enterprise-domain
+
+projects:
+  - id: ocado-ocava
+    name: Ocava
+    organization: Ocado Technology
+    category: simulation
+    kind: framework
+    upstream_url: https://github.com/ocadotechnology/Ocava
+    layers: [simulation, wes, wcs]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: prototype
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: Discrete-event simulation is a direct fit for validating execution logic before warehouse deployment.
+      ideas:
+        - production and simulation clock abstraction
+        - deterministic warehouse scenarios
+        - accelerated pre-production WES and WCS validation
+
+  - id: openwms
+    name: OpenWMS
+    organization: OpenWMS
+    category: warehouse
+    kind: platform
+    upstream_url: https://github.com/openwms/org.openwms
+    layers: [wms, mfc, routing]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: study
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: Close domain match for locations, transport units, transport orders, movements, routing, and material flow control.
+      ideas:
+        - compare TransportUnit with Spotwo HandlingUnit and Container
+        - compare TransportOrder with Spotwo Task and Mission
+        - study location and routing model
+
+  - id: vda-5050
+    name: VDA 5050
+    organization: VDA / VDMA
+    category: robotics
+    kind: specification
+    upstream_url: https://github.com/VDA5050/VDA5050
+    layers: [robotics, amr, agv, interoperability]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: prototype
+      use_directly: yes
+      study_architecture: yes
+      prototype: yes
+      rationale: Vendor-neutral command boundary for mobile robots can prevent Spotwo from embedding vendor-specific robot semantics.
+      ideas:
+        - Spotwo robot adapter contract
+        - VDA 5050 simulator lab
+        - capability and version negotiation
+
+  - id: open-rmf
+    name: Open-RMF
+    organization: Open Robotics
+    category: robotics
+    kind: framework
+    upstream_url: https://github.com/open-rmf/rmf
+    layers: [robotics, fleet-management, orchestration]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: study
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: Strong reference for heterogeneous fleets, traffic coordination, shared infrastructure, and task allocation.
+      ideas:
+        - multi-fleet orchestration
+        - shared doors and elevators
+        - traffic conflict resolution
+
+  - id: opentcs
+    name: openTCS
+    organization: openTCS
+    category: robotics
+    kind: platform
+    upstream_url: https://github.com/opentcs/opentcs
+    layers: [robotics, agv, amr, transport-control]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: prototype
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: Practical open transport-control system suitable for a Spotwo robot lab and VDA 5050 experiments.
+      ideas:
+        - simulated AMR fleet
+        - transport-order lifecycle
+        - dispatch and route control
+
+  - id: apache-plc4x
+    name: Apache PLC4X
+    organization: Apache Software Foundation
+    category: industrial
+    kind: library
+    upstream_url: https://github.com/apache/plc4x
+    layers: [plc, wcs, industrial-connectivity]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: prototype
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: A protocol abstraction layer could reduce custom PLC integration work across vendors and protocols.
+      ideas:
+        - Siemens S7 lab
+        - Modbus lab
+        - Spotwo PLC port and adapter boundary
+
+  - id: eclipse-tahu-sparkplug
+    name: Eclipse Tahu / Sparkplug
+    organization: Eclipse Foundation
+    category: industrial
+    kind: specification
+    upstream_url: https://github.com/eclipse-tahu/tahu
+    layers: [mqtt, telemetry, device-state, industrial]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: prototype
+      use_directly: yes
+      study_architecture: yes
+      prototype: yes
+      rationale: Adds industrial state semantics to MQTT and cleanly separates telemetry/device state from business events.
+      ideas:
+        - birth and death certificates
+        - reported device state
+        - MQTT plus Sparkplug telemetry lab
+
+  - id: gs1-epcis
+    name: GS1 EPCIS
+    organization: GS1
+    category: logistics-standards
+    kind: specification
+    upstream_url: https://ref.gs1.org/standards/epcis/
+    layers: [events, traceability, supply-chain-interoperability]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: study
+      use_directly: yes
+      study_architecture: yes
+      prototype: yes
+      rationale: Standard external representation for supply-chain visibility events without forcing EPCIS to become the internal Spotwo event model.
+      ideas:
+        - EPCIS projection from Spotwo domain events
+        - WHAT WHEN WHERE WHY HOW mapping
+        - traceability integration contract
+
+  - id: google-or-tools
+    name: OR-Tools
+    organization: Google
+    category: optimization
+    kind: library
+    upstream_url: https://github.com/google/or-tools
+    layers: [optimization, routing, scheduling, assignment]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P0
+      disposition: prototype
+      use_directly: yes
+      study_architecture: yes
+      prototype: yes
+      rationale: Mature optimization baseline for routing, assignment, scheduling, packing, and flow problems before custom solver work.
+      ideas:
+        - wave planning
+        - dock assignment
+        - AMR task assignment
+        - courier and truck routing
+
+  - id: massrobotics-amr-interop
+    name: AMR Interoperability Standard
+    organization: MassRobotics
+    category: robotics
+    kind: specification
+    upstream_url: https://github.com/MassRobotics-AMR/AMR_Interop_Standard
+    layers: [robotics, fleet-visibility, interoperability]
+    status: active
+    spotwo:
+      relevance: 5
+      priority: P1
+      disposition: study
+      use_directly: yes
+      study_architecture: yes
+      prototype: yes
+      rationale: Complements command protocols with common fleet visibility, health, location, and availability semantics.
+      ideas:
+        - fleet state normalization
+        - health and availability model
+        - compare with VDA 5050 boundaries
+
+  - id: uber-h3
+    name: H3
+    organization: Uber
+    category: optimization
+    kind: library
+    upstream_url: https://github.com/uber/h3
+    layers: [geospatial, yard, tms, last-mile]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: prototype
+      use_directly: yes
+      study_architecture: yes
+      prototype: yes
+      rationale: Hierarchical geospatial indexing is useful for yards, service areas, courier territories, heatmaps, and depot analysis.
+      ideas:
+        - yard zoning
+        - delivery territory partitioning
+        - demand heatmaps
+
+  - id: open-wes
+    name: OpenWES
+    organization: OpenWES community
+    category: warehouse
+    kind: platform
+    upstream_url: https://github.com/jingsewu/open-wes
+    layers: [wes, orchestration, automation]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Useful architecture reference for execution tasks, container flows, scheduling, and automation integration.
+      ideas:
+        - execution task model
+        - container flow model
+        - scheduler boundaries
+
+  - id: timefold-solver
+    name: Timefold Solver
+    organization: Timefold
+    category: optimization
+    kind: library
+    upstream_url: https://github.com/TimefoldAI/timefold-solver
+    layers: [optimization, scheduling, routing]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: prototype
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: Constraint-heavy planning may fit WES and workforce problems where incremental scheduling matters.
+      ideas:
+        - benchmark against OR-Tools
+        - employee rostering
+        - task assignment and replanning
+
+  - id: ros-nav2
+    name: Nav2
+    organization: Open Navigation / ROS
+    category: robotics
+    kind: framework
+    upstream_url: https://github.com/ros-navigation/navigation2
+    layers: [robotics, navigation, amr]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P2
+      disposition: watch
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Important navigation stack if Spotwo or partners build lower-level autonomous robots rather than only orchestrating fleets.
+      ideas:
+        - navigation lifecycle
+        - planner and controller plugin model
+        - simulation integration
+
+  - id: eclipse-ditto
+    name: Eclipse Ditto
+    organization: Eclipse Foundation
+    category: industrial
+    kind: platform
+    upstream_url: https://github.com/eclipse-ditto/ditto
+    layers: [digital-twin, devices, edge]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: study
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Strong reference for desired/reported device state and cloud-to-device digital-twin semantics.
+      ideas:
+        - device capability model
+        - desired versus reported state
+        - command and telemetry separation
+
+  - id: eclipse-basyx
+    name: Eclipse BaSyx
+    organization: Eclipse Foundation
+    category: industrial
+    kind: framework
+    upstream_url: https://github.com/eclipse-basyx
+    layers: [industry-4.0, aas, asset-model]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P2
+      disposition: study
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Asset Administration Shell is a useful external model to compare with Spotwo machine, device, sensor, and component ontology.
+      ideas:
+        - machine asset identity
+        - standardized submodels
+        - external AAS adapter
+
+  - id: aws-greengrass-nucleus
+    name: AWS IoT Greengrass Nucleus
+    organization: Amazon Web Services
+    category: edge
+    kind: runtime
+    upstream_url: https://github.com/aws-greengrass/aws-greengrass-nucleus
+    layers: [edge, deployment, device-management]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Useful benchmark for component lifecycle, deployment, local IPC, supervision, configuration, and fleet provisioning.
+      ideas:
+        - compare component model with Spotwo Edge
+        - deployment and rollback semantics
+        - local IPC and supervisor model
+
+  - id: tesla-vehicle-command
+    name: Vehicle Command
+    organization: Tesla
+    category: edge
+    kind: library
+    upstream_url: https://github.com/teslamotors/vehicle-command
+    layers: [edge, security, command-control]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Strong security reference for authenticated commands from cloud software to physical devices over untrusted networks.
+      ideas:
+        - signed command envelope
+        - anti-replay design
+        - key enrollment and rotation
+
+  - id: open-logistics-ecmr
+    name: Open eCMR
+    organization: Open Logistics Foundation
+    category: logistics-standards
+    kind: reference-implementation
+    upstream_url: https://openlogisticsfoundation.org/reaching-the-goal-faster-together-the-ecmr-conquers-logistics/
+    layers: [tms, freight-documents, interoperability]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: watch
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Relevant future transport-document interoperability surface for European road freight.
+      ideas:
+        - consignment note data model
+        - TMS adapter boundary
+        - digital document signatures
+
+  - id: iata-one-record
+    name: ONE Record
+    organization: IATA
+    category: logistics-standards
+    kind: specification
+    upstream_url: https://github.com/IATA-Cargo/ONE-Record
+    layers: [air-cargo, interoperability, api]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: watch
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Canonical air-cargo data and API reference for future cross-company logistics integrations.
+      ideas:
+        - cargo ontology
+        - linked-data API model
+        - air cargo integration adapter
+
+  - id: dcsa-standards
+    name: DCSA standards and APIs
+    organization: Digital Container Shipping Association
+    category: logistics-standards
+    kind: specification
+    upstream_url: https://dcsa.org/standards
+    layers: [ocean, container, interoperability, api]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: watch
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Useful future interoperability reference for container and ocean logistics workflows.
+      ideas:
+        - booking API boundaries
+        - bill of lading interoperability
+        - container event mapping
+
+  - id: osrm
+    name: OSRM
+    organization: Project OSRM
+    category: optimization
+    kind: routing-engine
+    upstream_url: https://github.com/Project-OSRM/osrm-backend
+    layers: [routing, maps, last-mile]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: prototype
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: High-performance road routing engine can provide matrices and paths to a Spotwo optimization layer.
+      ideas:
+        - self-hosted road graph
+        - travel-time matrix generation
+        - last-mile route engine benchmark
+
+  - id: valhalla
+    name: Valhalla
+    organization: Valhalla community
+    category: optimization
+    kind: routing-engine
+    upstream_url: https://github.com/valhalla/valhalla
+    layers: [routing, maps, last-mile]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: prototype
+      use_directly: maybe
+      study_architecture: yes
+      prototype: yes
+      rationale: Rich routing engine worth benchmarking against OSRM for matrices, map matching, isochrones, and route costing.
+      ideas:
+        - compare with OSRM
+        - map matching
+        - service-area and isochrone calculations
+
+  - id: graphhopper-jsprit
+    name: jsprit
+    organization: GraphHopper
+    category: optimization
+    kind: library
+    upstream_url: https://github.com/graphhopper/jsprit
+    layers: [vrp, routing, optimization]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: study
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Focused vehicle-routing toolkit is a useful algorithm and domain reference even if OR-Tools becomes the baseline.
+      ideas:
+        - rich VRP constraints
+        - vehicle and shipment model
+        - benchmark solver behavior
+
+  - id: walmart-concord
+    name: Concord
+    organization: Walmart
+    category: enterprise-domain
+    kind: workflow-engine
+    upstream_url: https://github.com/walmartlabs/concord
+    layers: [workflow, orchestration, automation]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Large-company workflow orchestration reference for long-running processes, plugins, retries, and operational control.
+      ideas:
+        - workflow state model
+        - retry and failure semantics
+        - plugin architecture
+
+  - id: zalando-zally
+    name: Zally
+    organization: Zalando
+    category: api-governance
+    kind: tool
+    upstream_url: https://github.com/zalando/zally
+    layers: [api, openapi, governance]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: study
+      use_directly: maybe
+      study_architecture: yes
+      prototype: no
+      rationale: Useful reference for machine-enforced API guidelines and OpenAPI governance.
+      ideas:
+        - Spotwo API guidelines
+        - OpenAPI CI rules
+        - architecture linting
+
+  - id: zalando-nakadi
+    name: Nakadi
+    organization: Zalando
+    category: events
+    kind: platform
+    upstream_url: https://github.com/zalando/nakadi
+    layers: [events, schemas, subscriptions]
+    status: archived
+    spotwo:
+      relevance: 3
+      priority: P3
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Archived project, so it should not be a new dependency, but its event-type, schema, metadata, and subscription model remain useful references.
+      ideas:
+        - event type registry
+        - schema evolution
+        - subscription API model
+
+  - id: erpnext
+    name: ERPNext
+    organization: Frappe
+    category: enterprise-domain
+    kind: application
+    upstream_url: https://github.com/frappe/erpnext
+    layers: [erp, inventory, warehouse]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Valuable open domain reference for inventory, purchasing, replenishment, orders, shipments, and warehouse concepts.
+      ideas:
+        - inventory ledger comparison
+        - replenishment workflow comparison
+        - ERP integration vocabulary
+
+  - id: odoo
+    name: Odoo
+    organization: Odoo
+    category: enterprise-domain
+    kind: application
+    upstream_url: https://github.com/odoo/odoo
+    layers: [erp, inventory, warehouse]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Broad ERP and warehouse domain implementation useful for workflow and data-model comparison.
+      ideas:
+        - stock movement semantics
+        - warehouse routes and rules
+        - integration contract vocabulary
+
+  - id: openboxes
+    name: OpenBoxes
+    organization: OpenBoxes
+    category: warehouse
+    kind: application
+    upstream_url: https://github.com/openboxes/openboxes
+    layers: [wms, inventory, supply-chain]
+    status: active
+    spotwo:
+      relevance: 3
+      priority: P2
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Open WMS implementation provides another domain-model reference, especially for inventory and healthcare supply chains.
+      ideas:
+        - inventory and lot model
+        - receiving and putaway flows
+        - replenishment and picking vocabulary
+
+  - id: aws-greengrass-lite
+    name: AWS IoT Greengrass Lite
+    organization: Amazon Web Services
+    category: edge
+    kind: runtime
+    upstream_url: https://github.com/aws-greengrass/aws-greengrass-lite
+    layers: [edge, device-management, constrained-devices]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Useful lightweight benchmark for how an edge runtime can shrink lifecycle and deployment functionality for constrained devices.
+      ideas:
+        - minimal edge supervisor
+        - component lifecycle subset
+        - constrained device footprint comparison
+
+  - id: aws-iot-device-sdk
+    name: AWS IoT Device SDK
+    organization: Amazon Web Services
+    category: edge
+    kind: library
+    upstream_url: https://github.com/aws/aws-iot-device-sdk-js-v2
+    layers: [edge, provisioning, device-shadow, jobs]
+    status: active
+    spotwo:
+      relevance: 4
+      priority: P1
+      disposition: study
+      use_directly: no
+      study_architecture: yes
+      prototype: no
+      rationale: Strong reference for fleet provisioning, device shadows, jobs, certificates, and secure device communication.
+      ideas:
+        - enrollment flow
+        - desired and reported state
+        - remote jobs and rollout semantics
