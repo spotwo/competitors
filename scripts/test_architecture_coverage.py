@@ -48,17 +48,23 @@ class ArchitectureCoverageQueryTest(unittest.TestCase):
             {item["boundary_ref"] for item in self.select(priority="P0")},
         )
 
-    def test_missing_coverage_identifies_external_async(self):
-        self.assertEqual(
-            ["external-async-integration"],
-            [item["boundary_ref"] for item in self.select(overall="missing")],
-        )
+    def test_no_boundary_is_missing_after_external_async_evidence(self):
+        self.assertEqual([], [item["boundary_ref"] for item in self.select(overall="missing")])
+
+    def test_external_async_coverage_is_partial_with_executable_evidence(self):
+        result = self.select(boundary="external-async-integration")
+        self.assertEqual(1, len(result))
+        item = result[0]
+        self.assertEqual("partial", item["overall"])
+        self.assertEqual("covered", item["lenses"]["executable"]["status"])
+        self.assertEqual("partial", item["lenses"]["commercial"]["status"])
 
     def test_executable_missing_filter_finds_unproven_boundaries(self):
         result = self.select(lens="executable", lens_status="missing")
-        self.assertEqual(8, len(result))
+        self.assertEqual(7, len(result))
         self.assertNotIn("external-business-api", {item["boundary_ref"] for item in result})
         self.assertNotIn("internal-domain-event-backbone", {item["boundary_ref"] for item in result})
+        self.assertNotIn("external-async-integration", {item["boundary_ref"] for item in result})
 
     def test_target_filter_searches_targets_not_gap_prose(self):
         result = self.select(target="open62541")
@@ -89,8 +95,8 @@ class ArchitectureCoverageQueryTest(unittest.TestCase):
     def test_contract_status_filter_keeps_architecture_context(self):
         unresolved = self.select(contract_status="unresolved")
         self.assertEqual(
-            {"external-async-integration", "edge-control-and-sync"},
-            {item["boundary_ref"] for item in unresolved},
+            ["edge-control-and-sync"],
+            [item["boundary_ref"] for item in unresolved],
         )
 
 
