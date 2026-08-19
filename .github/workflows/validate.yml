@@ -1,34 +1,11 @@
 name: Validate knowledge base
 
 # ASDLC levels for this repository:
-# - pull_request: fast independent verification of the pushed checkpoint
+# - pull_request: stable required check for every proposed main change
 # - merge_group: full pre-merge validation of the exact merge candidate
 # - push to main: post-merge integrity safety net, never a substitute for the merge gate
 on:
   pull_request:
-    paths:
-      - 'companies/**'
-      - 'evidence/**'
-      - 'terminology/**'
-      - 'authorities/**'
-      - 'claims/**'
-      - 'taxonomy/**'
-      - 'ontology/**'
-      - 'kpis/**'
-      - 'integrations/**'
-      - 'capabilities/**'
-      - 'workflows/**'
-      - 'ledger/**'
-      - 'events/**'
-      - 'scenarios/**'
-      - 'kernel/**'
-      - 'operations/**'
-      - 'decisions/**'
-      - 'schema/**'
-      - 'scripts/**'
-      - 'bin/**'
-      - 'requirements.txt'
-      - '.github/workflows/validate.yml'
   merge_group:
     types: [checks_requested]
   push:
@@ -55,7 +32,8 @@ on:
       - 'scripts/**'
       - 'bin/**'
       - 'requirements.txt'
-      - '.github/workflows/validate.yml'
+      - '.github/rulesets/**'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 concurrency:

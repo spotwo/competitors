@@ -2,41 +2,10 @@ name: PostgreSQL inventory kernel lab
 
 on:
   pull_request:
-    paths: &kernel_paths
-      - 'kernel/**'
-      - 'labs/postgres-inventory-kernel/**'
-      - 'operations/event-pipelines/**'
-      - 'schema/event-pipeline-deployment.schema.json'
-      - 'scripts/validate_event_pipeline_deployments.py'
-      - 'bin/check-kernel-lab'
-      - 'bin/run-kernel-outbox-publisher'
-      - 'bin/inspect-kernel-outbox'
-      - 'bin/archive-kernel-outbox'
-      - 'bin/bootstrap-kernel-position-projection'
-      - 'bin/inspect-kernel-projection-gaps'
-      - 'bin/rebuild-kernel-position-projection'
-      - 'bin/run-kernel-position-projection-retries'
-      - 'bin/replay-kernel-consumer-failure'
-      - 'bin/inspect-kernel-consumer-failures'
-      - 'bin/archive-kernel-consumer-failures'
-      - 'bin/inspect-kernel-malformed-deliveries'
-      - 'bin/archive-kernel-malformed-deliveries'
-      - 'bin/inspect-kernel-nats-consumer'
-      - 'bin/inspect-kernel-nats-stream'
-      - 'bin/*kernel-event-pipeline*'
-      - 'decisions/domain/**'
-      - 'scenarios/**'
-      - 'ontology/inventory.yml'
-      - 'ontology/inventory-transaction.yml'
-      - 'ontology/handling-unit.yml'
-      - 'ontology/process.yml'
-      - 'ontology/work.yml'
-      - '.github/workflows/kernel-lab.yml'
   merge_group:
     types: [checks_requested]
   push:
     branches: [main]
-    paths: *kernel_paths
   workflow_dispatch:
     inputs:
       perf_profile:
@@ -65,11 +34,16 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Detect relevant merge-group changes
+      - name: Detect relevant kernel changes
         id: scope
         shell: bash
         run: |
-          if [[ "$GITHUB_EVENT_NAME" != "merge_group" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! git rev-parse HEAD^1 >/dev/null 2>&1; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -79,7 +53,11 @@ jobs:
             labs/postgres-inventory-kernel \
             operations/event-pipelines \
             schema/event-pipeline-deployment.schema.json \
+            schema/topology-finalization-reference.schema.json \
             scripts/validate_event_pipeline_deployments.py \
+            scripts/topology_finalization_pr_guard.py \
+            scripts/check_topology_finalization_pr.py \
+            scripts/validate_topology_finalization_references.py \
             bin/check-kernel-lab \
             bin/run-kernel-outbox-publisher \
             bin/inspect-kernel-outbox \
@@ -95,22 +73,7 @@ jobs:
             bin/archive-kernel-malformed-deliveries \
             bin/inspect-kernel-nats-consumer \
             bin/inspect-kernel-nats-stream \
-            bin/inspect-kernel-event-pipeline \
-            bin/run-kernel-event-pipeline-canary \
-            bin/run-kernel-event-pipeline-canary-consumer \
-            bin/inspect-kernel-event-pipeline-sli \
-            bin/run-kernel-event-pipeline-fault-drills \
-            bin/inspect-kernel-event-pipeline-readiness \
-            bin/inspect-kernel-event-pipeline-topology \
-            bin/plan-kernel-event-pipeline-topology \
-            bin/apply-kernel-event-pipeline-topology \
-            bin/inspect-kernel-event-pipeline-topology-provisioning \
-            bin/run-kernel-event-pipeline-topology-reconciler \
-            bin/inspect-kernel-event-pipeline-topology-interventions \
-            bin/resolve-kernel-event-pipeline-topology-intervention \
-            bin/inspect-kernel-event-pipeline-topology-finalization \
-            bin/record-kernel-event-pipeline-topology-finalization \
-            bin/export-kernel-event-pipeline-topology-finalization-reference \
+            'bin/*kernel-event-pipeline*' \
             decisions/domain \
             scenarios \
             ontology/inventory.yml \
