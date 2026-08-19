@@ -15,6 +15,9 @@ LAB = ROOT / "labs" / "postgres-inventory-kernel"
 sys.path.insert(0, str(LAB))
 
 from event_pipeline_readiness import EventPipelineDeploymentRegistry  # noqa: E402
+from event_pipeline_registry_validation import (  # noqa: E402
+    validate_global_consumer_identities,
+)
 from event_pipeline_topology_config import (  # noqa: E402
     DeploymentTopologyConfig,
     pipeline_topology_mapping,
@@ -50,6 +53,7 @@ def main() -> int:
 
     try:
         registry = EventPipelineDeploymentRegistry.from_mapping(registry_data)
+        validate_global_consumer_identities(registry)
         for spec in registry.pipelines:
             topology = pipeline_topology_mapping(registry_data, spec.pipeline_id)
             DeploymentTopologyConfig.from_mapping(topology).validate(spec)

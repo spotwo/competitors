@@ -22,7 +22,7 @@ Result: the primary technology-intelligence and open-source research datasets ar
 
 ## 3. Connect research into queryable evidence
 
-Status: **in progress**.
+Status: **done for the first read model**.
 
 Connect companies, products, technology intelligence, open-source projects, evidence, and sources so machine queries can answer questions such as:
 
@@ -31,6 +31,8 @@ Connect companies, products, technology intelligence, open-source projects, evid
 - which architectural patterns repeat across strong products;
 - which open-source projects support or challenge a Spotwo design choice;
 - which claims remain research gaps instead of being guessed.
+
+Result: PR #62 added `bin/query-technology`, cross-file evidence traversal, explicit product/decision/open-source record kinds, JSON/NDJSON/table output, validation, and query-semantics tests. Further work here should be driven by missing research questions rather than another generic query layer.
 
 ## 4. Build the Spotwo Technology Decision Matrix
 
@@ -42,9 +44,15 @@ Result: PR #58 introduced the first machine-readable decision registry. Continue
 
 ## 5. Prove the WMS/event kernel with a second real pipeline
 
-Status: **planned**.
+Status: **in progress**.
 
 The current event-pipeline reliability machinery is heavily exercised around the inventory position projection. Add a second real consumer/pipeline and prove that registry, topology, canary, readiness, migration, recovery, and finalization are generic rather than accidentally tailored to one case.
+
+Current slice: use Warehouse Work state transitions as the second business pipeline. Reuse the transactional Outbox, NATS transport, Inbox transaction, failure/quarantine lanes, and registry-backed consumer runtime while projecting `warehouse.work.state.changed` into a separate Work-state read model.
+
+Important finding: `warehouse_works.version` is an internal mutation version and can advance while Work remains in the same state, so it cannot safely be reused as the contiguous state-event aggregate version. The lab therefore keeps a separate `domain_event_version` for emitted state transitions.
+
+The new pipeline remains configured but disabled until composite event-pipeline health stops hard-coding Inventory Position projection-gap semantics. Finding and removing that special case is part of the second-pipeline proof, not a reason to pretend the runtime is already generic.
 
 ## 6. Build a pipeline scaffolder after reuse is proven
 
