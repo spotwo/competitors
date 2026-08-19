@@ -1,0 +1,488 @@
+version: 1
+updated_at: 2026-08-19
+
+policy:
+  purpose: >-
+    Turn the Architecture Boundary Map into a bounded research backlog by recording which reference classes
+    already support each boundary and which evidence is still missing.
+  states:
+    covered: All required reference lenses are covered for the current architecture question.
+    partial: Relevant evidence exists, but at least one required lens remains partial or missing.
+    missing: No relevant evidence has been captured for the required lenses.
+  rules:
+    unknown_beats_guess: true
+    evidence_and_targets_are_separate: true
+    commercial_product_presence_is_not_architecture_evidence: true
+    standards_do_not_define_internal_domain_ownership: true
+    executable_evidence_is_required_before_promoting_candidate_runtime_contracts: true
+
+coverage:
+  - boundary_ref: external-business-api
+    priority: P2
+    overall: covered
+    rationale: >-
+      The external synchronous API boundary already has an adopted contract, executable REST/gRPC comparison,
+      and verified market examples. Remaining work is compatibility policy depth rather than contract discovery.
+    lenses:
+      standards:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: standard
+            ref: OpenAPI 3.1
+        research_targets: []
+        gaps:
+          - Define the first production compatibility and deprecation policy.
+      open_source:
+        requirement: useful
+        status: partial
+        evidence_refs: []
+        research_targets:
+          - API governance and compatibility tooling used by mature open-source platforms
+        gaps:
+          - Add a strong open-source API-governance reference only if it changes compatibility policy.
+      commercial:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: competitor-product
+            ref: logiwa/logiwa-io
+          - kind: competitor-product
+            ref: openboxes/openboxes
+          - kind: competitor-product
+            ref: oracle/warehouse-management-cloud
+          - kind: competitor-product
+            ref: erpnext/stock-and-warehouse
+        research_targets: []
+        gaps: []
+      executable:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: repository
+            ref: misc/api-contract-lab/comparison.yml
+          - kind: repository
+            ref: decisions/domain/0059-external-api-contract-selection.md
+        research_targets: []
+        gaps:
+          - Replace the MISC example with the first production product API slice without changing the adopted boundary.
+
+  - boundary_ref: internal-domain-event-backbone
+    priority: P2
+    overall: covered
+    rationale: >-
+      NATS JetStream is already selected through repository-owned evidence and exercised through transport,
+      topology, canary, recovery, migration, and readiness machinery.
+    lenses:
+      standards:
+        requirement: not-required
+        status: not-required
+        evidence_refs: []
+        research_targets: []
+        gaps: []
+      open_source:
+        requirement: useful
+        status: partial
+        evidence_refs: []
+        research_targets:
+          - Additional broker-neutral event-contract references only when a concrete gap appears
+        gaps: []
+      commercial:
+        requirement: not-required
+        status: not-required
+        evidence_refs: []
+        research_targets: []
+        gaps: []
+      executable:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: repository
+            ref: decisions/domain/0023-domain-event-transport-selection.md
+          - kind: repository
+            ref: decisions/domain/0024-nats-jetstream-transport-adapter.md
+          - kind: repository
+            ref: kernel/transports.yml
+        research_targets: []
+        gaps:
+          - Prove the complete event-pipeline lifecycle with a second real consumer.
+
+  - boundary_ref: external-async-integration
+    priority: P0
+    overall: missing
+    rationale: >-
+      The boundary is explicit but the repository intentionally has not selected a public asynchronous contract.
+      Internal JetStream topology is not acceptable evidence for a customer-facing event contract.
+    lenses:
+      standards:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - CloudEvents
+          - AsyncAPI
+          - standards-based event subscription profiles used by logistics platforms
+        gaps:
+          - Compare event-envelope and contract-description standards without assuming either is the delivery mechanism.
+      open_source:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - webhook delivery engines with replay and signature semantics
+          - durable subscription and pull-feed reference implementations
+        gaps:
+          - Capture at least two maintained implementations with explicit retry, replay, and dead-letter semantics.
+      commercial:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - Manhattan Active event or webhook integration model
+          - Blue Yonder integration event model
+          - SAP EWM event and webhook surfaces
+          - Logiwa outbound event model
+        gaps:
+          - Capture product-specific public evidence for delivery guarantees, replay, subscription scope, and compatibility.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - signed webhook lab
+          - durable pull-feed lab
+        gaps:
+          - Compare duplicate delivery, replay windows, acknowledgement, rate limiting, and dead-letter ownership.
+
+  - boundary_ref: edge-control-and-sync
+    priority: P0
+    overall: partial
+    rationale: >-
+      The repository has useful edge-management references, but no selected Spotwo control-plane contract and no
+      executable enrollment, desired/reported state, reconnect, or reconciliation lab.
+    lenses:
+      standards:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - device-management and software-update standards relevant to managed industrial edge fleets
+        gaps:
+          - Determine whether a standard materially helps enrollment, desired state, OTA, or credential rotation.
+      open_source:
+        requirement: required
+        status: partial
+        evidence_refs:
+          - kind: open-source-project
+            ref: eclipse-ditto
+          - kind: open-source-project
+            ref: aws-greengrass-nucleus
+          - kind: open-source-project
+            ref: tesla-vehicle-command
+        research_targets:
+          - Mender
+          - RAUC
+          - Eclipse hawkBit
+        gaps:
+          - Compare desired/reported state, signed commands, OTA ownership, rollback, and local component supervision.
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - AWS IoT device-management architecture
+          - Azure IoT device twins and edge management
+          - industrial edge fleet managers used by automation vendors
+        gaps:
+          - Capture failure-domain and offline reconciliation patterns from managed fleets.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - fake Edge enrollment and reconnect lab
+        gaps:
+          - Exercise enrollment, credential rotation, stale desired state, offline execution evidence, and conflict resolution.
+
+  - boundary_ref: device-telemetry
+    priority: P1
+    overall: partial
+    rationale: >-
+      MQTT/Sparkplug and Eclipse Tahu provide a strong starting reference, but target-device behavior and the
+      OPC UA versus MQTT split are not yet proven by executable evidence.
+    lenses:
+      standards:
+        requirement: required
+        status: partial
+        evidence_refs:
+          - kind: standard
+            ref: MQTT
+          - kind: standard
+            ref: Sparkplug
+        research_targets:
+          - OPC UA telemetry profiles
+        gaps:
+          - Define when device telemetry belongs in Sparkplug versus OPC UA.
+      open_source:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: open-source-project
+            ref: eclipse-tahu-sparkplug
+        research_targets:
+          - open62541
+        gaps:
+          - Add an OPC UA implementation reference before deciding the protocol split.
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - telemetry models from Dematic, KNAPP, SSI SCHAEFER, and Swisslog where publicly documented
+        gaps:
+          - Capture how mature automation stacks separate telemetry from execution state and business events.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - simulated Sparkplug device lab
+        gaps:
+          - Exercise birth, death, reconnect, stale telemetry, buffering, clock skew, and diagnostics.
+
+  - boundary_ref: plc-control
+    priority: P0
+    overall: partial
+    rationale: >-
+      The Spotwo-owned PLC port is defined and PLC4X is a concrete implementation candidate, but physical-controller
+      compatibility, command safety, diagnostics, and OPC UA information-model tradeoffs are not yet measured.
+    lenses:
+      standards:
+        requirement: required
+        status: partial
+        evidence_refs:
+          - kind: standard
+            ref: OPC UA
+          - kind: standard
+            ref: Modbus
+          - kind: standard
+            ref: Siemens S7
+        research_targets:
+          - ISA-95 equipment hierarchy mappings
+          - PackML state model
+          - IEC 62443 security zones and conduits
+        gaps:
+          - Separate protocol transport, machine state model, and security architecture instead of treating them as one standard.
+      open_source:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: open-source-project
+            ref: apache-plc4x
+        research_targets:
+          - open62541
+        gaps:
+          - Add a strong OPC UA implementation reference for comparison with PLC4X.
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - SAP EWM MFS
+          - Dematic controls
+          - KNAPP KiSoft WCS
+          - SSI SCHAEFER WAMAS MFS
+          - Swisslog SynQ controls
+        gaps:
+          - Capture public evidence for ownership between WMS/WES/WCS/MFC and PLC-level control.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - Siemens S7 PLC4X lab
+          - Modbus PLC4X lab
+          - OPC UA adapter lab
+        gaps:
+          - Test disconnect, timeout, reconnect, stale state, duplicate command, and physical-completion evidence.
+
+  - boundary_ref: robot-fleet-control
+    priority: P0
+    overall: partial
+    rationale: >-
+      VDA 5050, MassRobotics, openTCS, and Open-RMF give strong reference coverage, but the exact Spotwo Mission
+      mapping and responsibility split with real fleet managers still need simulator and vendor evidence.
+    lenses:
+      standards:
+        requirement: required
+        status: partial
+        evidence_refs:
+          - kind: standard
+            ref: VDA 5050
+          - kind: standard
+            ref: MassRobotics interoperability model
+        research_targets: []
+        gaps:
+          - Map command semantics separately from fleet visibility and capability reporting.
+      open_source:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: open-source-project
+            ref: vda-5050
+          - kind: open-source-project
+            ref: massrobotics-amr-interop
+          - kind: open-source-project
+            ref: opentcs
+          - kind: open-source-project
+            ref: open-rmf
+        research_targets: []
+        gaps: []
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - AutoStore
+          - Exotec
+          - Geek+
+          - Locus Robotics
+          - Ocado
+        gaps:
+          - Capture public fleet-manager boundaries, mission ownership, traffic ownership, and interoperability support.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - VDA 5050 simulator lab
+          - openTCS adapter lab
+        gaps:
+          - Prove duplicate dispatch, order revision, reconnect, error recovery, and capability negotiation.
+
+  - boundary_ref: supply-chain-visibility
+    priority: P1
+    overall: partial
+    rationale: >-
+      EPCIS is a strong external-standard reference and already has an explicit Spotwo projection boundary, but
+      the semantic mapping and customer-profile need are still hypotheses.
+    lenses:
+      standards:
+        requirement: required
+        status: partial
+        evidence_refs:
+          - kind: standard
+            ref: GS1 EPCIS
+          - kind: standard
+            ref: GS1 CBV
+        research_targets:
+          - GS1 identification standards used by EPCIS event subjects
+        gaps:
+          - Record version/profile rules and map canonical Spotwo concepts to EPCIS without semantic leakage.
+      open_source:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: open-source-project
+            ref: gs1-epcis
+        research_targets: []
+        gaps: []
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - WMS and supply-chain platforms with documented EPCIS support
+        gaps:
+          - Verify which target customer segments actually demand EPCIS query or capture interfaces.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - one-way EPCIS projection lab
+        gaps:
+          - Measure semantic loss and identify any Spotwo extensions required by a real handling-unit traceability scenario.
+
+  - boundary_ref: optimization-engine
+    priority: P1
+    overall: partial
+    rationale: >-
+      OR-Tools is a strong baseline and Timefold provides a useful comparison point, but no warehouse problem has
+      yet produced measured solver-versus-heuristic evidence behind the Spotwo-owned problem/result port.
+    lenses:
+      standards:
+        requirement: not-required
+        status: not-required
+        evidence_refs: []
+        research_targets: []
+        gaps: []
+      open_source:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: open-source-project
+            ref: google-or-tools
+          - kind: open-source-project
+            ref: timefold-solver
+        research_targets: []
+        gaps: []
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - warehouse optimization architectures with published solver/fallback boundaries
+        gaps:
+          - Find evidence only if it changes problem ownership, fallback, explainability, or replanning requirements.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - warehouse assignment benchmark
+          - wave-planning benchmark
+        gaps:
+          - Compare OR-Tools with a simple deterministic heuristic on runtime, score, timeout, infeasible, and fallback cases.
+
+  - boundary_ref: execution-simulation
+    priority: P1
+    overall: partial
+    rationale: >-
+      Ocava is a strong simulation reference and the boundary already requires shared execution semantics, but
+      Spotwo has not yet replayed a golden scenario through interchangeable real/fake executor and clock ports.
+    lenses:
+      standards:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - simulation and digital-twin standards only where they affect interoperability
+        gaps:
+          - Avoid adopting a digital-twin information model merely to obtain a simulator.
+      open_source:
+        requirement: required
+        status: covered
+        evidence_refs:
+          - kind: open-source-project
+            ref: ocado-ocava
+        research_targets:
+          - additional discrete-event warehouse simulation references
+        gaps:
+          - Compare Ocava architecture with a minimal Spotwo-native deterministic harness.
+      commercial:
+        requirement: useful
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - commercial warehouse digital-twin and simulation approaches from major automation vendors
+        gaps:
+          - Capture what mature systems simulate at WMS, WES, WCS, robot, and PLC layers.
+      executable:
+        requirement: required
+        status: missing
+        evidence_refs: []
+        research_targets:
+          - golden scenario dual-executor lab
+        gaps:
+          - Replay one canonical scenario with an abstract clock and interchangeable simulated/real adapter contracts.
