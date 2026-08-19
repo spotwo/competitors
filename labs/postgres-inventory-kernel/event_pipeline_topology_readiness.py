@@ -9,12 +9,11 @@ from event_pipeline_readiness import (
     ReadinessSignal,
     readiness_status,
 )
-from event_pipeline_topology import NatsJetStreamTopologyInspector
-from event_pipeline_topology_config import DeploymentTopologyConfig
+from event_pipeline_topology_migration import TopologyContractInspector
 
 
 class TopologyAwareEventPipelineReadinessCollector:
-    """Add exact JetStream deployment topology to the existing readiness gate."""
+    """Add exact or time-bounded JetStream topology contract to readiness."""
 
     def __init__(self):
         self.base = EventPipelineReadinessCollector()
@@ -24,6 +23,7 @@ class TopologyAwareEventPipelineReadinessCollector:
         spec: Any,
         *,
         topology: Mapping[str, Any],
+        topology_migration: Mapping[str, Any] | None = None,
         database_url: str | None,
         nats_url: str | None,
         watchdog_state: Mapping[str, Any] | None,
@@ -43,6 +43,7 @@ class TopologyAwareEventPipelineReadinessCollector:
         topology_signal = self._topology_signal(
             spec,
             topology=topology,
+            topology_migration=topology_migration,
             nats_url=nats_url,
             observed_at=observed_at,
         )
@@ -53,6 +54,8 @@ class TopologyAwareEventPipelineReadinessCollector:
         )
         public_config = dict(base_report.config)
         public_config["topology"] = dict(topology)
+        if topology_migration is not None:
+            public_config["topology_migration"] = dict(topology_migration)
         return EventPipelineReadinessReport(
             observed_at=observed_at,
             pipeline_id=spec.pipeline_id,
@@ -66,6 +69,7 @@ class TopologyAwareEventPipelineReadinessCollector:
         spec: Any,
         *,
         topology: Mapping[str, Any],
+        topology_migration: Mapping[str, Any] | None,
         nats_url: str | None,
         observed_at: datetime,
     ) -> ReadinessSignal:
@@ -78,9 +82,10 @@ class TopologyAwareEventPipelineReadinessCollector:
                 details={},
             )
         try:
-            expectation = DeploymentTopologyConfig.from_mapping(topology).expectation(spec)
-            report = NatsJetStreamTopologyInspector(nats_url).inspect(
-                expectation,
+            report = TopologyContractInspector(nats_url).inspect(
+                spec,
+                target_topology=topology,
+                migration_mapping=topology_migration,
                 observed_at=observed_at,
             )
         except Exception as exc:
@@ -95,6 +100,6 @@ class TopologyAwareEventPipelineReadinessCollector:
             name="topology",
             status=report.status,
             available=True,
-            code=None if report.status == "ok" else "topology_drift",
+            code=report.code,
             details=report.to_dict(),
         )
