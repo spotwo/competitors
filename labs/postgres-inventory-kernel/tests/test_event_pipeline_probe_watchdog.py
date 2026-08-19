@@ -184,6 +184,15 @@ def test_snapshot_rejects_duplicate_schedule_slots():
         )
 
 
+def test_snapshot_rejects_receipt_outside_fixed_cadence_grid():
+    off_grid = receipt("off-grid", BASE - timedelta(seconds=30))
+    with pytest.raises(ValueError, match="align to cadence"):
+        snapshot(
+            observed_at=BASE + timedelta(seconds=5),
+            receipts=(off_grid,),
+        )
+
+
 def test_receipt_rejects_unbounded_failure_code():
     with pytest.raises(ValueError, match="bounded failure_code"):
         ExternalProbeExecutionReceipt(
