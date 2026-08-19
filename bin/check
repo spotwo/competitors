@@ -3,6 +3,7 @@ set -euo pipefail
 
 python scripts/validate.py
 python scripts/validate_open_source_research.py
+python scripts/validate_technology_decisions.py
 python scripts/validate_event_pipeline_deployments.py
 python scripts/validate_topology_finalization_references.py
 python scripts/validate_github_main_ruleset.py
@@ -17,3 +18,4 @@ python scripts/generate_workflow_views.py --check
 python scripts/generate_kernel_views.py --check
 python scripts/generate_scenario_views.py --check
 python scripts/generate_transport_selection.py --check
+python scripts/generate_technology_decision_matrix.py --check
