@@ -10,10 +10,14 @@ from event_pipeline_readiness import (
     readiness_status,
 )
 from event_pipeline_topology_migration import TopologyContractInspector
+from event_pipeline_topology_provisioning_health import (
+    PostgresTopologyProvisioningHealthStore,
+    TopologyProvisioningHealthPolicy,
+)
 
 
 class TopologyAwareEventPipelineReadinessCollector:
-    """Add exact or time-bounded JetStream topology contract to readiness."""
+    """Add topology contract and active provisioning execution health to readiness."""
 
     def __init__(self):
         self.base = EventPipelineReadinessCollector()
@@ -47,9 +51,15 @@ class TopologyAwareEventPipelineReadinessCollector:
             nats_url=nats_url,
             observed_at=observed_at,
         )
+        provisioning_signal = self._provisioning_signal(
+            spec,
+            database_url=database_url,
+            observed_at=observed_at,
+        )
         signals = (
             base_report.signals[0],
             topology_signal,
+            provisioning_signal,
             *base_report.signals[1:],
         )
         public_config = dict(base_report.config)
@@ -101,5 +111,47 @@ class TopologyAwareEventPipelineReadinessCollector:
             status=report.status,
             available=True,
             code=None if report.status == "ok" else report.code,
+            details=report.to_dict(),
+        )
+
+    @staticmethod
+    def _provisioning_signal(
+        spec: Any,
+        *,
+        database_url: str | None,
+        observed_at: datetime,
+    ) -> ReadinessSignal:
+        if not database_url:
+            return ReadinessSignal(
+                name="topology_provisioning",
+                status="critical",
+                available=False,
+                code="topology_provisioning_database_url_missing",
+                details={},
+            )
+        try:
+            snapshot = PostgresTopologyProvisioningHealthStore(database_url).snapshot(
+                pipeline_id=spec.pipeline_id,
+                observed_at=observed_at,
+            )
+            report = TopologyProvisioningHealthPolicy().evaluate(snapshot)
+        except Exception as exc:
+            return ReadinessSignal(
+                name="topology_provisioning",
+                status="critical",
+                available=False,
+                code="topology_provisioning_health_unavailable",
+                details={"error_class": type(exc).__name__},
+            )
+
+        # Historical failed/rolled-back executions remain visible in the report and
+        # Prometheus metrics, but only the current active execution participates in
+        # deployment readiness. This prevents old rollout history from making a new
+        # reviewed recovery rollout impossible to start.
+        return ReadinessSignal(
+            name="topology_provisioning",
+            status=report.current_status,
+            available=True,
+            code=report.current_code,
             details=report.to_dict(),
         )
