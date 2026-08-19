@@ -81,6 +81,7 @@ BEGIN
     NEW.domain_event_version,
     jsonb_build_object(
       'work_id', NEW.id,
+      'tenant_id', NEW.tenant_id,
       'warehouse_id', NEW.warehouse_id,
       'capability', NEW.capability,
       'domain_reference', NEW.domain_reference,
