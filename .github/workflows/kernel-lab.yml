@@ -110,6 +110,7 @@ jobs:
             bin/resolve-kernel-event-pipeline-topology-intervention \
             bin/inspect-kernel-event-pipeline-topology-finalization \
             bin/record-kernel-event-pipeline-topology-finalization \
+            bin/export-kernel-event-pipeline-topology-finalization-reference \
             decisions/domain \
             scenarios \
             ontology/inventory.yml \

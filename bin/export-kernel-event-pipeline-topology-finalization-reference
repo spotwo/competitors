@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from uuid import UUID
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(LAB))
+sys.path.insert(0, str(SCRIPTS))
+
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_finalization_receipt import (  # noqa: E402
+    PostgresTopologyFinalizationReceiptStore,
+)
+from event_pipeline_topology_migration import pipeline_topology_migration_mapping  # noqa: E402
+from topology_finalization_pr_guard import (  # noqa: E402
+    build_cleanup_reference,
+    canonical_fingerprint,
+    deterministic_reference_path,
+    pipelines_by_id,
+    target_contract_payload,
+)
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Export a machine-readable Git cleanup reference from an immutable finalization receipt"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument("--receipt", required=True)
+    parser.add_argument("--database-url")
+    parser.add_argument("--format", choices=("yaml", "json"), default="yaml")
+    parser.add_argument("--show-path", action="store_true")
+    return parser.parse_args()
+
+
+def registry_mapping(path: str) -> dict:
+    with Path(path).open("r", encoding="utf-8") as handle:
+        value = yaml.safe_load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("registry root must be an object")
+    return value
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        receipt_id = UUID(args.receipt)
+    except ValueError as exc:
+        raise SystemExit("--receipt must be a UUID") from exc
+
+    try:
+        registry = load_registry(args.registry)
+        raw = registry_mapping(args.registry)
+        spec = registry.get(args.pipeline)
+        pipeline = pipelines_by_id(raw)[args.pipeline]
+        migration = pipeline_topology_migration_mapping(raw, args.pipeline)
+    except (KeyError, OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+    if migration is None:
+        raise SystemExit("topology_migration must still be present while exporting the cleanup reference")
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    if not database_url:
+        raise SystemExit(
+            f"database URL is required via --database-url or {spec.runtime.database_url_env}"
+        )
+    receipt = PostgresTopologyFinalizationReceiptStore(database_url).get_receipt(receipt_id)
+    if receipt is None:
+        raise SystemExit("finalization receipt not found")
+    if receipt.pipeline_id != args.pipeline:
+        raise SystemExit("finalization receipt belongs to another pipeline")
+    migration_id = migration.get("id")
+    if receipt.migration_id != migration_id:
+        raise SystemExit("finalization receipt does not match the current topology_migration id")
+
+    reference = build_cleanup_reference(receipt.to_dict())
+    target_fingerprint = canonical_fingerprint(target_contract_payload(pipeline))
+    if reference["receipt"]["target_fingerprint"] != target_fingerprint:
+        raise SystemExit("receipt target fingerprint no longer matches the reviewed registry target")
+    if reference["receipt"]["live_fingerprint"] != target_fingerprint:
+        raise SystemExit("receipt live fingerprint no longer matches the reviewed registry target")
+    if reference["receipt"]["migration_fingerprint"] != canonical_fingerprint(migration):
+        raise SystemExit("receipt migration fingerprint does not match the current topology_migration")
+
+    if args.show_path:
+        print(deterministic_reference_path(args.pipeline, receipt.migration_id), file=sys.stderr)
+    if args.format == "json":
+        print(json.dumps(reference, indent=2, sort_keys=True))
+    else:
+        sys.stdout.write(yaml.safe_dump(reference, sort_keys=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

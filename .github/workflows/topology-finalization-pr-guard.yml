@@ -1,0 +1,48 @@
+name: Topology finalization cleanup guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - 'operations/event-pipelines/**'
+      - 'schema/topology-finalization-reference.schema.json'
+      - 'scripts/topology_finalization_pr_guard.py'
+      - 'scripts/check_topology_finalization_pr.py'
+      - 'scripts/validate_topology_finalization_references.py'
+      - 'bin/export-kernel-event-pipeline-topology-finalization-reference'
+      - '.github/workflows/topology-finalization-pr-guard.yml'
+
+concurrency:
+  group: topology-finalization-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup-guard:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, Node 24
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: python -m pip install -r requirements.txt
+
+      - name: Verify topology migration cleanup boundary
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python scripts/check_topology_finalization_pr.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --pr-body-env PR_BODY \
+            --pretty
