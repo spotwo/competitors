@@ -5,16 +5,22 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RULESET="$ROOT/.github/rulesets/main.json"
 REPOSITORY="${1:-spotwo/competitors}"
 API_VERSION="2026-03-10"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 command -v gh >/dev/null 2>&1 || {
   echo "gh CLI is required" >&2
   exit 2
 }
 
-gh auth status >/dev/null
-python "$ROOT/scripts/validate_github_main_ruleset.py"
+command -v "$PYTHON_BIN" >/dev/null 2>&1 || {
+  echo "$PYTHON_BIN is required; set PYTHON_BIN to another Python 3 executable if needed" >&2
+  exit 2
+}
 
-name="$(python - "$RULESET" <<'PY'
+gh auth status >/dev/null
+"$PYTHON_BIN" "$ROOT/scripts/validate_github_main_ruleset.py"
+
+name="$("$PYTHON_BIN" - "$RULESET" <<'PY'
 import json
 import sys
 from pathlib import Path
