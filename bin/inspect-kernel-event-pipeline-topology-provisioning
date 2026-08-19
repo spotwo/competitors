@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+LAB = ROOT / "labs" / "postgres-inventory-kernel"
+sys.path.insert(0, str(LAB))
+
+from event_pipeline_readiness import load_registry  # noqa: E402
+from event_pipeline_topology_provisioning_health import (  # noqa: E402
+    PostgresTopologyProvisioningHealthStore,
+    TopologyProvisioningHealthPolicy,
+    render_prometheus,
+)
+
+DEFAULT_REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Inspect crash-safe event pipeline topology provisioning execution health"
+    )
+    parser.add_argument("--registry", default=str(DEFAULT_REGISTRY))
+    parser.add_argument("--pipeline", required=True)
+    parser.add_argument(
+        "--database-url",
+        help="lab override for PostgreSQL URL; otherwise use the registry-named env var",
+    )
+    parser.add_argument("--warning-state-age-seconds", type=float, default=60.0)
+    parser.add_argument("--critical-state-age-seconds", type=float, default=180.0)
+    parser.add_argument("--format", choices=("json", "prometheus"), default="json")
+    parser.add_argument("--pretty", action="store_true", help="indent JSON output")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 0 for ok, 1 for warning, or 2 for critical",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        registry = load_registry(args.registry)
+        spec = registry.get(args.pipeline)
+    except KeyError as exc:
+        raise SystemExit(f"unknown event pipeline deployment: {args.pipeline}") from exc
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"event pipeline deployment registry invalid: {exc}") from exc
+
+    database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
+    if not database_url:
+        raise SystemExit(
+            f"--database-url or registry-named environment variable {spec.runtime.database_url_env} is required"
+        )
+
+    try:
+        snapshot = PostgresTopologyProvisioningHealthStore(database_url).snapshot(
+            pipeline_id=spec.pipeline_id
+        )
+        report = TopologyProvisioningHealthPolicy(
+            warning_state_age_seconds=args.warning_state_age_seconds,
+            critical_state_age_seconds=args.critical_state_age_seconds,
+        ).evaluate(snapshot)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    except Exception as exc:
+        raise SystemExit(
+            f"topology provisioning health unavailable: {type(exc).__name__}"
+        ) from exc
+
+    if args.format == "prometheus":
+        sys.stdout.write(render_prometheus(report))
+    else:
+        print(
+            json.dumps(
+                report.to_dict(),
+                indent=2 if args.pretty else None,
+                sort_keys=True,
+                separators=None if args.pretty else (",", ":"),
+            )
+        )
+
+    if not args.check:
+        return 0
+    return {"ok": 0, "warning": 1, "critical": 2}[report.status]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
