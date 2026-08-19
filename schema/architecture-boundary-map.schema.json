@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spotwo.dev/schema/architecture-boundary-map.schema.json",
+  "title": "Spotwo architecture boundary map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updated_at", "policy", "boundaries"],
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "updated_at": {"type": "string", "format": "date"},
+    "policy": {"$ref": "#/$defs/policy"},
+    "boundaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/boundary"}
+    }
+  },
+  "$defs": {
+    "nonEmptyText": {"type": "string", "minLength": 8},
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose", "rules"],
+      "properties": {
+        "purpose": {"type": "string", "minLength": 40},
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "internal_domain_model_is_not_an_external_standard",
+            "transport_does_not_own_business_state",
+            "adapters_do_not_define_domain_semantics",
+            "physical_safety_remains_below_business_orchestration",
+            "unknown_contracts_remain_unresolved",
+            "every_boundary_has_explicit_state_ownership"
+          ],
+          "properties": {
+            "internal_domain_model_is_not_an_external_standard": {"const": true},
+            "transport_does_not_own_business_state": {"const": true},
+            "adapters_do_not_define_domain_semantics": {"const": true},
+            "physical_safety_remains_below_business_orchestration": {"const": true},
+            "unknown_contracts_remain_unresolved": {"const": true},
+            "every_boundary_has_explicit_state_ownership": {"const": true}
+          }
+        }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "classification", "from", "to", "contract", "flow", "state_ownership",
+        "reliability", "security", "versioning", "simulation", "standards", "evidence", "research_gaps"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "name": {"type": "string", "minLength": 3},
+        "classification": {
+          "type": "string",
+          "enum": [
+            "canonical-internal",
+            "external-interoperability",
+            "external-standard-projection",
+            "internal-adapter-boundary",
+            "industrial-adapter-boundary",
+            "robotics-adapter-boundary",
+            "internal-port"
+          ]
+        },
+        "from": {"$ref": "#/$defs/nonEmptyText"},
+        "to": {"$ref": "#/$defs/nonEmptyText"},
+        "contract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "mechanism", "technology_decision_ref", "rationale"],
+          "properties": {
+            "status": {"type": "string", "enum": ["canonical", "candidate", "unresolved"]},
+            "mechanism": {"type": "string", "minLength": 3},
+            "technology_decision_ref": {
+              "oneOf": [
+                {"type": "null"},
+                {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"}
+              ]
+            },
+            "rationale": {"type": "string", "minLength": 40}
+          }
+        },
+        "flow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["direction", "interaction", "commands", "events", "queries"],
+          "properties": {
+            "direction": {"type": "string", "enum": ["inbound", "outbound", "bidirectional"]},
+            "interaction": {
+              "type": "string",
+              "enum": [
+                "sync-request-response",
+                "async-events",
+                "async-notification",
+                "command-state",
+                "streaming-telemetry",
+                "projection",
+                "in-process-port",
+                "pluggable-executor"
+              ]
+            },
+            "commands": {"$ref": "#/$defs/stringList"},
+            "events": {"$ref": "#/$defs/stringList"},
+            "queries": {"$ref": "#/$defs/stringList"}
+          }
+        },
+        "state_ownership": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authoritative", "forbidden"],
+          "properties": {
+            "authoritative": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 15}
+            },
+            "forbidden": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 15}
+            }
+          }
+        },
+        "reliability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["retry", "idempotency", "ordering", "offline_behavior"],
+          "properties": {
+            "retry": {"$ref": "#/$defs/nonEmptyText"},
+            "idempotency": {"$ref": "#/$defs/nonEmptyText"},
+            "ordering": {"$ref": "#/$defs/nonEmptyText"},
+            "offline_behavior": {"$ref": "#/$defs/nonEmptyText"}
+          }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trust_boundary", "authentication", "authorization"],
+          "properties": {
+            "trust_boundary": {"$ref": "#/$defs/nonEmptyText"},
+            "authentication": {"$ref": "#/$defs/nonEmptyText"},
+            "authorization": {"$ref": "#/$defs/nonEmptyText"}
+          }
+        },
+        "versioning": {"$ref": "#/$defs/nonEmptyText"},
+        "simulation": {"$ref": "#/$defs/nonEmptyText"},
+        "standards": {"$ref": "#/$defs/stringList"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository_refs", "technology_decision_refs", "open_source_project_refs"],
+          "properties": {
+            "repository_refs": {"$ref": "#/$defs/stringList"},
+            "technology_decision_refs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"}
+            },
+            "open_source_project_refs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"}
+            }
+          }
+        },
+        "research_gaps": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 15}
+        }
+      }
+    }
+  }
+}
