@@ -1,0 +1,520 @@
+version: 1
+updated_at: 2026-08-19
+
+policy:
+  purpose: >-
+    Define the major Spotwo architecture boundaries before selecting more technologies, so state ownership,
+    contract responsibility, reliability, security, versioning, offline behavior, simulation, and external
+    standards remain explicit instead of emerging from accidental point-to-point integrations.
+  rules:
+    internal_domain_model_is_not_an_external_standard: true
+    transport_does_not_own_business_state: true
+    adapters_do_not_define_domain_semantics: true
+    physical_safety_remains_below_business_orchestration: true
+    unknown_contracts_remain_unresolved: true
+    every_boundary_has_explicit_state_ownership: true
+
+boundaries:
+  - id: external-business-api
+    name: External business API
+    classification: external-interoperability
+    from: ERP / OMS / TMS / customer applications / partner systems
+    to: Spotwo application and domain layer
+    contract:
+      status: canonical
+      mechanism: REST + OpenAPI 3.1
+      technology_decision_ref: rest-openapi
+      rationale: >-
+        External business integrations need a language-neutral, inspectable, agent-friendly contract with strong
+        compatibility tooling. OpenAPI is the executable contract; framework and implementation language remain internal.
+    flow:
+      direction: bidirectional
+      interaction: sync-request-response
+      commands:
+        - submit business intent and retry-safe mutations
+      events: []
+      queries:
+        - read Spotwo resources and operational state
+    state_ownership:
+      authoritative:
+        - External systems remain authoritative for business intent they originate until Spotwo accepts it.
+        - Spotwo domains are authoritative for Spotwo warehouse state after a command is accepted.
+      forbidden:
+        - API DTOs must not become the canonical internal domain model.
+        - HTTP retries must not duplicate warehouse effects.
+    reliability:
+      retry: Safe retry semantics are part of the public contract.
+      idempotency: Retriable mutating operations require an explicit idempotency mechanism.
+      ordering: Request ordering is not globally guaranteed; domain preconditions must make ordering requirements explicit.
+      offline_behavior: Clients may queue work locally, but synchronization conflicts must be resolved against canonical Spotwo state.
+    security:
+      trust_boundary: Internet, customer network, or partner network to Spotwo.
+      authentication: External identity or service credentials are required.
+      authorization: Authorization is resource and capability scoped; authentication alone never grants warehouse actions.
+    versioning: Breaking changes require an explicit compatibility/versioning decision and must not silently reuse an incompatible contract.
+    simulation: API contract tests may target simulated domain adapters, but simulation must not change public semantics.
+    standards:
+      - OpenAPI 3.1
+    evidence:
+      repository_refs:
+        - decisions/domain/0059-external-api-contract-selection.md
+        - misc/api-contract-lab/comparison.yml
+      technology_decision_refs:
+        - rest-openapi
+      open_source_project_refs: []
+    research_gaps:
+      - Define the first production API compatibility policy and deprecation window.
+      - Decide the external asynchronous notification contract separately from synchronous REST.
+
+  - id: internal-domain-event-backbone
+    name: Internal domain event backbone
+    classification: canonical-internal
+    from: Spotwo domain producers
+    to: Spotwo domain consumers, projections, warehouse services, Edge-capable consumers
+    contract:
+      status: canonical
+      mechanism: Broker-neutral domain events transported by NATS JetStream
+      technology_decision_ref: nats-jetstream
+      rationale: >-
+        Domain event identity and semantics belong to Spotwo while NATS JetStream is the adopted operational transport.
+        The broker provides delivery infrastructure but does not own domain meaning or canonical business state.
+    flow:
+      direction: outbound
+      interaction: async-events
+      commands: []
+      events:
+        - immutable domain facts
+      queries: []
+    state_ownership:
+      authoritative:
+        - The producing domain transaction owns the business fact.
+        - Durable consumer state belongs to the consuming bounded context or projection.
+      forbidden:
+        - JetStream subjects, stream names, or durable names must not define domain semantics.
+        - Event transport state must not become the source of truth for inventory or work state.
+    reliability:
+      retry: At-least-once delivery is expected and consumers must tolerate redelivery.
+      idempotency: Stable event identity and consumer idempotency are mandatory.
+      ordering: Ordering requirements are scoped to explicit event streams and domain keys, not assumed globally.
+      offline_behavior: Warehouse-local consumers may continue on local infrastructure; reconnect must resume from durable state without inventing events.
+    security:
+      trust_boundary: Service, site, and deployment boundaries inside the Spotwo operational estate.
+      authentication: Broker clients require workload identity or scoped credentials.
+      authorization: Publish and subscribe permissions are subject-scoped and least-privilege.
+    versioning: Event schemas evolve compatibly; incompatible semantic changes require a new explicit contract/version.
+    simulation: The same domain event contracts should be consumable by simulated adapters and scenario harnesses.
+    standards: []
+    evidence:
+      repository_refs:
+        - decisions/domain/0023-domain-event-transport-selection.md
+        - decisions/domain/0024-nats-jetstream-transport-adapter.md
+        - kernel/transports.yml
+      technology_decision_refs:
+        - nats-jetstream
+      open_source_project_refs: []
+    research_gaps:
+      - Define the external event/webhook projection without exposing internal JetStream topology.
+
+  - id: external-async-integration
+    name: External asynchronous integration
+    classification: external-interoperability
+    from: Spotwo domains
+    to: Customer and partner systems outside the Spotwo trust domain
+    contract:
+      status: unresolved
+      mechanism: Unselected external event, webhook, subscription, or document-delivery contract
+      technology_decision_ref: null
+      rationale: >-
+        Internal NATS topology must not leak into customer integration by default. The public asynchronous boundary needs
+        its own compatibility, delivery, authentication, replay, and subscription semantics before a mechanism is selected.
+    flow:
+      direction: outbound
+      interaction: async-notification
+      commands: []
+      events:
+        - externally supported business notifications and projections
+      queries: []
+    state_ownership:
+      authoritative:
+        - Spotwo domains own the facts being projected.
+        - External systems own their acknowledgement and downstream processing state.
+      forbidden:
+        - External consumers must not depend on internal stream names, durable identities, or broker retention settings.
+    reliability:
+      retry: Delivery retry policy must be explicit and bounded.
+      idempotency: External event identity must support duplicate detection.
+      ordering: Any ordering guarantee must be documented per external contract.
+      offline_behavior: External unavailability must not block core warehouse transactions; delivery requires durable buffering or replay semantics.
+    security:
+      trust_boundary: Spotwo to customer or partner network.
+      authentication: Unresolved; must support independently revocable integration credentials.
+      authorization: Subscription scope must be limited to tenant, site, event type, and resource permissions.
+    versioning: Public event compatibility and deprecation rules are unresolved and must be independent from internal broker topology.
+    simulation: Delivery adapters should be testable against deterministic fake consumers.
+    standards: []
+    evidence:
+      repository_refs:
+        - decisions/domain/0059-external-api-contract-selection.md
+      technology_decision_refs: []
+      open_source_project_refs: []
+    research_gaps:
+      - Compare webhooks, managed event subscriptions, pull feeds, and standards-based event projections.
+      - Define replay windows, signatures, acknowledgement semantics, rate limits, and dead-letter ownership.
+
+  - id: edge-control-and-sync
+    name: Spotwo Edge control and synchronization
+    classification: internal-adapter-boundary
+    from: Spotwo cloud or site control plane
+    to: Spotwo Edge runtime at the warehouse
+    contract:
+      status: unresolved
+      mechanism: Unselected command, configuration, synchronization, and health contract
+      technology_decision_ref: null
+      rationale: >-
+        Domain events already have an adopted transport, but Edge management also needs enrollment, desired state,
+        capability negotiation, configuration, health, offline reconciliation, and possibly command semantics. Those
+        responsibilities must not be collapsed into the event backbone without a separate decision.
+    flow:
+      direction: bidirectional
+      interaction: command-state
+      commands:
+        - desired configuration and capability-scoped operational commands
+      events:
+        - Edge health, capability, execution, and reconciliation state
+      queries:
+        - current desired and reported Edge state
+    state_ownership:
+      authoritative:
+        - Spotwo control plane owns desired configuration and business intent.
+        - Spotwo Edge owns local connectivity/session state and reported execution state while disconnected.
+      forbidden:
+        - Edge must not invent business facts merely to hide a control-plane outage.
+        - Control-plane desired state must not overwrite fresher physical evidence without reconciliation rules.
+    reliability:
+      retry: Commands and configuration changes require retry-safe identifiers and convergence semantics.
+      idempotency: Replayed desired-state updates must converge without duplicate side effects.
+      ordering: Configuration revisions require monotonic or causally comparable versions.
+      offline_behavior: Edge must continue explicitly permitted local capabilities, persist pending evidence, and reconcile after reconnect.
+    security:
+      trust_boundary: Cloud or site control plane to remotely deployed warehouse node.
+      authentication: Device or workload identity with enrollment and rotation is required.
+      authorization: Edge capabilities are individually scoped and remote commands require explicit permission.
+    versioning: Capability negotiation must prevent a newer control plane from issuing unsupported commands to an older Edge runtime.
+    simulation: A fake Edge runtime should exercise enrollment, disconnect, reconnect, stale desired state, and reconciliation.
+    standards: []
+    evidence:
+      repository_refs: []
+      technology_decision_refs:
+        - nats-jetstream
+        - rest-openapi
+      open_source_project_refs: []
+    research_gaps:
+      - Decide which Edge responsibilities use REST/OpenAPI, NATS, streaming connections, or a dedicated management protocol.
+      - Define enrollment, credential rotation, desired/reported state, OTA ownership, and conflict resolution.
+
+  - id: device-telemetry
+    name: Device and machine telemetry
+    classification: industrial-adapter-boundary
+    from: Sensors, machines, PLC gateways, and Edge adapters
+    to: Spotwo telemetry and observability layer
+    contract:
+      status: candidate
+      mechanism: MQTT with Sparkplug state conventions
+      technology_decision_ref: sparkplug-mqtt
+      rationale: >-
+        Industrial telemetry needs online/offline, birth/death, and reported-state semantics that are different from WMS
+        business events. MQTT plus Sparkplug is a promising candidate, but it must be proven against target devices.
+    flow:
+      direction: inbound
+      interaction: streaming-telemetry
+      commands: []
+      events:
+        - measurements, device state, birth/death, alarms, and reported state
+      queries: []
+    state_ownership:
+      authoritative:
+        - Physical devices are authoritative for raw observations they directly measure.
+        - Spotwo telemetry projections own derived history and health interpretations.
+      forbidden:
+        - Telemetry alone must not silently become a committed inventory or work transaction.
+        - MQTT topic layout must not define the Spotwo domain ontology.
+    reliability:
+      retry: Telemetry retry and buffering depend on metric criticality and device capability.
+      idempotency: Replayed state publications must be distinguishable from new observations where semantics require it.
+      ordering: Sequence or timestamp semantics must detect stale state instead of trusting arrival order blindly.
+      offline_behavior: Site gateways may buffer bounded telemetry and must expose stale/offline state explicitly.
+    security:
+      trust_boundary: Untrusted or semi-trusted industrial device network to Spotwo Edge or telemetry services.
+      authentication: Device or gateway identity is required when hardware permits it.
+      authorization: Publish/subscribe scope is limited by device, site, and telemetry namespace.
+    versioning: Device capability and telemetry schema revisions require explicit compatibility metadata.
+    simulation: Simulated devices must cover birth, death, reconnect, stale telemetry, and clock skew.
+    standards:
+      - MQTT
+      - Sparkplug
+    evidence:
+      repository_refs: []
+      technology_decision_refs:
+        - sparkplug-mqtt
+      open_source_project_refs:
+        - eclipse-tahu-sparkplug
+    research_gaps:
+      - Test real target controllers and sensors for Sparkplug fit, buffering behavior, and failure diagnostics.
+      - Decide when OPC UA telemetry belongs at this boundary instead of MQTT/Sparkplug.
+
+  - id: plc-control
+    name: PLC and machine control
+    classification: industrial-adapter-boundary
+    from: Spotwo WCS / MFC / Edge control adapter
+    to: PLCs and machine controllers
+    contract:
+      status: candidate
+      mechanism: Spotwo-owned PLC port with PLC4X, OPC UA, or vendor-native protocol adapters
+      technology_decision_ref: apache-plc4x
+      rationale: >-
+        Spotwo should own orchestration semantics while protocol libraries and vendor SDKs remain replaceable adapters.
+        PLC4X is a candidate implementation layer, not the domain model and not a replacement for machine safety logic.
+    flow:
+      direction: bidirectional
+      interaction: command-state
+      commands:
+        - capability-scoped machine commands and setpoints
+      events:
+        - machine state, interlocks, alarms, acknowledgements, and execution results
+      queries:
+        - current machine state required for safe orchestration
+    state_ownership:
+      authoritative:
+        - PLC or machine controller owns physical I/O, local interlocks, and machine safety state.
+        - Spotwo WCS or MFC owns higher-level material-flow intent and orchestration state.
+      forbidden:
+        - Spotwo must not bypass PLC safety logic or treat a network acknowledgement as physical completion.
+        - PLC memory addresses and vendor SDK types must not leak into the canonical WMS/WES domain.
+    reliability:
+      retry: Command retry requires command-specific safety classification; blind replay is forbidden.
+      idempotency: Re-executable machine commands require explicit command identity or read-before-write convergence semantics.
+      ordering: State-machine transitions and safety interlocks dominate transport arrival order.
+      offline_behavior: Loss of higher-level connectivity must fail into a documented machine-safe mode owned by local control.
+    security:
+      trust_boundary: Spotwo control runtime to industrial control network.
+      authentication: Protocol capability varies; gateways must compensate where field protocols lack strong identity.
+      authorization: Only approved control adapters may issue machine commands; read-only telemetry is separately scoped.
+    versioning: PLC program/version and adapter capability compatibility must be known before commands are enabled.
+    simulation: PLC adapters require simulator or fake-controller scenarios before physical commissioning.
+    standards:
+      - OPC UA
+      - Modbus
+      - Siemens S7
+    evidence:
+      repository_refs: []
+      technology_decision_refs:
+        - apache-plc4x
+      open_source_project_refs:
+        - apache-plc4x
+    research_gaps:
+      - Run Siemens S7 and Modbus PLC4X labs with disconnect, timeout, reconnect, stale-state, and command-safety cases.
+      - Map OPC UA information models and security against the same Spotwo-owned PLC port.
+
+  - id: robot-fleet-control
+    name: AMR and AGV fleet control
+    classification: robotics-adapter-boundary
+    from: Spotwo WES / mission orchestration
+    to: Robot fleet manager or compatible AMR / AGV controller
+    contract:
+      status: candidate
+      mechanism: Spotwo-owned robot adapter with VDA 5050 where supported and vendor-native adapters otherwise
+      technology_decision_ref: vda-5050
+      rationale: >-
+        Spotwo missions and warehouse work must remain independent from a robot vendor. VDA 5050 is a promising
+        interoperability boundary, but fleet capability and protocol-version negotiation must be proven in simulation.
+    flow:
+      direction: bidirectional
+      interaction: command-state
+      commands:
+        - mission dispatch, order updates, cancellation, and capability-scoped actions
+      events:
+        - robot/fleet state, order state, errors, battery/capability state, and completion evidence
+      queries:
+        - fleet capabilities and current execution state
+    state_ownership:
+      authoritative:
+        - Spotwo WES owns warehouse mission intent, priorities, and dependencies.
+        - Robot fleet manager owns robot motion, local traffic execution, and robot safety state.
+      forbidden:
+        - Spotwo Task and Mission must not become aliases for VDA 5050 message objects.
+        - Spotwo must not assume a robot completed physical work solely because a command was accepted.
+    reliability:
+      retry: Mission/order updates require stable identities and protocol-specific retry rules.
+      idempotency: Duplicate dispatch must not create duplicate physical missions.
+      ordering: Order revisions require sequence/update semantics supported by the selected robot adapter.
+      offline_behavior: Loss of orchestration connectivity must leave robots in vendor-defined safe behavior and expose reconciliation state after reconnect.
+    security:
+      trust_boundary: Spotwo orchestration to robot vendor or fleet network.
+      authentication: Adapter connection identity and fleet endpoint authenticity are required.
+      authorization: Mission and action capabilities are negotiated and site-scoped.
+    versioning: Protocol version and fleet capability negotiation are mandatory before enabling advanced actions.
+    simulation: VDA 5050 and vendor adapters must be testable against deterministic fleet simulators.
+    standards:
+      - VDA 5050
+      - MassRobotics interoperability model
+    evidence:
+      repository_refs: []
+      technology_decision_refs:
+        - vda-5050
+      open_source_project_refs:
+        - vda-5050
+        - opentcs
+        - open-rmf
+    research_gaps:
+      - Build the VDA 5050 simulator lab and define the exact Spotwo Mission to robot-order mapping.
+      - Separate traffic/fleet responsibilities from higher-level WES task allocation.
+
+  - id: supply-chain-visibility
+    name: Supply-chain traceability and visibility
+    classification: external-standard-projection
+    from: Spotwo canonical domain events and state
+    to: External supply-chain visibility consumers
+    contract:
+      status: candidate
+      mechanism: GS1 EPCIS projection and query interoperability
+      technology_decision_ref: gs1-epcis
+      rationale: >-
+        EPCIS is useful as an external traceability vocabulary, but Spotwo must project into it from canonical domain facts
+        rather than forcing internal warehouse execution semantics into the EPCIS object model.
+    flow:
+      direction: outbound
+      interaction: projection
+      commands: []
+      events:
+        - selected traceability facts projected into EPCIS-compatible events
+      queries:
+        - standards-compatible visibility queries where product scope requires them
+    state_ownership:
+      authoritative:
+        - Spotwo domain facts remain authoritative for internal warehouse execution.
+        - EPCIS records are interoperability projections of selected facts.
+      forbidden:
+        - EPCIS object/event shapes must not become the internal event kernel by default.
+    reliability:
+      retry: Projection delivery must be replayable from stable internal facts.
+      idempotency: Projected events require stable external identifiers derived from canonical evidence.
+      ordering: Event time and business-step semantics must survive projection without relying solely on delivery order.
+      offline_behavior: Projection may lag during partner outages without blocking warehouse execution.
+    security:
+      trust_boundary: Spotwo to external supply-chain visibility network or partner.
+      authentication: Partner/API identity is required.
+      authorization: Visibility is limited by tenant, business relationship, object, and event scope.
+    versioning: EPCIS version/profile compatibility and Spotwo mapping version must be explicit.
+    simulation: Golden traceability scenarios should compare canonical Spotwo facts with generated EPCIS projections.
+    standards:
+      - GS1 EPCIS
+      - GS1 CBV
+    evidence:
+      repository_refs: []
+      technology_decision_refs:
+        - gs1-epcis
+      open_source_project_refs:
+        - gs1-epcis
+    research_gaps:
+      - Build a one-way EPCIS projection and document semantic loss or Spotwo extensions.
+      - Decide which customer/product profiles actually require EPCIS query support.
+
+  - id: optimization-engine
+    name: Optimization and solver boundary
+    classification: internal-port
+    from: Spotwo planning and orchestration domains
+    to: Optimization solver implementation
+    contract:
+      status: candidate
+      mechanism: Spotwo-owned serializable problem/result port with OR-Tools as the first baseline solver
+      technology_decision_ref: google-or-tools
+      rationale: >-
+        Optimization models and acceptance rules belong to Spotwo. A solver is a replaceable computational dependency and
+        must not own durable warehouse state or force OR-Tools object types into domain code.
+    flow:
+      direction: bidirectional
+      interaction: in-process-port
+      commands:
+        - solve a bounded optimization problem
+      events: []
+      queries:
+        - return candidate assignments, routes, schedules, or packing decisions with score and diagnostics
+    state_ownership:
+      authoritative:
+        - Spotwo domains own input facts, constraints, and the final accepted operational decision.
+        - Solver implementation owns no canonical durable warehouse state.
+      forbidden:
+        - Solver-native objects must not be persisted as canonical domain entities.
+        - A solver timeout or infeasible result must not leave partially applied warehouse state.
+    reliability:
+      retry: Solver calls are retryable only against an immutable problem snapshot or explicit revision.
+      idempotency: Re-solving the same snapshot may yield another valid optimum, so application of results requires revision checks.
+      ordering: Newer problem revisions supersede older solver results.
+      offline_behavior: A deterministic fallback heuristic is required for operations that cannot wait for a solver.
+    security:
+      trust_boundary: Spotwo process to embedded or isolated solver runtime.
+      authentication: None for in-process use; service deployment would require workload identity.
+      authorization: Solver receives only the bounded data required for the optimization problem.
+    versioning: Problem and result schemas are Spotwo-owned and version independently from the solver library.
+    simulation: The same optimization port must run against deterministic scenarios and replayable snapshots.
+    standards: []
+    evidence:
+      repository_refs: []
+      technology_decision_refs:
+        - google-or-tools
+      open_source_project_refs:
+        - google-or-tools
+    research_gaps:
+      - Benchmark one real warehouse assignment or wave-planning problem against a simple heuristic baseline.
+      - Define deterministic fallback and explainability requirements before adoption.
+
+  - id: execution-simulation
+    name: Real versus simulated execution
+    classification: internal-port
+    from: Spotwo execution semantics
+    to: Real executor or simulation executor
+    contract:
+      status: candidate
+      mechanism: Spotwo-owned executor and clock abstractions; Ocava as architecture reference/prototype input
+      technology_decision_ref: ocado-ocava
+      rationale: >-
+        Simulation should exercise the same Task, Mission, Move, Resource, Device, and event semantics as real execution.
+        The simulator may own simulated physical state, but it must not fork the business-domain model.
+    flow:
+      direction: bidirectional
+      interaction: pluggable-executor
+      commands:
+        - execute canonical work against a real or simulated adapter
+      events:
+        - execution evidence and state transitions using canonical Spotwo semantics
+      queries:
+        - clock and simulated physical state required by a scenario
+    state_ownership:
+      authoritative:
+        - Canonical Spotwo domain contracts own business semantics.
+        - The real physical system owns physical truth in production; the simulator owns physical truth only inside a simulation run.
+      forbidden:
+        - Simulation-only entities or shortcuts must not silently enter production contracts.
+        - Production code must not depend on wall-clock behavior that prevents deterministic simulation where abstraction is practical.
+    reliability:
+      retry: Scenario replay must be deterministic where the model declares deterministic inputs.
+      idempotency: Simulation adapters must preserve the same command identity rules as real adapters.
+      ordering: The simulation clock controls scenario ordering; production event ordering remains contract-specific.
+      offline_behavior: Simulation may deliberately model partitions and offline devices as scenario inputs.
+    security:
+      trust_boundary: Internal test/simulation runtime; production adapters retain their own external trust boundaries.
+      authentication: Simulation harness does not weaken production adapter authentication requirements.
+      authorization: Simulation fixtures may emulate capabilities but must not grant production credentials.
+    versioning: Real and simulated executors implement the same versioned Spotwo-owned port.
+    simulation: This boundary exists specifically to make simulation a first-class architecture property.
+    standards: []
+    evidence:
+      repository_refs:
+        - misc/rfc-market-standards-architecture-convergence.md
+      technology_decision_refs:
+        - ocado-ocava
+      open_source_project_refs:
+        - ocado-ocava
+    research_gaps:
+      - Reproduce one golden warehouse scenario with an abstract clock and interchangeable real/fake executor ports.
+      - Decide whether Ocava code is embedded, adapted, or used only as an architecture reference.

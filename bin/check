@@ -6,6 +6,8 @@ python scripts/validate_open_source_research.py
 python scripts/validate_technology_decisions.py
 python scripts/query_technology_intelligence.py --validate --limit 1 --format json >/dev/null
 python -m unittest scripts.test_technology_intelligence_query
+python scripts/validate_architecture_boundary_map.py
+python -m unittest scripts.test_architecture_boundary_map
 python scripts/validate_misc_api_contract_lab.py
 python scripts/validate_event_pipeline_deployments.py
 python scripts/validate_topology_finalization_references.py
@@ -22,4 +24,5 @@ python scripts/generate_kernel_views.py --check
 python scripts/generate_scenario_views.py --check
 python scripts/generate_transport_selection.py --check
 python scripts/generate_technology_decision_matrix.py --check
+python scripts/generate_architecture_boundary_map.py --check
 python scripts/generate_misc_api_contract_lab.py --check
