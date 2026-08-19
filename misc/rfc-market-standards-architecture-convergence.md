@@ -262,6 +262,65 @@ Once the catalogs are mature enough to justify automation, periodically monitor 
 
 This should be a later step, after evidence-backed records and freshness semantics exist. Automation should refresh knowledge, not create noisy dependency churn.
 
+## Recommended execution order
+
+The ten research streams above are not intended to run as ten independent projects at once. A practical default sequence is:
+
+```text
+1. Architecture Boundary Map
+        ↓
+2. Reference Coverage Gaps
+        ↓
+3. Commercial Systems + Standards
+        ↓
+4. Canonical Object Model Convergence
+        ↓
+5. Build / Embed / Adapter Matrix
+        ↓
+6. Decision-Oriented Labs
+        ↓
+7. Evidence Enrichment + Continuous Watch
+```
+
+This order is a recommendation, not a hard dependency graph. Research may move backward or run selected slices in parallel when evidence requires it.
+
+### Why the Architecture Boundary Map comes first
+
+The boundary map creates the skeleton onto which later evidence can attach. Without it, research can discover technologies and standards without answering which Spotwo boundary they are supposed to serve.
+
+For example, the useful question is not simply whether Spotwo should use OPC UA, Sparkplug, VDA 5050, PLC4X, or EPCIS. The useful questions are:
+
+- which architecture boundary each technology or standard belongs to;
+- whether it is a canonical internal contract, an external interoperability contract, an adapter mechanism, or only a reference;
+- who owns state on each side of that boundary;
+- which commands, events, retries, security rules, offline semantics, and versioning rules cross it.
+
+This prevents technology selection from driving the domain model accidentally.
+
+### Why coverage gaps come second
+
+Once the skeleton exists, audit each boundary and capability for missing evidence. This produces a bounded research backlog instead of an endless list of interesting technologies.
+
+### Why commercial systems and standards come together
+
+Study mature proprietary implementations and standards against the same boundaries. Proprietary systems show how real operations have been implemented under production constraints. Standards show where interoperability and shared semantics already exist. Their agreement, disagreement, and gaps become evidence for Spotwo decisions.
+
+### Why canonical objects follow that research
+
+Only after comparing multiple systems and standards should Spotwo converge entity names, identities, lifecycle semantics, ownership, and mappings. This reduces the risk of copying one vendor's vocabulary or forcing an external standard directly into the internal ontology.
+
+### Why ownership decisions come after semantics
+
+Once boundaries and objects are clear, classify each capability as `build`, `embed`, `adapter`, `external-standard`, `partner`, or `not-our-problem`. This keeps build-vs-buy decisions tied to the architecture rather than vendor popularity.
+
+### Why labs come after the candidate architecture
+
+Labs should answer unresolved architecture questions, not create architecture by accident. Each lab should therefore test a specific candidate boundary, dependency, protocol, solver, or execution model and produce a decision-oriented result.
+
+### Why evidence enrichment and watch come last
+
+Deep evidence enrichment and continuous freshness monitoring become most valuable after the important boundaries, capabilities, and candidate decisions are known. At that point automation can focus on references that actually influence Spotwo instead of maintaining a large undifferentiated technology catalog.
+
 ## Market research scope
 
 The long-term market pass should deliberately include both **open-source** and **closed/proprietary** solutions.
