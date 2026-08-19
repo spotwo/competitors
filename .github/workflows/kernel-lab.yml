@@ -104,6 +104,7 @@ jobs:
             bin/inspect-kernel-event-pipeline-topology \
             bin/plan-kernel-event-pipeline-topology \
             bin/apply-kernel-event-pipeline-topology \
+            bin/inspect-kernel-event-pipeline-topology-provisioning \
             decisions/domain \
             scenarios \
             ontology/inventory.yml \
