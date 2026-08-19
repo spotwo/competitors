@@ -45,7 +45,7 @@ def main() -> int:
         registry = EventPipelineDeploymentRegistry.from_mapping(registry_data)
         for spec in registry.pipelines:
             topology = pipeline_topology_mapping(registry_data, spec.pipeline_id)
-            DeploymentTopologyConfig.from_mapping(topology).expectation(spec)
+            DeploymentTopologyConfig.from_mapping(topology).validate(spec)
     except (KeyError, ValueError) as exc:
         print(f"event pipeline deployment invariant error: {exc}", file=sys.stderr)
         return 1
