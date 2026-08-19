@@ -2,7 +2,7 @@ name: PostgreSQL inventory kernel lab
 
 on:
   pull_request:
-    paths:
+    paths: &kernel_paths
       - 'kernel/**'
       - 'labs/postgres-inventory-kernel/**'
       - 'operations/event-pipelines/**'
@@ -23,44 +23,8 @@ on:
       - 'bin/archive-kernel-malformed-deliveries'
       - 'bin/inspect-kernel-nats-consumer'
       - 'bin/inspect-kernel-nats-stream'
-      - 'bin/inspect-kernel-event-pipeline'
-      - 'bin/run-kernel-event-pipeline-canary'
-      - 'bin/run-kernel-event-pipeline-canary-consumer'
-      - 'bin/inspect-kernel-event-pipeline-sli'
-      - 'bin/run-kernel-event-pipeline-fault-drills'
-      - 'bin/inspect-kernel-event-pipeline-readiness'
-      - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
-      - 'decisions/domain/0015-inventory-commitment-engine.md'
-      - 'decisions/domain/0016-inventory-holds-eligibility.md'
-      - 'decisions/domain/0017-warehouse-work-execution-engine.md'
-      - 'decisions/domain/0018-golden-warehouse-scenarios.md'
-      - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
-      - 'decisions/domain/0020-wms-kernel-v0.1.md'
-      - 'decisions/domain/0021-transactional-outbox-domain-events.md'
-      - 'decisions/domain/0022-outbox-publisher-runtime.md'
-      - 'decisions/domain/0023-domain-event-transport-selection.md'
-      - 'decisions/domain/0024-nats-jetstream-transport-adapter.md'
-      - 'decisions/domain/0025-outbox-retry-quarantine.md'
-      - 'decisions/domain/0026-outbox-operational-telemetry.md'
-      - 'decisions/domain/0027-outbox-retention-archive.md'
-      - 'decisions/domain/0028-inbox-consumer-runtime.md'
-      - 'decisions/domain/0029-version-aware-position-projection.md'
-      - 'decisions/domain/0030-position-projection-snapshot-gap-health.md'
-      - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
-      - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
-      - 'decisions/domain/0033-consumer-failure-operational-telemetry.md'
-      - 'decisions/domain/0034-consumer-failure-retention-archive.md'
-      - 'decisions/domain/0035-nats-malformed-delivery-quarantine.md'
-      - 'decisions/domain/0036-nats-malformed-delivery-operational-telemetry.md'
-      - 'decisions/domain/0037-nats-malformed-delivery-retention-archive.md'
-      - 'decisions/domain/0038-nats-durable-consumer-operational-health.md'
-      - 'decisions/domain/0039-nats-jetstream-stream-operational-health.md'
-      - 'decisions/domain/0040-event-pipeline-operational-health.md'
-      - 'decisions/domain/0041-event-pipeline-canary-latency-slo.md'
-      - 'decisions/domain/0042-event-pipeline-canary-sli-burn-rate.md'
-      - 'decisions/domain/0043-event-pipeline-fault-injection-recovery-drills.md'
-      - 'decisions/domain/0044-external-event-pipeline-probe-watchdog.md'
-      - 'decisions/domain/0045-event-pipeline-deployment-readiness-gate.md'
+      - 'bin/*kernel-event-pipeline*'
+      - 'decisions/domain/**'
       - 'scenarios/**'
       - 'ontology/inventory.yml'
       - 'ontology/inventory-transaction.yml'
@@ -72,72 +36,7 @@ on:
     types: [checks_requested]
   push:
     branches: [main]
-    paths:
-      - 'kernel/**'
-      - 'labs/postgres-inventory-kernel/**'
-      - 'operations/event-pipelines/**'
-      - 'schema/event-pipeline-deployment.schema.json'
-      - 'scripts/validate_event_pipeline_deployments.py'
-      - 'bin/check-kernel-lab'
-      - 'bin/run-kernel-outbox-publisher'
-      - 'bin/inspect-kernel-outbox'
-      - 'bin/archive-kernel-outbox'
-      - 'bin/bootstrap-kernel-position-projection'
-      - 'bin/inspect-kernel-projection-gaps'
-      - 'bin/rebuild-kernel-position-projection'
-      - 'bin/run-kernel-position-projection-retries'
-      - 'bin/replay-kernel-consumer-failure'
-      - 'bin/inspect-kernel-consumer-failures'
-      - 'bin/archive-kernel-consumer-failures'
-      - 'bin/inspect-kernel-malformed-deliveries'
-      - 'bin/archive-kernel-malformed-deliveries'
-      - 'bin/inspect-kernel-nats-consumer'
-      - 'bin/inspect-kernel-nats-stream'
-      - 'bin/inspect-kernel-event-pipeline'
-      - 'bin/run-kernel-event-pipeline-canary'
-      - 'bin/run-kernel-event-pipeline-canary-consumer'
-      - 'bin/inspect-kernel-event-pipeline-sli'
-      - 'bin/run-kernel-event-pipeline-fault-drills'
-      - 'bin/inspect-kernel-event-pipeline-readiness'
-      - 'decisions/domain/0014-inventory-key-stock-dimensions.md'
-      - 'decisions/domain/0015-inventory-commitment-engine.md'
-      - 'decisions/domain/0016-inventory-holds-eligibility.md'
-      - 'decisions/domain/0017-warehouse-work-execution-engine.md'
-      - 'decisions/domain/0018-golden-warehouse-scenarios.md'
-      - 'decisions/domain/0019-postgresql-performance-contention-lab.md'
-      - 'decisions/domain/0020-wms-kernel-v0.1.md'
-      - 'decisions/domain/0021-transactional-outbox-domain-events.md'
-      - 'decisions/domain/0022-outbox-publisher-runtime.md'
-      - 'decisions/domain/0023-domain-event-transport-selection.md'
-      - 'decisions/domain/0024-nats-jetstream-transport-adapter.md'
-      - 'decisions/domain/0025-outbox-retry-quarantine.md'
-      - 'decisions/domain/0026-outbox-operational-telemetry.md'
-      - 'decisions/domain/0027-outbox-retention-archive.md'
-      - 'decisions/domain/0028-inbox-consumer-runtime.md'
-      - 'decisions/domain/0029-version-aware-position-projection.md'
-      - 'decisions/domain/0030-position-projection-snapshot-gap-health.md'
-      - 'decisions/domain/0031-controlled-position-projection-rebuild.md'
-      - 'decisions/domain/0032-consumer-failure-deferral-quarantine.md'
-      - 'decisions/domain/0033-consumer-failure-operational-telemetry.md'
-      - 'decisions/domain/0034-consumer-failure-retention-archive.md'
-      - 'decisions/domain/0035-nats-malformed-delivery-quarantine.md'
-      - 'decisions/domain/0036-nats-malformed-delivery-operational-telemetry.md'
-      - 'decisions/domain/0037-nats-malformed-delivery-retention-archive.md'
-      - 'decisions/domain/0038-nats-durable-consumer-operational-health.md'
-      - 'decisions/domain/0039-nats-jetstream-stream-operational-health.md'
-      - 'decisions/domain/0040-event-pipeline-operational-health.md'
-      - 'decisions/domain/0041-event-pipeline-canary-latency-slo.md'
-      - 'decisions/domain/0042-event-pipeline-canary-sli-burn-rate.md'
-      - 'decisions/domain/0043-event-pipeline-fault-injection-recovery-drills.md'
-      - 'decisions/domain/0044-external-event-pipeline-probe-watchdog.md'
-      - 'decisions/domain/0045-event-pipeline-deployment-readiness-gate.md'
-      - 'scenarios/**'
-      - 'ontology/inventory.yml'
-      - 'ontology/inventory-transaction.yml'
-      - 'ontology/handling-unit.yml'
-      - 'ontology/process.yml'
-      - 'ontology/work.yml'
-      - '.github/workflows/kernel-lab.yml'
+    paths: *kernel_paths
   workflow_dispatch:
     inputs:
       perf_profile:
@@ -202,38 +101,10 @@ jobs:
             bin/inspect-kernel-event-pipeline-sli \
             bin/run-kernel-event-pipeline-fault-drills \
             bin/inspect-kernel-event-pipeline-readiness \
-            decisions/domain/0014-inventory-key-stock-dimensions.md \
-            decisions/domain/0015-inventory-commitment-engine.md \
-            decisions/domain/0016-inventory-holds-eligibility.md \
-            decisions/domain/0017-warehouse-work-execution-engine.md \
-            decisions/domain/0018-golden-warehouse-scenarios.md \
-            decisions/domain/0019-postgresql-performance-contention-lab.md \
-            decisions/domain/0020-wms-kernel-v0.1.md \
-            decisions/domain/0021-transactional-outbox-domain-events.md \
-            decisions/domain/0022-outbox-publisher-runtime.md \
-            decisions/domain/0023-domain-event-transport-selection.md \
-            decisions/domain/0024-nats-jetstream-transport-adapter.md \
-            decisions/domain/0025-outbox-retry-quarantine.md \
-            decisions/domain/0026-outbox-operational-telemetry.md \
-            decisions/domain/0027-outbox-retention-archive.md \
-            decisions/domain/0028-inbox-consumer-runtime.md \
-            decisions/domain/0029-version-aware-position-projection.md \
-            decisions/domain/0030-position-projection-snapshot-gap-health.md \
-            decisions/domain/0031-controlled-position-projection-rebuild.md \
-            decisions/domain/0032-consumer-failure-deferral-quarantine.md \
-            decisions/domain/0033-consumer-failure-operational-telemetry.md \
-            decisions/domain/0034-consumer-failure-retention-archive.md \
-            decisions/domain/0035-nats-malformed-delivery-quarantine.md \
-            decisions/domain/0036-nats-malformed-delivery-operational-telemetry.md \
-            decisions/domain/0037-nats-malformed-delivery-retention-archive.md \
-            decisions/domain/0038-nats-durable-consumer-operational-health.md \
-            decisions/domain/0039-nats-jetstream-stream-operational-health.md \
-            decisions/domain/0040-event-pipeline-operational-health.md \
-            decisions/domain/0041-event-pipeline-canary-latency-slo.md \
-            decisions/domain/0042-event-pipeline-canary-sli-burn-rate.md \
-            decisions/domain/0043-event-pipeline-fault-injection-recovery-drills.md \
-            decisions/domain/0044-external-event-pipeline-probe-watchdog.md \
-            decisions/domain/0045-event-pipeline-deployment-readiness-gate.md \
+            bin/inspect-kernel-event-pipeline-topology \
+            bin/plan-kernel-event-pipeline-topology \
+            bin/apply-kernel-event-pipeline-topology \
+            decisions/domain \
             scenarios \
             ontology/inventory.yml \
             ontology/inventory-transaction.yml \
