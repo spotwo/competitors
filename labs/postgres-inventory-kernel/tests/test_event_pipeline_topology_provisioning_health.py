@@ -271,10 +271,11 @@ def test_prometheus_keeps_execution_identity_out_of_labels():
 
 
 def test_cli_reads_health_without_acquiring_or_renewing_lease():
+    now = datetime.now(timezone.utc)
     insert_run(
         state="applying",
-        state_changed_at=BASE - timedelta(seconds=5),
-        lease_expires_at=datetime.now(timezone.utc) + timedelta(seconds=300),
+        state_changed_at=now - timedelta(seconds=5),
+        lease_expires_at=now + timedelta(seconds=300),
     )
     with psycopg.connect(lab.DATABASE_URL) as conn:
         before = conn.execute(
