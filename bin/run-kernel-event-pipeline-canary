@@ -12,11 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 LAB = ROOT / "labs" / "postgres-inventory-kernel"
 sys.path.insert(0, str(LAB))
 
-from event_pipeline_canary import (  # noqa: E402
-    EventPipelineCanaryProbe,
-    EventPipelineCanarySloPolicy,
-    render_prometheus,
-)
+from event_pipeline_canary import EventPipelineCanarySloPolicy, render_prometheus  # noqa: E402
+from event_pipeline_canary_sli import TrackedEventPipelineCanaryProbe  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,19 +35,14 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("KERNEL_LAB_CANARY_TENANT_ID"),
         help="tenant UUID used only to own the synthetic Outbox event",
     )
-    parser.add_argument(
-        "--stream",
-        default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"),
-    )
+    parser.add_argument("--stream", default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"))
     parser.add_argument(
         "--durable",
         default=os.getenv("KERNEL_LAB_CANARY_DURABLE", "EVENT_PIPELINE_CANARY"),
     )
     parser.add_argument(
         "--consumer-name",
-        default=os.getenv(
-            "KERNEL_LAB_CANARY_CONSUMER_NAME", "event_pipeline_canary"
-        ),
+        default=os.getenv("KERNEL_LAB_CANARY_CONSUMER_NAME", "event_pipeline_canary"),
     )
     parser.add_argument(
         "--subject-prefix",
@@ -105,7 +97,7 @@ def main() -> int:
             critical_end_to_end_seconds=args.critical_end_to_end_seconds,
             clock_skew_tolerance_seconds=args.clock_skew_tolerance_seconds,
         )
-        report = EventPipelineCanaryProbe(
+        report = TrackedEventPipelineCanaryProbe(
             database_url=args.database_url,
             nats_server_url=args.nats_url,
             policy=policy,
