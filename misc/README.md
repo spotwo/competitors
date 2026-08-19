@@ -13,4 +13,5 @@ Rules:
 Current contents:
 
 - `roadmap/2026-08-19-small-roadmap.md` - a seven-step temporary engineering roadmap captured from the current repository work;
-- `api-contract-lab/` - an isolated REST/OpenAPI versus gRPC contract experiment.
+- `api-contract-lab/` - an isolated REST/OpenAPI versus gRPC contract experiment;
+- `rfc-postgresql-backed-query-layer.md` - deferred RFC proposing a future `Query Object -> stable DB interface -> best-fit PostgreSQL primitive -> tables` structure without making it part of the current test architecture.
