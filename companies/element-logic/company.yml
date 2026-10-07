@@ -6,7 +6,7 @@ markets: [europe, north-america]
 solution_layers: [wms, wes, wcs, machine-control]
 industries: [retail, ecommerce, 3pl]
 operating_environments: [distribution-center, fulfillment-center, 3pl]
-capabilities: [receiving, storage, replenishment, picking, packing, shipping, returns, automation-orchestration, packaging-automation-integration]
+capabilities: [receiving, storage, replenishment, picking, packing, shipping, returns, automation-orchestration]
 products:
 - {id: emanager, name: eManager, categories: [wms, wes, wcs]}
 - {id: econtroller, name: eController, categories: [wcs, machine-control]}
