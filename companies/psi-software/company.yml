@@ -8,7 +8,7 @@ solution_layers: [wms]
 deployment_models: [saas, cloud, on-premise]
 industries: [retail, ecommerce, 3pl, manufacturing]
 operating_environments: [distribution-center, fulfillment-center, manufacturing-warehouse, production-supply, 3pl]
-capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, returns, automation-orchestration]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, returns, automation-orchestration, ai-batch-optimization]
 products:
 - id: psiwms
   name: PSIwms
@@ -17,5 +17,5 @@ products:
   deployment_models: [saas, cloud, on-premise]
   notes: GO, FLEX and PRO editions cover different complexity levels.
 status: active
-last_verified: '2026-08-18'
-evidence_refs: [psi-wms-2026]
+last_verified: '2026-10-07'
+evidence_refs: [psi-wms-2026, psi-wms-ai-2026]
