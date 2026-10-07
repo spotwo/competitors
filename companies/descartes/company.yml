@@ -6,7 +6,7 @@ markets: [north-america, europe, oceania]
 segments: [smb, mid-market, enterprise]
 solution_layers: [wms, tms]
 deployment_models: [saas, cloud]
-industries: [retail, ecommerce, 3pl, transportation]
+industries: [retail, ecommerce, 3pl]
 operating_environments: [distribution-center, fulfillment-center, 3pl]
 capabilities: [receiving, putaway, storage, picking, packing, shipping, returns]
 products:
