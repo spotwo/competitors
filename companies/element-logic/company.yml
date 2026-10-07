@@ -6,12 +6,12 @@ markets: [europe, north-america]
 solution_layers: [wms, wes, wcs, machine-control]
 industries: [retail, ecommerce, 3pl]
 operating_environments: [distribution-center, fulfillment-center, 3pl]
-capabilities: [receiving, storage, replenishment, picking, packing, shipping, returns, automation-orchestration]
+capabilities: [receiving, storage, replenishment, picking, packing, shipping, returns, automation-orchestration, packaging-automation-integration]
 products:
 - {id: emanager, name: eManager, categories: [wms, wes, wcs]}
 - {id: econtroller, name: eController, categories: [wcs, machine-control]}
 status: active
 research_gaps:
 - Verify canonical eManager and eController deployment models and customer-size segmentation.
-last_verified: '2026-08-18'
-evidence_refs: [elementlogic-emanager-2026]
+last_verified: '2026-10-07'
+evidence_refs: [elementlogic-emanager-2026, elementlogic-ranpak-2026]
