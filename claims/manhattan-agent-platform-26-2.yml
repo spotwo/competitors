@@ -1,0 +1,14 @@
+id: manhattan-agent-platform-26-2
+subject_type: company
+subject: manhattan-associates
+predicate: agent-platform-capabilities
+value:
+  lifecycle: [working-version, published-version, validation, publishing]
+  extensibility: [customer-agent-variants]
+  invocation: [synchronous, asynchronous]
+  observability: [usage-analytics, ai-unit-consumption]
+  interoperability: [mcp]
+confidence: high
+status: current
+observed_at: '2026-10-07'
+evidence_refs: [manhattan-sce-26-2-2026, manhattan-omni-26-2-onx-2026]
