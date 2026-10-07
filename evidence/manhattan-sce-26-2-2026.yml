@@ -1,0 +1,15 @@
+id: manhattan-sce-26-2-2026
+subject: manhattan-associates
+source_type: official-release-page
+grade: A
+title: Manhattan Active Supply Chain Execution 26.2
+url: https://www.manh.com/releases/2026/waypoints-supply-chain-execution-26.2
+publisher: Manhattan Associates
+captured_at: '2026-10-07'
+supports:
+- Create ASN Agent and Verify ASN Agent in ActiveWarehouse
+- enhanced Wave Coordinator and Shipping Supervisor agents
+- tighter warehouse, yard and transportation execution
+- production agent lifecycle with working and published versions
+- agent validation, extensibility, observability and usage analytics
+- synchronous and asynchronous agent invocation from extension handlers
