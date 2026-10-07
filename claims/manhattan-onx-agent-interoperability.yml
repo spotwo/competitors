@@ -1,0 +1,13 @@
+id: manhattan-onx-agent-interoperability
+subject_type: company
+subject: manhattan-associates
+predicate: agent-interoperability
+value:
+  protocol: mcp
+  specification: order-network-exchange
+  domains: [orders, inventory-availability, product-catalog]
+  maven_mcp_server: true
+confidence: high
+status: current
+observed_at: '2026-10-07'
+evidence_refs: [manhattan-omni-26-2-onx-2026]
