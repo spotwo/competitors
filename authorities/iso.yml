@@ -6,11 +6,17 @@ scope:
 - automation
 - safety
 - vocabulary
+- smart-warehousing
+- industrial-mobile-robot-interoperability
+- equipment-behaviour-models
 jurisdictions:
 - global
 website: https://www.iso.org/
 notes: Use current published standards for normative vocabulary and safety. Track drafts separately from current editions.
-last_verified: '2026-08-18'
+last_verified: '2026-10-07'
 evidence_refs:
 - iso-3691-4-2023
 - iso-5053-1-2020
+- iso-16400-5-2026
+- iso-wd-26205-2026
+- iso-21423-2026
