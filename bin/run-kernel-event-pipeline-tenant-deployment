@@ -22,13 +22,14 @@ from tenant_event_deployment import (  # noqa: E402
     load_tenant_deployments,
 )
 from tenant_deployment_probe import TenantDeploymentProbe  # noqa: E402
+from tenant_deployment_activation import TenantActivationController  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Opt-in tenant event pipeline deployment")
     parser.add_argument("--registry", type=Path, default=ROOT / "operations/event-pipelines/registry.yml")
     parser.add_argument("--deployment", required=True, help="Reviewed tenant deployment id")
-    parser.add_argument("--mode", choices=("plan", "apply", "readiness"), default="plan")
+    parser.add_argument("--mode", choices=("plan", "apply", "readiness", "activate"), default="plan")
     parser.add_argument("--operator-id")
     parser.add_argument("--approval-id")
     args = parser.parse_args()
@@ -60,6 +61,25 @@ def main() -> int:
             binding, operator_id=args.operator_id, approval_id=args.approval_id,
         )
         print(json.dumps(plan.to_dict(), sort_keys=True))
+        return 0
+
+    if args.mode == "activate":
+        if not args.operator_id or not args.approval_id:
+            parser.error("activation requires --operator-id and --approval-id")
+        if not binding.deployment.enabled:
+            parser.error("tenant deployment is disabled; activation is forbidden")
+        receipt = TenantActivationController(
+            database_url=env(binding.parent.runtime.database_url_env),
+            provisioner_nats_url=admin_url,
+            publisher_nats_url=env(binding.deployment.publisher_nats_url_env),
+            consumer_nats_url=env(binding.deployment.consumer_nats_url_env),
+            canary_consumer_nats_url=env(
+                binding.deployment.canary_consumer_nats_url_env
+            ),
+        ).activate(
+            binding, operator_id=args.operator_id, approval_id=args.approval_id,
+        )
+        print(json.dumps(receipt.to_dict(), sort_keys=True))
         return 0
 
     topology = provisioner.plan(binding)
