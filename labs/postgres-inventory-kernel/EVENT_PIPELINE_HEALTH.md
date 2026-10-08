@@ -10,7 +10,7 @@ Outbox
   -> JetStream durable consumer
   -> malformed-delivery quarantine
   -> consumer failure lane
-  -> projection gaps
+  -> projection gaps (only when the projector buffers version gaps)
 ```
 
 It does not replace the component-specific inspectors. Use it first for triage, then drill into the component that is degraded.
@@ -25,7 +25,10 @@ JetStream durable consumer
 PostgreSQL logical consumer_name
 ```
 
-The durable name and PostgreSQL `consumer_name` are allowed to differ. Do not infer one from the other.
+The durable name and PostgreSQL `consumer_name` are allowed to differ. Do not infer one from the other. Select `--projection-gap-monitor` from the deployment registry, never by guessing from the consumer name.
+
+- `inventory_position` (default): the Position projector stores out-of-order events in a PostgreSQL pending-gap buffer, so the sixth `projection_gap` health component is required.
+- `none`: the strict Warehouse Work State projector rejects noncontiguous events and rolls back the Inbox receipt. Those events are retried/quarantined in the consumer failure lane; there is no pending-gap buffer, so **no `projection_gap` component is emitted**. A missing component is not proof that Work State has no delivery lag. Consumer failures and JetStream backlog remain authoritative signals.
 
 Example:
 
@@ -37,6 +40,17 @@ bin/inspect-kernel-event-pipeline \
   --stream WMS_EVENTS \
   --durable POSITION_PROJECTOR \
   --consumer-name position_projection \
+  --pretty
+```
+
+Work State health (the second deployment remains disabled until its runtime is proven):
+
+```bash
+bin/inspect-kernel-event-pipeline \\
+  --stream WMS_EVENTS \\
+  --durable WORK_STATE_PROJECTOR \\
+  --consumer-name warehouse_work_state_projection \\
+  --projection-gap-monitor none \\
   --pretty
 ```
 
@@ -123,8 +137,10 @@ Equal-severity problems are triaged in this order:
 3. nats_consumer
 4. malformed_delivery
 5. consumer_failure
-6. projection_gap
+6. projection_gap (only for buffered Inventory Position)
 ```
+
+Work State uses the first five components; its invalid/out-of-order events surface through the consumer failure lane rather than an Inventory Position gap view. This prevents an unrelated consumer from being declared healthy by another project's empty buffer.
 
 This prevents a downstream symptom from hiding an equally severe upstream failure.
 
