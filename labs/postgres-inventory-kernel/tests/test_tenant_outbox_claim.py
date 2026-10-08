@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from uuid import UUID, uuid4
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -150,3 +153,19 @@ def test_tenant_claim_retains_retry_and_quarantine_contract():
     assert store.ack(event_id=event_id, claim_token=first.claim_token) is False
     assert store.ack(event_id=event_id, claim_token=again.claim_token) is True
     assert store.claim(worker_id="scoped-worker", limit=1, lease_seconds=30) == []
+
+
+def test_scoped_publisher_cli_requires_nats_and_canonical_uuid():
+    cli = Path(__file__).resolve().parents[3] / "bin/run-kernel-outbox-publisher"
+    cmd = [sys.executable, str(cli), "--database-url", "postgresql://not-used",
+           "--once", "--tenant-id", str(lab.TENANT)]
+    stdout = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    assert stdout.returncode != 0
+    assert "--tenant-id requires --transport nats" in stdout.stderr
+
+    invalid = subprocess.run(
+        [*cmd, "--transport", "nats", "--tenant-id", "not-a-uuid"],
+        capture_output=True, text=True, check=False,
+    )
+    assert invalid.returncode != 0
+    assert "canonical lowercase UUID" in invalid.stderr
