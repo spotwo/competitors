@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+from uuid import UUID
 from pathlib import Path
 
 import yaml
@@ -23,15 +24,19 @@ from tenant_event_deployment import (  # noqa: E402
 )
 from tenant_deployment_probe import TenantDeploymentProbe  # noqa: E402
 from tenant_deployment_activation import TenantActivationController  # noqa: E402
+from tenant_rollout import PostgresTenantRolloutStore, TenantRolloutController  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Opt-in tenant event pipeline deployment")
     parser.add_argument("--registry", type=Path, default=ROOT / "operations/event-pipelines/registry.yml")
     parser.add_argument("--deployment", required=True, help="Reviewed tenant deployment id")
-    parser.add_argument("--mode", choices=("plan", "apply", "readiness", "activate"), default="plan")
+    parser.add_argument("--mode", choices=("plan", "apply", "readiness", "activate", "rollout-start", "rollout-wave", "rollout-status", "rollout-pause", "rollout-revert"), default="plan")
     parser.add_argument("--operator-id")
     parser.add_argument("--approval-id")
+    parser.add_argument("--change-ref")
+    parser.add_argument("--activation-receipt", type=UUID)
+    parser.add_argument("--event-id", action="append", type=UUID, default=[])
     args = parser.parse_args()
 
     with args.registry.open("r", encoding="utf-8") as fh:
@@ -48,6 +53,48 @@ def main() -> int:
         if not value:
             parser.error(f"required credential environment variable is missing: {name}")
         return value
+
+    if args.mode.startswith("rollout-"):
+        store = PostgresTenantRolloutStore(env(binding.parent.runtime.database_url_env))
+        if args.mode == "rollout-status":
+            print(json.dumps(store.snapshot(binding).to_dict(), sort_keys=True))
+            return 0
+        if not args.operator_id or not args.change_ref:
+            parser.error("rollout mutations require --operator-id and --change-ref")
+        if args.mode == "rollout-pause":
+            paused = store.pause(binding, operator_id=args.operator_id, change_ref=args.change_ref)
+            print(json.dumps({"paused": paused}, sort_keys=True))
+            return 0 if paused else 2
+        if args.mode == "rollout-revert":
+            if not args.event_id:
+                parser.error("rollout-revert requires at least one --event-id")
+            count = store.rollback(binding, event_ids=tuple(args.event_id),
+                                   operator_id=args.operator_id, change_ref=args.change_ref)
+            print(json.dumps({"reverted": count}, sort_keys=True))
+            return 0
+        controller = TenantRolloutController(
+            database_url=env(binding.parent.runtime.database_url_env),
+            provisioner_nats_url=env(binding.deployment.provisioner_nats_url_env),
+            publisher_nats_url=env(binding.deployment.publisher_nats_url_env),
+            consumer_nats_url=env(binding.deployment.consumer_nats_url_env),
+            canary_consumer_nats_url=env(binding.deployment.canary_consumer_nats_url_env),
+        )
+        if args.mode == "rollout-start":
+            if args.activation_receipt is None:
+                parser.error("rollout-start requires --activation-receipt")
+            generation = controller.start(
+                binding, activation_receipt=args.activation_receipt,
+                operator_id=args.operator_id, change_ref=args.change_ref)
+            print(json.dumps({"generation_id": str(generation)}, sort_keys=True))
+            return 0
+        if args.mode == "rollout-wave":
+            if not args.event_id:
+                parser.error("rollout-wave requires at least one --event-id")
+            count = controller.stage(
+                binding, event_ids=tuple(args.event_id),
+                operator_id=args.operator_id, change_ref=args.change_ref)
+            print(json.dumps({"staged": count}, sort_keys=True))
+            return 0
 
     admin_url = env(binding.deployment.provisioner_nats_url_env)
     provisioner = TenantTopologyProvisioner(admin_url)
