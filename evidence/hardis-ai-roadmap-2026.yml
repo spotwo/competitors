@@ -1,0 +1,15 @@
+id: hardis-ai-roadmap-2026
+subject: hardis-supply-chain
+source_type: official-release
+grade: A
+title: Hardis Supply Chain AI and Product Roadmap, October 2026
+url: https://www.hardis-supplychain.com/en/news/hardis-supply-chain-unveils-ai-and-product-roadmap-for-the-next-generation-of-supply-chain-orchestration/
+publisher: Hardis Supply Chain
+captured_at: '2026-10-08'
+supports:
+- Native Hardis WMS and Hardis OMS integration is available
+- Hardis WMS is transitioning toward continuous updates
+- MCP and A2A are planned interoperability technologies for a cross-functional AI platform
+- Two AI agents are planned for Q1 2027
+- Future agentic operational actions will include governance and human oversight
+notes: Distinguish currently available WMS-OMS integration from planned AI platform and agents.

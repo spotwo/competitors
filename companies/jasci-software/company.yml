@@ -1,0 +1,20 @@
+id: jasci-software
+name: JASCI Software
+entity_type: platform-vendor
+website: https://www.jascicloud.com/
+hq_country: US
+markets: [north-america]
+segments: [mid-market, enterprise]
+solution_layers: [wms, wes]
+deployment_models: [saas, cloud]
+industries: [retail, ecommerce, 3pl, wholesale]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [receiving, putaway, storage, replenishment, picking, packing, shipping, labor-management, automation-orchestration]
+products:
+- id: jasci-phoenix
+  name: Phoenix
+  categories: [wms, wes]
+  notes: Announced September 2026; general availability planned October 2026, not independently confirmed.
+status: active
+last_verified: '2026-10-08'
+evidence_refs: [jasci-phoenix-2026, jasci-mcp-2026]

@@ -23,11 +23,12 @@
 | Generix Group | enterprise, large-enterprise | wms, lms | global | cloud | Generix WMS | 2026-08-18 |
 | GreyOrange | enterprise, large-enterprise | wes, robotics-orchestration | global |  | GreyMatter | 2026-08-18 |
 | Hai Robotics | enterprise, large-enterprise | wes, robotics-orchestration, machine-control, analytics | global |  | HaiQ | 2026-08-18 |
-| Hardis Supply Chain | smb, mid-market, enterprise, large-enterprise | wms, oms, wcs, lms, tms, analytics | global | saas, cloud | Hardis WMS, Hardis OMS, Hardis WCS Master, Hardis SC Network | 2026-08-18 |
+| Hardis Supply Chain | smb, mid-market, enterprise, large-enterprise | wms, oms, wcs, lms, tms, analytics | global | saas, cloud | Hardis WMS, Hardis OMS, Hardis WCS Master, Hardis SC Network | 2026-10-08 |
 | Honeywell Intelligrated | enterprise, large-enterprise | wes, wcs, machine-control, analytics | global | cloud | Momentum Core | 2026-08-18 |
 | Increff | mid-market, enterprise | wms, oms | south-asia, north-america, southeast-asia, oceania | saas, cloud | Increff WMS, Increff OMS | 2026-08-18 |
 | Infios | smb, mid-market, enterprise, large-enterprise | wms, oms, tms, lms, robotics-orchestration | global | saas, on-premise | Infios Warehouse Management, Infios Order Management, Infios Transportation Management | 2026-08-18 |
 | Infor | enterprise, large-enterprise | wms, lms | global | saas, cloud | Infor WMS | 2026-08-18 |
+| JASCI Software | mid-market, enterprise | wms, wes | north-america | saas, cloud | Phoenix | 2026-10-08 |
 | Kardex | smb, mid-market, enterprise, large-enterprise | wms, wes, robotics-orchestration | global | cloud, on-premise | Kardex Power Pick System, Kardex Power Pick Cloud | 2026-08-18 |
 | KNAPP | smb, mid-market, enterprise, large-enterprise | wms, wes, wcs, machine-control, analytics | global | saas, cloud, on-premise | KiSoft WMS, KiSoft Platform | 2026-08-18 |
 | Logiwa | mid-market, enterprise | wms, wes | global | saas, cloud | Logiwa IO | 2026-08-18 |
