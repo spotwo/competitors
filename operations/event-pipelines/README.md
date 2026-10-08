@@ -112,14 +112,59 @@ effect. No live deployment or provisioned JetStream consumer is implied.
 
 The projection is a **search index** of posted transactions by tenant, time,
 type and source reference. It is not a replacement for the immutable Inventory
-Transaction ledger or an Event Store. The projection also checks source ledger
-identity and payload consistency within the Inbox transaction and rolls back
-on forged/mismatched events.
+Transaction ledger or an Event Store.
 
-**Lab boundary:** the existing v1 `inventory.transaction.posted` envelope does
-not carry a tenant ID. This lab index reads the tenant ID from the same
-PostgreSQL source transaction. For a remotely deployed projector, evolve
-the event schema to include a tenant ID before removing this source read.
+### Event Contract V2: explicit tenant boundary
+
+As of migration `032_event_contract_v2_tenant_identity.sql`, newly emitted
+`inventory.transaction.posted` events carry `schema_version: 2` and a
+canonical `tenant_id` at the **top level of the envelope**, alongside
+`event_id`, `type`, `aggregate_id`, and `data`:
+
+```json
+{
+  "event_id": "0199a08e-0d00-7000-8000-000000000001",
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "type": "inventory.transaction.posted",
+  "schema_version": 2,
+  "aggregate_type": "InventoryTransaction",
+  "aggregate_id": "0199a08e-0d00-7000-8000-000000000002",
+  "aggregate_version": 1,
+  "subject": "inventory-transaction/0199a08e-0d00-7000-8000-000000000002",
+  "data": {
+    "transaction_id": "0199a08e-0d00-7000-8000-000000000002",
+    "transaction_type": "receipt",
+    "source_reference": "ASN-123"
+  }
+}
+```
+
+This is an **illustrative subset**: actual envelopes additionally include
+`source`, `occurred_at` and `recorded_at` (timezone-aware ISO 8601), etc.
+The V2 parser rejects missing or noncanonical tenant UUIDs. V1 envelopes
+must not silently gain a tenant claim, and existing V1 Outbox records are
+**not rewritten**. Other event types remain V1.
+
+The V2 Transaction Index projector reads the tenant from the envelope, never
+SELECTs from `inventory_transactions` or `tenants`, and has **no source
+table foreign keys**. Its immutable index key is
+`(consumer_name, tenant_id, transaction_id)`; it verifies event/aggregate
+consistency and processes the Inbox receipt and projection in one transaction.
+A tenant-scoped invocation may supply `expected_tenant_id` to reject a
+cross-tenant event before committing anything.
+
+**V1 rollout bridge:** historical posting events still lacking `tenant_id`
+may be drained using the co-located ledger lookup, with their Inbox metadata
+marked `mode: v1_legacy`. This is an explicit fallback, not silent V1→V2
+upcasting. A standalone remote consumer cannot use this fallback: drain or
+replay historical V1 against the source before decoupling the index.
+
+**Security boundary:** `tenant_id` is a routing/isolation identity, **not**
+authentication or a signature. A producer or broker authorized to send
+arbitrary messages could forge it. Cross-service deployment still requires
+trusted publish credentials, broker ACLs, tenant-aware authorization for any
+read API, and a deliberate tenant routing/partitioning policy. The shared
+JetStream business subject does not itself enforce per-tenant delivery ACLs.
 
 CI includes `test_inventory_transaction_index_scaffold.py` (domain integrity
 and duplicate Inbox proof), `test_inventory_transaction_index_e2e.py`
