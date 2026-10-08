@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import nats
+import pytest
 from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy, StorageType, StreamConfig
 
 import conftest as lab
@@ -215,6 +216,26 @@ def test_strict_work_state_health_omits_inapplicable_position_gap_component():
     assert "projection_gap" not in render_prometheus(report)
 
 
+def test_strict_work_state_health_fails_on_consumer_quarantine():
+    collector = fake_collector()
+    collector.consumer_failure_policy = FakePolicy(
+        "critical",
+        fake_alert("consumer_failure_quarantine_exceeded", "critical"),
+    )
+
+    report = collector.collect(
+        stream_name="WMS_EVENTS",
+        durable_name="WORK_STATE_PROJECTOR",
+        consumer_name="warehouse_work_state_projection",
+        projection_gap_monitor="none",
+    )
+
+    assert report.status == "critical"
+    assert report.root_cause_candidate is not None
+    assert report.root_cause_candidate.component == "consumer_failure"
+    assert report.degraded_components == ("consumer_failure",)
+
+
 def test_unknown_projection_gap_monitor_fails_closed():
     collector = fake_collector()
     try:
@@ -228,6 +249,7 @@ def test_unknown_projection_gap_monitor_fails_closed():
         assert "projection_gap_monitor" in str(exc)
     else:
         raise AssertionError("unknown projection monitor must be rejected")
+
 
 class LivePipelineProbe:
     def __init__(self, server_url: str):
@@ -300,7 +322,8 @@ def pipeline_database_counts() -> tuple[int, ...]:
         )
 
 
-def test_live_pipeline_collection_is_read_only_across_postgres_and_jetstream():
+@pytest.mark.parametrize("projection_gap_monitor", ("inventory_position", "none"))
+def test_live_pipeline_collection_is_read_only_across_postgres_and_jetstream(projection_gap_monitor):
     suffix = uuid4().hex.upper()
     stream_name = f"WMS_PIPELINE_{suffix}"
     durable_name = f"PIPELINE_{suffix}"
@@ -321,6 +344,7 @@ def test_live_pipeline_collection_is_read_only_across_postgres_and_jetstream():
             stream_name=stream_name,
             durable_name=durable_name,
             consumer_name=consumer_name,
+            projection_gap_monitor=projection_gap_monitor,
         )
 
         broker_after = probe.state(stream_name=stream_name, durable_name=durable_name)
