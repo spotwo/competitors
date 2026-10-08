@@ -13,14 +13,16 @@ ROOT = Path(__file__).resolve().parents[3]
 REGISTRY_PATH = ROOT / "operations" / "event-pipelines" / "registry.yml"
 
 
-def test_registry_configures_second_real_business_pipeline_without_enabling_it():
+def test_registry_enables_second_proven_business_pipeline():
     registry = load_registry(REGISTRY_PATH)
     position = registry.get("inventory-position-projection")
     work = registry.get("warehouse-work-state-projection")
 
-    assert len(registry.pipelines) == 2
+    assert len(registry.pipelines) == 3
     assert position.enabled is True
-    assert work.enabled is False
+    assert position.consumer.projection_gap_monitor == "inventory_position"
+    assert work.enabled is True
+    assert work.consumer.projection_gap_monitor == "none"
     assert work.transport.stream == position.transport.stream == "WMS_EVENTS"
     assert work.consumer.durable == "WORK_STATE_PROJECTOR"
     assert work.consumer.inbox_consumer_name == "warehouse_work_state_projection"
@@ -30,7 +32,7 @@ def test_registry_configures_second_real_business_pipeline_without_enabling_it()
 
 def test_registry_requires_global_consumer_and_durable_identity_separation():
     registry = load_registry(REGISTRY_PATH)
-    first, second = registry.pipelines
+    first, second = registry.pipelines[:2]
 
     duplicate_durable = replace(
         second,

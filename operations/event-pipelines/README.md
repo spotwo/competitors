@@ -32,11 +32,162 @@ The registry makes those values one reviewed contract and gives the readiness ga
 - `transport.subject_prefix` is the publisher routing prefix.
 - `consumer.durable` is the durable JetStream consumer for the real pipeline.
 - `consumer.inbox_consumer_name` is the logical PostgreSQL Inbox/projection consumer identity. It is intentionally separate from the NATS durable name.
+- `consumer.projection_gap_monitor` selects `inventory_position` for a projector with persisted pending version gaps, or `none` for strict-order projectors with no such buffer (Warehouse Work State). `none` omits that component from aggregate health; it does **not** waive the consumer failure or JetStream checks.
 - `canary.durable` and `canary.consumer_name` identify the dedicated synthetic canary path.
 - `canary.cadence_seconds` is defined once and is also the expected watchdog cadence.
 - `topology` declares the singular steady-state JetStream target.
 - optional `topology_migration` authorizes one reviewed source topology only until a deadline.
 - `runtime.*_env` values name environment variables; they do not contain secrets.
+
+## Generate a third pipeline safely
+
+The scaffolder reuses one reviewed pipeline's topology and policies while
+allocating new consumer, canary and watchdog identities. It writes **only local
+repository files**, never touches PostgreSQL, JetStream or a running deployment.
+
+Dry-run first:
+
+```bash
+python scripts/scaffold_event_pipeline.py \
+  --pipeline-id order-picked-projection \
+  --event-type order.picked
+```
+
+Write the reviewed, **disabled** scaffold:
+
+```bash
+python scripts/scaffold_event_pipeline.py \
+  --pipeline-id order-picked-projection \
+  --event-type order.picked \
+  --write
+```
+
+This appends one registry entry without rewriting existing comments and
+creates:
+
+- `labs/postgres-inventory-kernel/event_pipeline_handlers/order_picked_projection.py` - an allowlisted handler that rejects the domain operation until implemented.
+- `labs/postgres-inventory-kernel/tests/test_order_picked_projection_scaffold.py` - a guard that **requires disabled state** plus an explicitly skipped domain E2E test.
+
+The registry includes the handler module and class; `bin/run-kernel-event-consumer`
+now resolves this reviewed binding instead of editing a hardcoded two-projector
+table. Both old pipelines have explicit bindings. Only built-in projector
+modules and reviewed `event_pipeline_handlers.*` modules can be loaded.
+
+Every scaffold is `enabled: false` and uses the strict `projection_gap_monitor: none`
+mode: a new domain has **no known Position pending-gap buffer**. Do not copy
+Inventory Position gap health to an unrelated projector.
+
+Before enabling a new pipeline, implement the Inbox-transaction handler,
+replace both scaffold tests with passing domain and real PostgreSQL/JetStream
+E2E tests (ordering, duplicate redelivery, gap behavior, ACK after commit),
+then change the registry flag as a separately reviewed rollout. The
+scaffolder does **not** claim deployment readiness, automatically provision
+JetStream or synthesize missing domain semantics.
+
+Generation is exclusive: duplicate pipeline IDs or business subjects,
+non-unique durables/Inbox names, invalid identifiers, and existing generated
+files are rejected. CI verifies the deployment JSON Schema, cross-pipeline
+identities, topology invariants, and scaffolder unit tests.
+
+## Third concrete business pipeline: Inventory Transaction Index
+
+The third pipeline exercises the scaffolder against an existing committed WMS
+fact, `inventory.transaction.posted`. The event is emitted atomically from
+`inventory_transactions` by the existing transactional Outbox trigger.
+
+```text
+Inventory Transaction posting
+  -> PostgreSQL Outbox (inventory.transaction.posted)
+  -> NATS JetStream WMS_EVENTS (exact business subject filter)
+  -> inventory_transaction_index Inbox consumer
+  -> inventory_transaction_index_projection read model
+  -> JetStream ACK only after PostgreSQL commit
+```
+
+The `inventory-transaction-index` configuration uses generated unique durable,
+Inbox, canary, and watchdog identities and an allowlisted Python handler.
+It is `enabled: true` as a reviewed **desired state** after a real PostgreSQL
+and JetStream E2E test, including lost-ACK redelivery without a second side
+effect. No live deployment or provisioned JetStream consumer is implied.
+
+The projection is a **search index** of posted transactions by tenant, time,
+type and source reference. It is not a replacement for the immutable Inventory
+Transaction ledger or an Event Store.
+
+### Event Contract V2: explicit tenant boundary
+
+As of migration `032_event_contract_v2_tenant_identity.sql`, newly emitted
+`inventory.transaction.posted` events carry `schema_version: 2` and a
+canonical `tenant_id` at the **top level of the envelope**, alongside
+`event_id`, `type`, `aggregate_id`, and `data`:
+
+```json
+{
+  "event_id": "0199a08e-0d00-7000-8000-000000000001",
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "type": "inventory.transaction.posted",
+  "schema_version": 2,
+  "aggregate_type": "InventoryTransaction",
+  "aggregate_id": "0199a08e-0d00-7000-8000-000000000002",
+  "aggregate_version": 1,
+  "subject": "inventory-transaction/0199a08e-0d00-7000-8000-000000000002",
+  "data": {
+    "transaction_id": "0199a08e-0d00-7000-8000-000000000002",
+    "transaction_type": "receipt",
+    "source_reference": "ASN-123"
+  }
+}
+```
+
+This is an **illustrative subset**: actual envelopes additionally include
+`source`, `occurred_at` and `recorded_at` (timezone-aware ISO 8601), etc.
+The V2 parser rejects missing or noncanonical tenant UUIDs. V1 envelopes
+must not silently gain a tenant claim, and existing V1 Outbox records are
+**not rewritten**. Other event types remain V1.
+
+The V2 Transaction Index projector reads the tenant from the envelope, never
+SELECTs from `inventory_transactions` or `tenants`, and has **no source
+table foreign keys**. Its immutable index key is
+`(consumer_name, tenant_id, transaction_id)`; it verifies event/aggregate
+consistency and processes the Inbox receipt and projection in one transaction.
+A tenant-scoped invocation may supply `expected_tenant_id` to reject a
+cross-tenant event before committing anything.
+
+**V1 rollout bridge:** historical posting events still lacking `tenant_id`
+may be drained using the co-located ledger lookup, with their Inbox metadata
+marked `mode: v1_legacy`. This is an explicit fallback, not silent V1→V2
+upcasting. A standalone remote consumer cannot use this fallback: drain or
+replay historical V1 against the source before decoupling the index.
+
+**Security boundary:** `tenant_id` is a routing/isolation identity, **not**
+authentication or a signature. A producer or broker authorized to send
+arbitrary messages could forge it. Cross-service deployment still requires
+trusted publish credentials, broker ACLs, tenant-aware authorization for any
+read API, and a deliberate tenant routing/partitioning policy. The shared
+JetStream business subject does not itself enforce per-tenant delivery ACLs.
+
+CI includes `test_inventory_transaction_index_scaffold.py` (domain integrity
+and duplicate Inbox proof), `test_inventory_transaction_index_e2e.py`
+(real JetStream plus ACK uncertainty) and a regression showing the reviewed
+third registry entry matches `scaffold_event_pipeline.build_pipeline`.
+
+## Tenant-scoped V2 routing and read authorization (opt-in)
+
+The V2 Transaction Index now has a lab-tested, explicit tenant-bound subject:
+`<prefix>.tenants.<canonical-tenant-uuid>.inventory.transaction.posted`.
+An opted-in publisher verifies its tenant scope before network access, and a
+tenant consumer verifies its exact JetStream durable filter and triple match
+of subject, `Spotwo-Tenant-Id` header and envelope identity before Inbox
+handling. Read queries require an authenticated-principal tenant grant and
+`inventory.transactions.read` scope.
+
+This **does not change the current shared routing in the three enabled
+registry pipelines**. NATS broker-enforced per-tenant ACLs, tenant-scoped
+Outbox claiming, per-tenant topology contracts and rollout/canary gates are
+required before enabling tenant routing in production.
+
+See [Tenant Routing and Authorization](../../labs/postgres-inventory-kernel/EVENT_PIPELINE_TENANT_ROUTING.md)
+for the precise opt-in contract, negative tests and staged rollout gates.
 
 ## Topology contract
 
@@ -63,7 +214,7 @@ Both durables must remain explicit-ACK pull consumers. The business filter must 
 
 This isolation matters because the Position projector accepts only `inventory.position.changed`; a broad business wildcard would also deliver synthetic canary traffic to the domain projector.
 
-This is desired-state configuration, not a provisioning mechanism. The registry does not create, update, or repair JetStream resources.
+This is desired-state configuration, not a provisioning mechanism. The registry does not create, update, or repair JetStream resources. Both Position and Work State are enabled in the registry after lab proof, but this flag **does not establish that either runtime is deployed or ready**. The readiness gate still requires live component telemetry, watchdog receipts, and canary SLI; missing runtime signals remain NOT_READY.
 
 ## Bounded topology migration
 

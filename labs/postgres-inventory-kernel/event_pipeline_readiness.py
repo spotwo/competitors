@@ -116,11 +116,21 @@ class ConsumerConfig:
     durable: str
     inbox_consumer_name: str
     malformed_lookback_seconds: int
+    projection_gap_monitor: Literal["inventory_position", "none"] = "inventory_position"
+    handler_module: str | None = None
+    handler_class: str | None = None
 
     def __post_init__(self) -> None:
         _required_name(self.durable, "consumer.durable")
         _required_name(self.inbox_consumer_name, "consumer.inbox_consumer_name")
         _positive_int(self.malformed_lookback_seconds, "consumer.malformed_lookback_seconds")
+        if self.projection_gap_monitor not in ("inventory_position", "none"):
+            raise ValueError("consumer.projection_gap_monitor must be inventory_position or none")
+        if (self.handler_module is None) != (self.handler_class is None):
+            raise ValueError("consumer.handler_module and handler_class must be supplied together")
+        if self.handler_module is not None:
+            _required_name(self.handler_module, "consumer.handler_module")
+            _required_name(self.handler_class, "consumer.handler_class")
 
     @classmethod
     def from_mapping(cls, value: Any) -> "ConsumerConfig":
@@ -129,6 +139,9 @@ class ConsumerConfig:
             durable=item.get("durable"),
             inbox_consumer_name=item.get("inbox_consumer_name"),
             malformed_lookback_seconds=item.get("malformed_lookback_seconds"),
+            projection_gap_monitor=item.get("projection_gap_monitor", "inventory_position"),
+            handler_module=item.get("handler_module"),
+            handler_class=item.get("handler_class"),
         )
 
 
@@ -301,6 +314,9 @@ class EventPipelineDeploymentSpec:
                 "durable": self.consumer.durable,
                 "inbox_consumer_name": self.consumer.inbox_consumer_name,
                 "malformed_lookback_seconds": self.consumer.malformed_lookback_seconds,
+                "projection_gap_monitor": self.consumer.projection_gap_monitor,
+                "handler_module": self.consumer.handler_module,
+                "handler_class": self.consumer.handler_class,
             },
             "canary": {
                 "durable": self.canary.durable,
@@ -557,6 +573,7 @@ class EventPipelineReadinessCollector:
                 durable_name=spec.consumer.durable,
                 consumer_name=spec.consumer.inbox_consumer_name,
                 malformed_lookback_seconds=spec.consumer.malformed_lookback_seconds,
+                projection_gap_monitor=spec.consumer.projection_gap_monitor,
                 observed_at=observed_at,
             )
         except Exception as exc:

@@ -70,6 +70,42 @@ def test_receipt_persists_transaction_and_position_events_atomically():
         assert position_event[4]["transaction_id"] == str(transaction_id)
 
 
+
+def test_claim_envelope_preserves_v1_and_adds_tenant_only_to_posting_v2():
+    with lab.connect() as conn:
+        position_id = lab.insert_position(conn, physical_qty=0)
+        transaction_id = lab.new_id()
+        conn.execute(
+            "SELECT kernel_lab.post_inventory_receipt(%s, %s, %s, %s, 5, 'ASN-EVENT-V2')",
+            (transaction_id, lab.TENANT, "outbox:tenant-v2", position_id),
+        )
+        enqueue_test_event(conn, key="outbox:legacy-v1")
+        conn.commit()
+
+        envelopes = {
+            row[3]: row[7]
+            for row in conn.execute(
+                "SELECT * FROM kernel_lab.claim_domain_events(%s, %s, %s)",
+                ("test-v2-claim", 10, 30),
+            ).fetchall()
+        }
+
+    assert set(envelopes) == {
+        "inventory.transaction.posted",
+        "inventory.position.changed",
+        "test.event.created",
+    }
+    posted = envelopes["inventory.transaction.posted"]
+    assert posted["schema_version"] == 2
+    assert posted["tenant_id"] == str(lab.TENANT)
+    assert posted["aggregate_id"] == str(transaction_id)
+    for event_type in ("inventory.position.changed", "test.event.created"):
+        v1 = envelopes[event_type]
+        assert v1["schema_version"] == 1
+        assert "tenant_id" not in v1
+
+
+
 def test_failed_posting_rolls_back_transaction_and_outbox():
     with lab.connect() as conn:
         position_id = lab.insert_position(conn, physical_qty=1)

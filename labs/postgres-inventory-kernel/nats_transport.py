@@ -4,6 +4,9 @@ import asyncio
 import json
 import re
 from typing import Any
+from uuid import UUID
+
+from event_tenant_routing import TENANT_HEADER, TenantEventRoute
 
 import nats
 from nats.aio.client import Client as NatsClient
@@ -47,6 +50,7 @@ class NatsJetStreamTransport:
         client_name: str = "spotwo-wms-outbox-publisher",
         connect_timeout_seconds: float = 2.0,
         publish_timeout_seconds: float = 5.0,
+        tenant_route: TenantEventRoute | None = None,
     ):
         if not server_url.strip():
             raise ValueError("server_url is required")
@@ -63,6 +67,9 @@ class NatsJetStreamTransport:
         self.client_name = client_name
         self.connect_timeout_seconds = connect_timeout_seconds
         self.publish_timeout_seconds = publish_timeout_seconds
+        if tenant_route is not None and tenant_route.subject_prefix != self.subject_prefix:
+            raise ValueError("tenant route subject prefix must match publisher prefix")
+        self.tenant_route = tenant_route
 
         self._runner = asyncio.Runner()
         self._client: NatsClient | None = None
@@ -73,7 +80,10 @@ class NatsJetStreamTransport:
         if self._closed:
             raise RuntimeError("NatsJetStreamTransport is closed")
         self._validate_envelope(event)
-        return self._runner.run(self._publish(event))
+        # Fail before connecting or publishing when a tenant-scoped worker
+        # encounters legacy/cross-tenant events in its Outbox claim.
+        subject = self.subject_for(event)
+        return self._runner.run(self._publish(event, subject))
 
     def close(self) -> None:
         if self._closed:
@@ -91,6 +101,9 @@ class NatsJetStreamTransport:
         self.close()
 
     def subject_for(self, event: ClaimedEvent) -> str:
+        if self.tenant_route is not None:
+            self.tenant_route.validate_envelope(event.envelope)
+            return self.tenant_route.subject
         event_route = _validate_subject(event.event_type, field="event.event_type")
         return f"{self.subject_prefix}.{event_route}"
 
@@ -122,7 +135,7 @@ class NatsJetStreamTransport:
         self._jetstream = self._client.jetstream()
         return self._jetstream
 
-    async def _publish(self, event: ClaimedEvent) -> PublishReceipt:
+    async def _publish(self, event: ClaimedEvent, subject: str) -> PublishReceipt:
         jetstream = await self._connect()
         payload = json.dumps(
             event.envelope,
@@ -138,10 +151,12 @@ class NatsJetStreamTransport:
             AGGREGATE_ID_HEADER: event.aggregate_id,
             AGGREGATE_VERSION_HEADER: str(event.aggregate_version),
         }
+        if self.tenant_route is not None:
+            headers[TENANT_HEADER] = str(self.tenant_route.tenant_id)
 
         try:
             acknowledgement = await jetstream.publish(
-                self.subject_for(event),
+                subject,
                 payload,
                 timeout=self.publish_timeout_seconds,
                 stream=self.stream_name,
