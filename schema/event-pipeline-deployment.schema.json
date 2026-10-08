@@ -11,9 +11,37 @@
       "type": "array",
       "minItems": 1,
       "items": {"$ref": "#/$defs/pipeline"}
+    },
+    "tenant_deployments": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/tenantDeployment"}
     }
   },
   "$defs": {
+    "tenantDeployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "pipeline_id", "tenant_id", "enabled",
+        "business_durable", "inbox_consumer_name", "canary_durable",
+        "provisioner_nats_url_env", "publisher_nats_url_env",
+        "consumer_nats_url_env", "canary_consumer_nats_url_env"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "pipeline_id": {"type": "string", "const": "inventory-transaction-index"},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "enabled": {"type": "boolean"},
+        "business_durable": {"$ref": "#/$defs/name"},
+        "inbox_consumer_name": {"$ref": "#/$defs/name"},
+        "canary_durable": {"$ref": "#/$defs/name"},
+        "provisioner_nats_url_env": {"$ref": "#/$defs/envName"},
+        "publisher_nats_url_env": {"$ref": "#/$defs/envName"},
+        "consumer_nats_url_env": {"$ref": "#/$defs/envName"},
+        "canary_consumer_nats_url_env": {"$ref": "#/$defs/envName"}
+      }
+    },
     "name": {
       "type": "string",
       "minLength": 1,

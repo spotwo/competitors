@@ -165,9 +165,15 @@ does not replace database row-level security.
    with real negative authorization tests. Production still needs managed
    secrets, least-privilege provisioning, rotation and account/tenant
    onboarding.
-4. Add tenant partition identity and routing state to deployment registry,
-   schema and readiness preflight; require exact topology and real canary
-   results before switching consumers.
+4. **Implemented as a disabled pilot:** `tenant_deployments` in the
+   registry/schema declares exact tenant, separate business/canary durable
+   identities and credentials by env **name**. The tenant topology
+   provisioner dry-runs first, requires an explicit operator/approval reference,
+   only creates missing exact-filter durables on an existing stream, and refuses
+   drift. Readiness fails closed without current authenticated ACL denials,
+   scoped PUB/PULL/ACK canary and exact topology. Production still requires
+   a credential manager, durable operator audit, enabled runtime orchestration,
+   authorized canary permissions and live SLI/watchdog integration.
 5. Perform a bounded dual-publish/dual-consume migration or a safely
    fenced cutover with monitored handoff. Never silently publish one event
    on two routes unless duplicate semantics are explicitly reviewed.

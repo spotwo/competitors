@@ -108,7 +108,18 @@ class EventPipelineScaffolderTests(unittest.TestCase):
         parsed = _registry_yaml(after)
         specs = EventPipelineDeploymentRegistry.from_mapping(parsed)
 
-        self.assertTrue(after.startswith(before.rstrip("\n")))
+        if "\ntenant_deployments:" in before:
+            preserved_pipeline_prefix, preserved_tenants = before.split(
+                "\ntenant_deployments:", 1
+            )
+            self.assertTrue(after.startswith(preserved_pipeline_prefix.rstrip("\n")))
+            self.assertIn("\ntenant_deployments:" + preserved_tenants, after)
+            self.assertLess(
+                after.index("  - id: order-picked-projection"),
+                after.index("\ntenant_deployments:"),
+            )
+        else:
+            self.assertTrue(after.startswith(before.rstrip("\n")))
         self.assertIn("# Strict ordering rejects gaps", after)
         self.assertEqual(len(specs.pipelines), len(_registry_yaml(before)['pipelines']) + 1)
         self.assertFalse(specs.get(created["id"]).enabled)

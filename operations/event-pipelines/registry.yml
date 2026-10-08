@@ -207,3 +207,18 @@ pipelines:
       warning_scheduler_lag_seconds: 15
       critical_scheduler_lag_seconds: 60
       execution_timeout_seconds: 45
+
+# First isolated candidate: schema and rollout policy only. No provisioned
+# durable, credentials, tenant writer or canary is implied by this declaration.
+tenant_deployments:
+  - id: transaction-index-pilot-a
+    pipeline_id: inventory-transaction-index
+    tenant_id: 00000000-0000-0000-0000-000000000001
+    enabled: false
+    business_durable: TENANT_TX_INDEX_PILOT_A
+    inbox_consumer_name: tenant_transaction_index_pilot_a
+    canary_durable: TENANT_TX_INDEX_CANARY_PILOT_A
+    provisioner_nats_url_env: TENANT_PILOT_PROVISIONER_NATS_URL
+    publisher_nats_url_env: TENANT_PILOT_PUBLISHER_NATS_URL
+    consumer_nats_url_env: TENANT_PILOT_CONSUMER_NATS_URL
+    canary_consumer_nats_url_env: TENANT_PILOT_CANARY_CONSUMER_NATS_URL
