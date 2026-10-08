@@ -45,6 +45,12 @@ def parse_args() -> argparse.Namespace:
         help="recent malformed-delivery activity window (default: 300)",
     )
     parser.add_argument(
+        "--projection-gap-monitor",
+        choices=("inventory_position", "none"),
+        default="inventory_position",
+        help="projection gap buffer to inspect; none for strict Work State projection",
+    )
+    parser.add_argument(
         "--format",
         choices=("json", "prometheus"),
         default="json",
@@ -77,6 +83,7 @@ def main() -> int:
             durable_name=args.durable,
             consumer_name=args.consumer_name,
             malformed_lookback_seconds=args.malformed_lookback_seconds,
+            projection_gap_monitor=args.projection_gap_monitor,
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
