@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import timezone
+from uuid import uuid4
 
 import pytest
 
@@ -40,7 +41,7 @@ def load_transaction_event(transaction_id):
             """
             SELECT event_id, event_type, source, subject, occurred_at,
                    recorded_at, aggregate_type, aggregate_id, aggregate_version,
-                   schema_version, data
+                   schema_version, data, tenant_id
             FROM kernel_lab.domain_event_outbox
             WHERE event_type = 'inventory.transaction.posted'
               AND aggregate_id = %s
@@ -60,6 +61,7 @@ def load_transaction_event(transaction_id):
         "aggregate_version": row[8],
         "schema_version": row[9],
         "data": row[10],
+        **({"tenant_id": str(row[11])} if row[9] >= 2 else {}),
     })
 
 
@@ -92,6 +94,8 @@ def test_posted_transaction_projects_atomically_and_replay_is_idempotent():
     transaction_id = create_receipt()
     event = load_transaction_event(transaction_id)
 
+    assert event.schema_version == 2
+    assert event.tenant_id == lab.TENANT
     assert process(event) is True
     assert process(event) is False
     with lab.connect() as conn:
@@ -128,9 +132,9 @@ def test_tampered_payload_rolls_back_inbox_and_projection():
     original = load_transaction_event(transaction_id)
     altered = replace(
         original,
-        data={**original.data, "transaction_type": "movement"},
+        data={**original.data, "transaction_id": str(uuid4())},
     )
-    with pytest.raises(ValueError, match="differs from committed ledger"):
+    with pytest.raises(ValueError, match="does not match aggregate"):
         process(altered)
 
     with lab.connect() as conn:
@@ -156,4 +160,78 @@ def test_noncanonical_or_wrong_version_is_rejected_without_inbox_receipt():
         assert conn.execute(
             "SELECT count(*) FROM kernel_lab.domain_event_inbox WHERE consumer_name = %s",
             (CONSUMER_NAME,),
+        ).fetchone()[0] == 0
+
+
+def test_v1_event_is_not_silently_upcast_into_v2():
+    transaction_id = create_receipt()
+    v2 = load_transaction_event(transaction_id)
+    legacy = replace(v2, schema_version=1, tenant_id=None)
+    with pytest.raises(ValueError, match="requires V2"):
+        process(legacy)
+    with lab.connect() as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.domain_event_inbox WHERE consumer_name = %s",
+            (CONSUMER_NAME,),
+        ).fetchone()[0] == 0
+
+
+def test_tenant_scoped_consumer_rejects_cross_tenant_event_before_any_write():
+    transaction_id = create_receipt()
+    event = load_transaction_event(transaction_id)
+    other_tenant = uuid4()
+    handler = InventoryTransactionIndexProjector(
+        consumer_name=CONSUMER_NAME, expected_tenant_id=other_tenant
+    )
+    with pytest.raises(ValueError, match="outside the consumer scope"):
+        PostgresInboxStore(lab.DATABASE_URL).process_once(
+            consumer_name=CONSUMER_NAME,
+            event=event,
+            delivery_metadata={"transport": "test", "transport_message_id": str(event.event_id),
+                               "subject": event.subject, "delivery_count": 1},
+            handler=handler,
+        )
+    with lab.connect() as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.domain_event_inbox WHERE consumer_name = %s",
+            (CONSUMER_NAME,),
+        ).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.inventory_transaction_index_projection",
+        ).fetchone()[0] == 0
+
+
+def test_independent_v2_projection_without_source_transaction_or_tenant_rows():
+    # The V2 consumer can populate its projection solely from the event. There
+    # is no source InventoryTransaction or FK to the original tenant table.
+    tenant = uuid4()
+    transaction = uuid4()
+    original = load_transaction_event(create_receipt())
+    fake = replace(
+        original,
+        event_id=uuid4(),
+        aggregate_id=str(transaction),
+        subject=f"inventory-transaction/{transaction}",
+        tenant_id=tenant,
+        data={"transaction_id": str(transaction), "transaction_type": "receipt",
+              "source_reference": "OFFLINE-SOURCE"},
+    )
+    assert process(fake) is True
+    with lab.connect() as conn:
+        row = conn.execute(
+            """
+            SELECT tenant_id, transaction_id, source_reference
+            FROM kernel_lab.inventory_transaction_index_projection
+            WHERE consumer_name = %s
+            """,
+            (CONSUMER_NAME,),
+        ).fetchone()
+        assert row == (tenant, transaction, "OFFLINE-SOURCE")
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.inventory_transactions WHERE id = %s",
+            (transaction,),
+        ).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.tenants WHERE id = %s",
+            (tenant,),
         ).fetchone()[0] == 0
