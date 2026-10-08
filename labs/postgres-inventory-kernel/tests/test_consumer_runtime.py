@@ -34,6 +34,41 @@ def event_envelope(*, event_id=None, ordinal: int = 1) -> dict[str, Any]:
     }
 
 
+
+def test_v1_envelope_remains_unchanged_and_has_no_tenant_identity():
+    event = ConsumedEvent.from_envelope(event_envelope())
+    assert event.schema_version == 1
+    assert event.tenant_id is None
+    assert "tenant_id" not in event.envelope
+
+
+def test_v2_requires_canonical_tenant_id_and_rejects_invalid_or_missing():
+    envelope = event_envelope()
+    envelope["schema_version"] = 2
+    with pytest.raises(ValueError, match="tenant_id"):
+        ConsumedEvent.from_envelope(envelope)
+
+    envelope["tenant_id"] = "not-a-uuid"
+    with pytest.raises(ValueError, match="tenant_id"):
+        ConsumedEvent.from_envelope(envelope)
+
+    envelope["tenant_id"] = str(lab.TENANT).upper()
+    with pytest.raises(ValueError, match="canonical"):
+        ConsumedEvent.from_envelope(envelope)
+
+    envelope["tenant_id"] = str(lab.TENANT)
+    parsed = ConsumedEvent.from_envelope(envelope)
+    assert parsed.schema_version == 2
+    assert parsed.tenant_id == lab.TENANT
+
+
+def test_v1_rejects_ambiguous_injected_tenant_identity():
+    envelope = event_envelope()
+    envelope["tenant_id"] = str(lab.TENANT)
+    with pytest.raises(ValueError, match="V1 envelope"):
+        ConsumedEvent.from_envelope(envelope)
+
+
 def delivery_metadata(*, delivery_count: int = 1) -> InboxDeliveryMetadata:
     return InboxDeliveryMetadata(
         transport="test",
