@@ -56,6 +56,7 @@ class ConsumedEvent:
     schema_version: int
     data: Any
     envelope: dict[str, Any]
+    tenant_id: UUID | None = None
 
     @classmethod
     def from_envelope(cls, envelope: Mapping[str, Any]) -> ConsumedEvent:
@@ -70,6 +71,19 @@ class ConsumedEvent:
         except ValueError as exc:
             raise ValueError("envelope event_id must be a UUID") from exc
 
+        schema_version = _positive_integer(envelope, "schema_version")
+        tenant_id: UUID | None = None
+        if schema_version >= 2:
+            raw_tenant = _required_text(envelope, "tenant_id")
+            try:
+                tenant_id = UUID(raw_tenant)
+            except ValueError as exc:
+                raise ValueError("V2 envelope tenant_id must be a UUID") from exc
+            if str(tenant_id) != raw_tenant:
+                raise ValueError("V2 envelope tenant_id must use canonical lowercase UUID")
+        elif "tenant_id" in envelope:
+            raise ValueError("V1 envelope must not claim a tenant_id")
+
         return cls(
             event_id=event_id,
             event_type=_required_text(envelope, "type"),
@@ -80,9 +94,10 @@ class ConsumedEvent:
             aggregate_type=_required_text(envelope, "aggregate_type"),
             aggregate_id=_required_text(envelope, "aggregate_id"),
             aggregate_version=_positive_integer(envelope, "aggregate_version"),
-            schema_version=_positive_integer(envelope, "schema_version"),
+            schema_version=schema_version,
             data=envelope["data"],
             envelope=dict(envelope),
+            tenant_id=tenant_id,
         )
 
 
