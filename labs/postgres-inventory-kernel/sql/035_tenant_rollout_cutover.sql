@@ -290,6 +290,46 @@ BEGIN
 END;
 $$;
 
+-- Legacy operator-staging function is explicitly fenced once a tenant has
+-- entered orchestrated rollout. Otherwise a privileged caller could bypass
+-- the active/paused state and zero-attempt gate via the old direct endpoint.
+CREATE OR REPLACE FUNCTION stage_tenant_event_route(
+  p_event_id uuid,
+  p_tenant_id uuid,
+  p_operator_id text
+) RETURNS boolean
+LANGUAGE plpgsql
+SET search_path = kernel_lab, pg_catalog, pg_temp
+AS $
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM tenant_deployment_rollout_state
+    WHERE tenant_id = p_tenant_id
+  ) THEN
+    RAISE EXCEPTION 'tenant rollout must use the audited cutover API'
+      USING ERRCODE = '23514';
+  END IF;
+  IF p_event_id IS NULL OR p_tenant_id IS NULL
+     OR p_operator_id IS NULL OR btrim(p_operator_id) = '' THEN
+    RAISE EXCEPTION 'event, tenant and operator identities are required'
+      USING ERRCODE = '23514';
+  END IF;
+  UPDATE domain_event_outbox o SET delivery_route = 'tenant'
+  WHERE o.event_id = p_event_id AND o.tenant_id = p_tenant_id
+    AND o.delivery_route = 'shared'
+    AND o.event_type = 'inventory.transaction.posted'
+    AND o.schema_version = 2 AND o.attempt_count = 0
+    AND o.published_at IS NULL AND o.quarantined_at IS NULL
+    AND o.claimed_by IS NULL AND o.claim_token IS NULL
+    AND o.claimed_until IS NULL;
+  IF NOT FOUND THEN RETURN false; END IF;
+  INSERT INTO domain_event_outbox_route_actions(
+    event_id, tenant_id, operator_id, previous_route, new_route
+  ) VALUES (p_event_id, p_tenant_id, p_operator_id, 'shared', 'tenant');
+  RETURN true;
+END;
+$;
+
 -- Privilege control MUST be supplied by deployment role provisioning.
 REVOKE ALL ON FUNCTION begin_tenant_rollout(text,uuid,uuid,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION stage_tenant_rollout_batch(text,uuid,uuid[],text,text) FROM PUBLIC;
