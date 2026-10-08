@@ -38,6 +38,8 @@ COMPONENT_ORDER = (
     "projection_gap",
 )
 
+STRICT_COMPONENT_ORDER = COMPONENT_ORDER[:-1]
+
 _STATUS_RANK: dict[HealthStatus, int] = {"ok": 0, "warning": 1, "critical": 2}
 
 
@@ -143,8 +145,8 @@ class EventPipelineHealthReport:
         if self.status not in _STATUS_RANK:
             raise ValueError("invalid pipeline health status")
         names = tuple(component.component for component in self.components)
-        if names != COMPONENT_ORDER:
-            raise ValueError("pipeline components must use the canonical topology order")
+        if names not in (COMPONENT_ORDER, STRICT_COMPONENT_ORDER):
+            raise ValueError("pipeline components must use a supported topology order")
         expected = _status_from_components(self.components)
         if self.status != expected:
             raise ValueError("pipeline status must equal the worst component status")
@@ -234,11 +236,14 @@ class EventPipelineHealthCollector:
         durable_name: str,
         consumer_name: str,
         malformed_lookback_seconds: int = 300,
+        projection_gap_monitor: Literal["inventory_position", "none"] = "inventory_position",
         observed_at: datetime | None = None,
     ) -> EventPipelineHealthReport:
         stream_name = _required_name(stream_name, "stream_name")
         durable_name = _required_name(durable_name, "durable_name")
         consumer_name = _required_name(consumer_name, "consumer_name")
+        if projection_gap_monitor not in ("inventory_position", "none"):
+            raise ValueError("projection_gap_monitor must be inventory_position or none")
         if observed_at is None:
             observed_at = datetime.now(timezone.utc)
         else:
@@ -289,6 +294,10 @@ class EventPipelineHealthCollector:
                     )
                 ),
             ),
+
+        )
+        if projection_gap_monitor == "inventory_position":
+            components += (
             self._collect_component(
                 "projection_gap",
                 lambda: self.projection_gap_policy.evaluate(
@@ -298,7 +307,7 @@ class EventPipelineHealthCollector:
                     )
                 ),
             ),
-        )
+            )
 
         status = _status_from_components(components)
         return EventPipelineHealthReport(
