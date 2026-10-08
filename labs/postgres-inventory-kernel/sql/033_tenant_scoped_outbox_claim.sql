@@ -272,7 +272,7 @@ CREATE OR REPLACE FUNCTION archive_published_domain_events(
 )
 LANGUAGE plpgsql
 SET search_path = kernel_lab, pg_catalog, pg_temp
-AS $
+AS $$
 DECLARE
   v_event_ids uuid[];
   v_archive_run_id uuid;
@@ -452,7 +452,7 @@ BEGIN
   RETURN QUERY
   SELECT v_archive_run_id, v_archived_at, v_event_count, v_action_count;
 END;
-$;
+$$;
 
 
 -- A deployment must explicitly grant each restricted DB role the necessary
