@@ -43,7 +43,7 @@ bin/inspect-kernel-event-pipeline \
   --pretty
 ```
 
-Work State health (the second deployment remains disabled until its runtime is proven):
+Work State health (lab proof exists; a deployment is not ready until its runtime signals pass):
 
 ```bash
 bin/inspect-kernel-event-pipeline \\
