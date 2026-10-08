@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 import yaml
 
@@ -139,9 +140,19 @@ class EventPipelineScaffolderTests(unittest.TestCase):
     def test_handler_loader_accepts_reviewed_builtins_only(self):
         source = _registry_yaml(self.registry.read_text(encoding="utf-8"))
         specs = EventPipelineDeploymentRegistry.from_mapping(source)
-        for spec in specs.pipelines:
-            handler = load_pipeline_handler_type(spec.consumer)
-            self.assertEqual(handler.__name__, spec.consumer.handler_class)
+        # The knowledge gate intentionally has no psycopg dependency.
+        # Mock the module boundary; real projector imports run in the PG/NATS lab.
+        with mock.patch("event_pipeline_handler_loader.importlib.import_module") as importer:
+            for spec in specs.pipelines:
+                fake_handler = type(
+                    spec.consumer.handler_class, (), {"__call__": lambda self, *_: None}
+                )
+                importer.return_value = SimpleNamespace(
+                    **{spec.consumer.handler_class: fake_handler}
+                )
+                handler = load_pipeline_handler_type(spec.consumer)
+                self.assertIs(handler, fake_handler)
+                importer.assert_called_with(spec.consumer.handler_module)
 
         for module, name in [
             ("os", "PathLike"),
