@@ -163,17 +163,39 @@ def test_noncanonical_or_wrong_version_is_rejected_without_inbox_receipt():
         ).fetchone()[0] == 0
 
 
-def test_v1_event_is_not_silently_upcast_into_v2():
+def test_legacy_v1_replay_uses_explicit_local_fallback_only():
     transaction_id = create_receipt()
     v2 = load_transaction_event(transaction_id)
     legacy = replace(v2, schema_version=1, tenant_id=None)
-    with pytest.raises(ValueError, match="requires V2"):
-        process(legacy)
+    assert process(legacy) is True
     with lab.connect() as conn:
-        assert conn.execute(
-            "SELECT count(*) FROM kernel_lab.domain_event_inbox WHERE consumer_name = %s",
-            (CONSUMER_NAME,),
-        ).fetchone()[0] == 0
+        tenant, mode = conn.execute(
+            """
+            SELECT tenant_id, (
+              SELECT metadata #>> '{projection,mode}'
+              FROM kernel_lab.domain_event_inbox
+              WHERE consumer_name = %s AND event_id = %s
+            )
+            FROM kernel_lab.inventory_transaction_index_projection
+            WHERE consumer_name = %s AND transaction_id = %s
+            """,
+            (CONSUMER_NAME, legacy.event_id, CONSUMER_NAME, transaction_id),
+        ).fetchone()
+    assert tenant == lab.TENANT
+    assert mode == "v1_legacy"
+
+
+def test_legacy_v1_cannot_be_projected_remotely_without_source_ledger():
+    event = load_transaction_event(create_receipt())
+    fake_id = uuid4()
+    legacy = replace(
+        event, schema_version=1, tenant_id=None,
+        event_id=uuid4(), aggregate_id=str(fake_id),
+        subject=f"inventory-transaction/{fake_id}",
+        data={**event.data, "transaction_id": str(fake_id)},
+    )
+    with pytest.raises(ValueError, match="requires local source ledger"):
+        process(legacy)
 
 
 def test_tenant_scoped_consumer_rejects_cross_tenant_event_before_any_write():
