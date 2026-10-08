@@ -17,11 +17,13 @@ sys.path.insert(0, str(LAB))
 from publisher_runtime import (  # noqa: E402
     ClaimedEvent,
     PostgresOutboxStore,
+    PostgresTenantOutboxStore,
     PublishReceipt,
     PublisherRuntime,
     RetryPolicy,
 )
 from nats_transport import NatsJetStreamTransport  # noqa: E402
+from event_tenant_routing import TenantEventRoute, tenant_uuid  # noqa: E402
 
 
 class JsonLineStdoutTransport:
@@ -60,6 +62,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nats-url", default=os.getenv("KERNEL_LAB_NATS_URL"))
     parser.add_argument("--nats-stream", default=os.getenv("KERNEL_LAB_NATS_STREAM", "WMS_EVENTS"))
     parser.add_argument(
+        "--tenant-id",
+        help="opt-in canonical UUID for fenced V2 tenant-staged claims (NATS only)",
+    )
+    parser.add_argument(
         "--nats-subject-prefix",
         default=os.getenv("KERNEL_LAB_NATS_SUBJECT_PREFIX", "spotwo.wms.events"),
     )
@@ -71,11 +77,16 @@ def build_transport(args: argparse.Namespace):
         return JsonLineStdoutTransport()
     if not args.nats_url:
         raise SystemExit("--nats-url or KERNEL_LAB_NATS_URL is required for --transport nats")
+    route = (
+        TenantEventRoute(args.nats_subject_prefix, tenant_uuid(args.tenant_id))
+        if args.tenant_id else None
+    )
     return NatsJetStreamTransport(
         server_url=args.nats_url,
         stream_name=args.nats_stream,
         subject_prefix=args.nats_subject_prefix,
         client_name=args.worker_id,
+        tenant_route=route,
     )
 
 
@@ -85,6 +96,12 @@ def main() -> int:
         raise SystemExit("--database-url or KERNEL_LAB_DATABASE_URL is required")
     if args.idle_sleep_seconds < 0:
         raise SystemExit("--idle-sleep-seconds must be nonnegative")
+    if args.tenant_id and args.transport != "nats":
+        raise SystemExit("--tenant-id requires --transport nats")
+    try:
+        scoped_tenant = tenant_uuid(args.tenant_id) if args.tenant_id else None
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
 
     stopping = False
 
@@ -97,7 +114,10 @@ def main() -> int:
 
     transport = build_transport(args)
     publisher = PublisherRuntime(
-        store=PostgresOutboxStore(args.database_url),
+        store=(
+            PostgresTenantOutboxStore(args.database_url, tenant_id=scoped_tenant)
+            if scoped_tenant is not None else PostgresOutboxStore(args.database_url)
+        ),
         transport=transport,
         worker_id=args.worker_id,
         batch_size=args.batch_size,
