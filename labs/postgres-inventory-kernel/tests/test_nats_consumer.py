@@ -146,6 +146,7 @@ class ConsumerProbe:
         subject_prefix: str,
         durable_name: str | None,
         max_deliver: int = 3,
+        filter_subject: str | None = None,
     ) -> None:
         self._runner.run(
             self._provision(
@@ -153,6 +154,7 @@ class ConsumerProbe:
                 subject_prefix=subject_prefix,
                 durable_name=durable_name,
                 max_deliver=max_deliver,
+                filter_subject=filter_subject,
             )
         )
 
@@ -175,6 +177,7 @@ class ConsumerProbe:
         subject_prefix: str,
         durable_name: str | None,
         max_deliver: int,
+        filter_subject: str | None,
     ) -> None:
         await self._delete_if_present(stream_name)
         await self._jetstream.add_stream(
@@ -195,7 +198,7 @@ class ConsumerProbe:
                     ack_wait=0.4,
                     max_deliver=max_deliver,
                     max_ack_pending=10,
-                    filter_subject=f"{subject_prefix}.>",
+                    filter_subject=filter_subject or f"{subject_prefix}.>",
                 ),
             )
 
