@@ -43,11 +43,8 @@ class InventoryTransactionIndexProjector:
             raise ValueError("unexpected transaction index event type or aggregate")
         if event.aggregate_version != 1:
             raise ValueError("immutable transaction posting requires aggregate version 1")
-        if event.schema_version != SCHEMA_VERSION or event.tenant_id is None:
-            raise ValueError("transaction index requires V2 envelope with tenant_id")
-        tenant_id = event.tenant_id
-        if self.expected_tenant_id is not None and tenant_id != self.expected_tenant_id:
-            raise ValueError("transaction posting tenant_id is outside the consumer scope")
+        if event.schema_version not in (1, SCHEMA_VERSION):
+            raise ValueError("unsupported transaction posting schema version")
         transaction_id = _uuid(event.aggregate_id, "aggregate_id")
         if event.subject != f"inventory-transaction/{transaction_id}":
             raise ValueError("transaction posting subject does not match aggregate")
@@ -62,9 +59,38 @@ class InventoryTransactionIndexProjector:
         if source_ref is not None and not isinstance(source_ref, str):
             raise ValueError("source_reference must be a string or absent")
 
-        # V2 is self-contained. The projector never SELECTs from the source
-        # ledger or its tenants table. Transport authenticity and access controls
-        # remain the deployment's separate trust boundary.
+        if event.schema_version == SCHEMA_VERSION:
+            # V2 never reads the producer ledger/tenant tables: tenant is
+            # a first-class, canonical identity in the trusted envelope.
+            if event.tenant_id is None:
+                raise ValueError("V2 transaction posting requires tenant_id")
+            tenant_id = event.tenant_id
+            projection_mode = "v2"
+        else:
+            # Migration bridge ONLY. V1 lacked tenant_id, so old in-flight
+            # events can be drained against the original co-located ledger.
+            # Standalone remote projectors must run after the V1 backlog drains.
+            if event.tenant_id is not None:
+                raise ValueError("V1 transaction posting cannot claim tenant_id")
+            legacy = transaction.execute(
+                """
+                SELECT tenant_id, transaction_type, source_reference, recorded_at
+                FROM kernel_lab.inventory_transactions
+                WHERE id = %s
+                """,
+                (transaction_id,),
+            ).fetchone()
+            if legacy is None:
+                raise ValueError("V1 transaction posting requires local source ledger")
+            tenant_id, legacy_type, legacy_ref, legacy_time = legacy
+            if (event_type, source_ref, event.occurred_at) != (
+                legacy_type, legacy_ref, legacy_time
+            ):
+                raise ValueError("V1 transaction posting differs from source ledger")
+            projection_mode = "v1_legacy"
+
+        if self.expected_tenant_id is not None and tenant_id != self.expected_tenant_id:
+            raise ValueError("transaction posting tenant_id is outside the consumer scope")
         transaction.execute(
             """
             INSERT INTO kernel_lab.inventory_transaction_index_projection (
@@ -103,12 +129,14 @@ class InventoryTransactionIndexProjector:
               'projection', jsonb_build_object(
                 'name', 'inventory-transaction-index',
                 'status', 'applied',
+                'mode', %s,
+                'tenant_id', %s,
                 'transaction_id', %s,
                 'indexed_at', clock_timestamp()
               )
             )
             WHERE consumer_name = %s AND event_id = %s
             """,
-            (transaction_id, self.consumer_name, event.event_id),
+            (projection_mode, tenant_id, transaction_id, self.consumer_name, event.event_id),
         )
         return "applied"
