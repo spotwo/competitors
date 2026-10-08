@@ -190,6 +190,45 @@ def test_prometheus_exports_only_bounded_pipeline_identity_and_codes():
         assert forbidden not in prometheus
 
 
+def test_strict_work_state_health_omits_inapplicable_position_gap_component():
+    collector = fake_collector()
+    collector.projection_gap_store = RaisingStore()
+
+    report = collector.collect(
+        stream_name="WMS_EVENTS",
+        durable_name="WORK_STATE_PROJECTOR",
+        consumer_name="warehouse_work_state_projection",
+        projection_gap_monitor="none",
+        observed_at=datetime(2026, 8, 19, 0, 0, tzinfo=timezone.utc),
+    )
+
+    assert report.status == "ok"
+    assert report.degraded_components == ()
+    assert [component.component for component in report.components] == [
+        "outbox",
+        "nats_stream",
+        "nats_consumer",
+        "malformed_delivery",
+        "consumer_failure",
+    ]
+    assert "projection_gap" not in report.to_dict()["components"]
+    assert "projection_gap" not in render_prometheus(report)
+
+
+def test_unknown_projection_gap_monitor_fails_closed():
+    collector = fake_collector()
+    try:
+        collector.collect(
+            stream_name="WMS_EVENTS",
+            durable_name="WORK_STATE_PROJECTOR",
+            consumer_name="warehouse_work_state_projection",
+            projection_gap_monitor="invented",
+        )
+    except ValueError as exc:
+        assert "projection_gap_monitor" in str(exc)
+    else:
+        raise AssertionError("unknown projection monitor must be rejected")
+
 class LivePipelineProbe:
     def __init__(self, server_url: str):
         self._runner = asyncio.Runner()
