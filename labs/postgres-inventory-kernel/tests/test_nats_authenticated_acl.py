@@ -164,15 +164,15 @@ def test_authenticated_acl_and_tenant_end_to_end():
             errors = runner.run(negative_broker_permissions(
                 user_url("lab_tenant_a_pub", "lab-a-pub"), route_b
             ))
-            assert any("Permissions Violation for Publish" in item for item in errors), errors
+            assert any("permissions violation for publish" in item.lower() for item in errors), errors
 
             sub_errors = runner.run(negative_broker_permissions(
                 user_url("lab_tenant_a_sub", "lab-a-sub"), route_b
             ))
-            assert any("Permissions Violation for Subscription" in item for item in sub_errors), sub_errors
-            assert any("$JS.API.CONSUMER.INFO" in item and "Permissions Violation" in item
+            assert any("permissions violation for subscription" in item.lower() for item in sub_errors), sub_errors
+            assert any("$js.api.consumer.info" in item.lower() and "permissions violation" in item.lower()
                        for item in sub_errors), sub_errors
-            assert any("$JS.API.CONSUMER.DELETE" in item and "Permissions Violation" in item
+            assert any("$js.api.consumer.delete" in item.lower() and "permissions violation" in item.lower()
                        for item in sub_errors), sub_errors
 
             assert consume_scoped(
