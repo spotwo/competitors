@@ -213,11 +213,11 @@ def test_stub(request: ScaffoldRequest) -> str:
 
 def registry_with_pipeline_fragment(original: str, fragment: str) -> str:
     """Insert into pipelines, not into optional top-level tenant_deployments."""
-    marker = "\\ntenant_deployments:"
+    marker = "\ntenant_deployments:"
     if marker in original:
         before, after = original.split(marker, 1)
-        return before.rstrip("\\n") + "\\n\\n" + fragment + "\\n\\n" + marker.lstrip("\\n") + after
-    return original.rstrip("\\n") + "\\n\\n" + fragment
+        return before.rstrip("\n") + "\n\n" + fragment + "\n\n" + marker.lstrip("\n") + after
+    return original.rstrip("\n") + "\n\n" + fragment
 
 
 def scaffold(
