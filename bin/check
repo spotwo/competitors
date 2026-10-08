@@ -14,6 +14,7 @@ python scripts/validate_misc_api_contract_lab.py
 python scripts/validate_external_async_contract_lab.py
 python -m unittest scripts.test_external_async_contract_lab
 python scripts/validate_event_pipeline_deployments.py
+python -m unittest scripts.test_scaffold_event_pipeline
 python scripts/validate_topology_finalization_references.py
 python scripts/validate_github_main_ruleset.py
 python scripts/validate_kernel_semantics.py
