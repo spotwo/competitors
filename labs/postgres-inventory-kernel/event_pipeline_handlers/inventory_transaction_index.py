@@ -129,9 +129,9 @@ class InventoryTransactionIndexProjector:
               'projection', jsonb_build_object(
                 'name', 'inventory-transaction-index',
                 'status', 'applied',
-                'mode', %s,
-                'tenant_id', %s,
-                'transaction_id', %s,
+                'mode', %s::text,
+                'tenant_id', %s::uuid,
+                'transaction_id', %s::uuid,
                 'indexed_at', clock_timestamp()
               )
             )
