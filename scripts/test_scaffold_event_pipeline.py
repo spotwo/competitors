@@ -82,7 +82,7 @@ class EventPipelineScaffolderTests(unittest.TestCase):
 
         self.assertTrue(after.startswith(before.rstrip("\n")))
         self.assertIn("# Strict ordering rejects gaps", after)
-        self.assertEqual(len(specs.pipelines), 3)
+        self.assertEqual(len(specs.pipelines), len(_registry_yaml(before)['pipelines']) + 1)
         self.assertFalse(specs.get(created["id"]).enabled)
         validate_global_consumer_identities(specs)
         for item in parsed["pipelines"]:
