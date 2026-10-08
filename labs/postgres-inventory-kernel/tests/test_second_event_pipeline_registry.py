@@ -20,7 +20,9 @@ def test_registry_configures_second_real_business_pipeline_without_enabling_it()
 
     assert len(registry.pipelines) == 2
     assert position.enabled is True
+    assert position.consumer.projection_gap_monitor == "inventory_position"
     assert work.enabled is False
+    assert work.consumer.projection_gap_monitor == "none"
     assert work.transport.stream == position.transport.stream == "WMS_EVENTS"
     assert work.consumer.durable == "WORK_STATE_PROJECTOR"
     assert work.consumer.inbox_consumer_name == "warehouse_work_state_projection"
