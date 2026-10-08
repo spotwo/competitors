@@ -217,6 +217,51 @@ class PostgresOutboxStore:
             return replayed
 
 
+class PostgresTenantOutboxStore(PostgresOutboxStore):
+    """Tenant-owned Outbox lease path; no global-claim fallback.
+
+    Requires a pre-reviewed, fenced delivery_route='tenant' transition for
+    new V2 InventoryTransaction posting events. ACK/NACK/quarantine remain
+    bound by the same claim token and short independent DB transactions.
+    """
+
+    def __init__(self, database_url: str, *, tenant_id: UUID):
+        super().__init__(database_url)
+        if not isinstance(tenant_id, UUID):
+            raise ValueError("tenant_id must be a UUID")
+        self.tenant_id = tenant_id
+
+    def claim(self, *, worker_id: str, limit: int, lease_seconds: int) -> list[ClaimedEvent]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM kernel_lab.claim_tenant_domain_events(%s, %s, %s, %s)",
+                (self.tenant_id, worker_id, limit, lease_seconds),
+            ).fetchall()
+            conn.commit()
+
+        result = [
+            ClaimedEvent(
+                event_id=row[0],
+                claim_token=row[1],
+                attempt_count=row[2],
+                event_type=row[3],
+                aggregate_type=row[4],
+                aggregate_id=row[5],
+                aggregate_version=row[6],
+                envelope=row[7],
+            )
+            for row in rows
+        ]
+        for event in result:
+            if (
+                event.event_type != "inventory.transaction.posted"
+                or event.envelope.get("schema_version") != 2
+                or event.envelope.get("tenant_id") != str(self.tenant_id)
+            ):
+                raise ValueError("scoped Outbox claim returned wrong tenant/event contract")
+        return result
+
+
 class PublisherRuntime:
     def __init__(
         self,
