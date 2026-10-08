@@ -42,22 +42,27 @@ def test_warehouse_work_outbox_jetstream_inbox_projection_survives_ack_uncertain
     )
 
     try:
-        with NatsJetStreamTransport(
-            server_url=nats_lab.NATS_URL,
-            stream_name=stream_name,
-            subject_prefix=subject_prefix,
-            client_name=f"work-publisher-{suffix}",
-        ) as transport:
-            publish = PublisherRuntime(
-                store=PostgresOutboxStore(lab.DATABASE_URL),
-                transport=transport,
-                worker_id=f"work-publisher-{suffix}",
-                batch_size=10,
-                lease_seconds=30,
-                retry_policy=nats_lab.NO_JITTER_RETRY,
-            ).run_once()
-        assert publish.published == 4
-        assert publish.failed == 0
+        def publish_batch(batch_size: int):
+            with NatsJetStreamTransport(
+                server_url=nats_lab.NATS_URL,
+                stream_name=stream_name,
+                subject_prefix=subject_prefix,
+                client_name=f"work-publisher-{suffix}",
+            ) as transport:
+                return PublisherRuntime(
+                    store=PostgresOutboxStore(lab.DATABASE_URL),
+                    transport=transport,
+                    worker_id=f"work-publisher-{suffix}",
+                    batch_size=batch_size,
+                    lease_seconds=30,
+                    retry_policy=nats_lab.NO_JITTER_RETRY,
+                ).run_once()
+
+        # Publish only version 1 before exercising ACK uncertainty, so
+        # the broker cannot interleave the redelivery with newer versions.
+        published_first = publish_batch(1)
+        assert published_first.published == 1
+        assert published_first.failed == 0
 
         runtime = InboxConsumerRuntime(
             source=nats_lab.FailFirstAckSource(source),
@@ -95,6 +100,10 @@ def test_warehouse_work_outbox_jetstream_inbox_projection_survives_ack_uncertain
         assert duplicate.duplicate == 1
         assert duplicate.applied == 0
         assert duplicate.acknowledged == 1
+
+        published_remainder = publish_batch(10)
+        assert published_remainder.published == 3
+        assert published_remainder.failed == 0
 
         applied = [runtime.run_once() for _ in range(3)]
         assert [cycle.event_id for cycle in applied] == [
