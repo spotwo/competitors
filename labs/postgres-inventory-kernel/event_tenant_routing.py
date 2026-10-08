@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Mapping
 from uuid import UUID
 
@@ -30,9 +31,17 @@ class TenantEventRoute:
     event_type: str = ROUTED_EVENT_TYPE
 
     def __post_init__(self) -> None:
-        from nats_transport import _validate_subject
-
-        _validate_subject(self.subject_prefix, field="subject_prefix")
+        # Subject syntax is a wire contract, not a dependency on the NATS
+        # client library; the deployment registry is validated without nats-py.
+        prefix = self.subject_prefix
+        if (
+            not isinstance(prefix, str)
+            or not prefix
+            or prefix.strip() != prefix
+            or any(re.fullmatch(r"[A-Za-z0-9_-]+", part) is None
+                   for part in prefix.split("."))
+        ):
+            raise ValueError("subject_prefix must use normalized literal NATS tokens")
         if not isinstance(self.tenant_id, UUID):
             raise ValueError("tenant_id must be a UUID")
         if self.event_type != ROUTED_EVENT_TYPE:
