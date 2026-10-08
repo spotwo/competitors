@@ -120,11 +120,19 @@ def test_repository_registry_loads_and_exposes_one_source_of_truth():
     assert deployment.transport.stream == "WMS_EVENTS"
     assert deployment.consumer.durable == "POSITION_PROJECTOR"
     assert deployment.consumer.inbox_consumer_name == "position_projection"
+    assert deployment.consumer.projection_gap_monitor == "inventory_position"
     assert deployment.canary.durable == "EVENT_PIPELINE_CANARY"
     assert deployment.canary.cadence_seconds == 60
     assert deployment.slo.availability_target == pytest.approx(0.999)
     assert deployment.watchdog.execution_timeout_seconds == 45
 
+
+
+def test_registry_rejects_unknown_projection_gap_monitor():
+    item = spec_mapping()
+    item["consumer"]["projection_gap_monitor"] = "unsupported"
+    with pytest.raises(ValueError, match="projection_gap_monitor"):
+        EventPipelineDeploymentSpec.from_mapping(item)
 
 def test_registry_rejects_duplicate_pipeline_ids():
     item = spec_mapping()

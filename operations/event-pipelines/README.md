@@ -32,6 +32,7 @@ The registry makes those values one reviewed contract and gives the readiness ga
 - `transport.subject_prefix` is the publisher routing prefix.
 - `consumer.durable` is the durable JetStream consumer for the real pipeline.
 - `consumer.inbox_consumer_name` is the logical PostgreSQL Inbox/projection consumer identity. It is intentionally separate from the NATS durable name.
+- `consumer.projection_gap_monitor` selects `inventory_position` for a projector with persisted pending version gaps, or `none` for strict-order projectors with no such buffer (Warehouse Work State). `none` omits that component from aggregate health; it does **not** waive the consumer failure or JetStream checks.
 - `canary.durable` and `canary.consumer_name` identify the dedicated synthetic canary path.
 - `canary.cadence_seconds` is defined once and is also the expected watchdog cadence.
 - `topology` declares the singular steady-state JetStream target.
