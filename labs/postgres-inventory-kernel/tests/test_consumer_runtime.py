@@ -52,7 +52,7 @@ def test_v2_requires_canonical_tenant_id_and_rejects_invalid_or_missing():
     with pytest.raises(ValueError, match="tenant_id"):
         ConsumedEvent.from_envelope(envelope)
 
-    envelope["tenant_id"] = str(lab.TENANT).upper()
+    envelope["tenant_id"] = "DEADBEEF-0000-4000-8000-000000000001"
     with pytest.raises(ValueError, match="canonical"):
         ConsumedEvent.from_envelope(envelope)
 
