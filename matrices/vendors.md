@@ -12,8 +12,8 @@
 | Daifuku |  | wms, wcs | global |  | WareNavi, Warehouse Rx | 2026-08-18 |
 | Dematic | enterprise, large-enterprise | wms, wes, wcs, machine-control | global | on-premise, cloud | Dematic WMS, Dematic WES | 2026-08-18 |
 | Deposco | mid-market, enterprise | wms, oms, analytics | north-america | saas, cloud | Bright Warehouse | 2026-08-18 |
-| Descartes | smb, mid-market, enterprise | wms | north-america, europe, oceania | saas, cloud | Descartes Peoplevox WMS | 2026-08-18 |
-| Element Logic |  | wms, wes, wcs, machine-control | europe, north-america |  | eManager, eController | 2026-08-18 |
+| Descartes | smb, mid-market, enterprise | wms, tms | north-america, europe, oceania | saas, cloud | Descartes Peoplevox WMS | 2026-10-07 |
+| Element Logic |  | wms, wes, wcs, machine-control | europe, north-america |  | eManager, eController | 2026-10-07 |
 | EPG (Ehrhardt Partner Group) | smb, mid-market, enterprise | wms, analytics | global | cloud, on-premise | EPG WMS (LFS), TIMESQUARE | 2026-08-18 |
 | ERPNext |  | erp, wms | global |  | ERPNext Stock and Warehouse | 2026-08-18 |
 | Exotec |  | wes, robotics-orchestration | global | cloud | Deepsky | 2026-08-18 |
@@ -33,7 +33,7 @@
 | Logiwa | mid-market, enterprise | wms, wes | global | saas, cloud | Logiwa IO | 2026-08-18 |
 | Lucas Systems |  | wes | north-america, europe |  | Lucas Warehouse Optimization Suite | 2026-08-18 |
 | Made4net | smb, mid-market, enterprise | wms, wcs, wes, yms, lms | global | cloud, on-premise | WarehouseExpert, SCExpert Platform, Synapse 3PLExpert | 2026-08-18 |
-| Manhattan Associates | mid-market, enterprise, large-enterprise | wms, wes, lms, yms | global | saas, cloud | ActiveWarehouse | 2026-08-18 |
+| Manhattan Associates | mid-market, enterprise, large-enterprise | wms, wes, lms, yms, tms | global | saas, cloud | ActiveWarehouse | 2026-10-07 |
 | Mantis | enterprise, large-enterprise | wms, analytics | global |  | Logistics Vision Suite (LVS) | 2026-08-18 |
 | Mecalux | mid-market, enterprise, large-enterprise | wms, wes, wcs, dom | europe, north-america, latam | saas, cloud, on-premise | Easy WMS, Easy WES, Easy WCS, Easy DOM | 2026-08-18 |
 | Microlistics | smb, mid-market, enterprise, large-enterprise | wms | global | cloud, on-premise | Enterprise WMS, Express WMS, 3PL WMS, Chilled WMS, Retail WMS | 2026-08-18 |
@@ -42,7 +42,7 @@
 | Odoo | smb, mid-market | erp, wms | global | saas, cloud, on-premise | Odoo Inventory | 2026-08-18 |
 | OpenBoxes |  | wms | global | cloud, on-premise | OpenBoxes | 2026-08-18 |
 | Oracle | enterprise, large-enterprise | erp, wms | global | saas, cloud | Oracle Warehouse Management Cloud | 2026-08-18 |
-| PSI Software | smb, mid-market, enterprise, large-enterprise | wms | global | saas, cloud, on-premise | PSIwms | 2026-08-18 |
+| PSI Software | smb, mid-market, enterprise, large-enterprise | wms | global | saas, cloud, on-premise | PSIwms | 2026-10-07 |
 | SAP | enterprise, large-enterprise | erp, wms | global | on-premise | SAP Extended Warehouse Management | 2026-08-18 |
 | Senior Sistemas | smb, mid-market, enterprise, large-enterprise | wms | latam | saas, cloud | Senior WMS | 2026-08-18 |
 | ShipHero | smb, mid-market | wms | north-america | saas, cloud | ShipHero WMS | 2026-08-18 |
