@@ -89,6 +89,43 @@ non-unique durables/Inbox names, invalid identifiers, and existing generated
 files are rejected. CI verifies the deployment JSON Schema, cross-pipeline
 identities, topology invariants, and scaffolder unit tests.
 
+## Third concrete business pipeline: Inventory Transaction Index
+
+The third pipeline exercises the scaffolder against an existing committed WMS
+fact, `inventory.transaction.posted`. The event is emitted atomically from
+`inventory_transactions` by the existing transactional Outbox trigger.
+
+```text
+Inventory Transaction posting
+  -> PostgreSQL Outbox (inventory.transaction.posted)
+  -> NATS JetStream WMS_EVENTS (exact business subject filter)
+  -> inventory_transaction_index Inbox consumer
+  -> inventory_transaction_index_projection read model
+  -> JetStream ACK only after PostgreSQL commit
+```
+
+The `inventory-transaction-index` configuration uses generated unique durable,
+Inbox, canary, and watchdog identities and an allowlisted Python handler.
+It is `enabled: true` as a reviewed **desired state** after a real PostgreSQL
+and JetStream E2E test, including lost-ACK redelivery without a second side
+effect. No live deployment or provisioned JetStream consumer is implied.
+
+The projection is a **search index** of posted transactions by tenant, time,
+type and source reference. It is not a replacement for the immutable Inventory
+Transaction ledger or an Event Store. The projection also checks source ledger
+identity and payload consistency within the Inbox transaction and rolls back
+on forged/mismatched events.
+
+**Lab boundary:** the existing v1 `inventory.transaction.posted` envelope does
+not carry a tenant ID. This lab index reads the tenant ID from the same
+PostgreSQL source transaction. For a remotely deployed projector, evolve
+the event schema to include a tenant ID before removing this source read.
+
+CI includes `test_inventory_transaction_index_scaffold.py` (domain integrity
+and duplicate Inbox proof), `test_inventory_transaction_index_e2e.py`
+(real JetStream plus ACK uncertainty) and a regression showing the reviewed
+third registry entry matches `scaffold_event_pipeline.build_pipeline`.
+
 ## Topology contract
 
 The topology section declares:
