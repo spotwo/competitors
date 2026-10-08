@@ -156,8 +156,7 @@ pipelines:
       durable: INVENTORY_TRANSACTION_INDEX_PROJECTOR
       inbox_consumer_name: inventory_transaction_index
       malformed_lookback_seconds: 300
-      # Strict ordering rejects gaps into the scoped consumer failure lane.
-      # There is no Work State pending-gap buffer to inspect.
+      # Immutable transaction posting uses no pending-version buffer.
       projection_gap_monitor: none
       handler_module: event_pipeline_handlers.inventory_transaction_index
       handler_class: InventoryTransactionIndexProjector
