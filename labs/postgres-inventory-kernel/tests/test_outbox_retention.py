@@ -335,7 +335,13 @@ def test_archive_copy_failure_rolls_back_live_row_deletion():
         conn.execute(
             """
             INSERT INTO kernel_lab.domain_event_outbox_archive
-            SELECT o.*, clock_timestamp(), uuidv7()
+            SELECT (jsonb_populate_record(
+              NULL::kernel_lab.domain_event_outbox_archive,
+              to_jsonb(o) || jsonb_build_object(
+                'archived_at', clock_timestamp(),
+                'archive_run_id', uuidv7()
+              )
+            )).*
             FROM kernel_lab.domain_event_outbox o
             WHERE o.event_id = %s
             """,
