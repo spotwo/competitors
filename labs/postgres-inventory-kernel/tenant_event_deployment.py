@@ -13,10 +13,6 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid5
 from typing import Any, Mapping
 
-import nats
-from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy
-from nats.js.errors import NotFoundError
-
 from event_tenant_routing import TenantEventRoute, tenant_uuid
 
 _ENV = re.compile(r"^[A-Z][A-Z0-9_]*$")
@@ -145,6 +141,8 @@ def load_tenant_deployments(data: Mapping[str, Any], registry: Any) -> tuple[Ten
 
 
 def _consumer_matches(config: Any, expected: str, durable: str) -> bool:
+    from nats.js.api import AckPolicy, DeliverPolicy
+
     return (
         config.durable_name == durable
         and config.filter_subject == expected
@@ -182,6 +180,8 @@ class TenantTopologyProvisioner:
         self.admin_nats_url = _name(admin_nats_url, "admin_nats_url")
 
     async def _plan(self, js: Any, binding: TenantDeploymentBinding) -> TenantTopologyPlan:
+        from nats.js.errors import NotFoundError
+
         try:
             stream = await js.stream_info(binding.stream)
         except NotFoundError:
@@ -206,6 +206,8 @@ class TenantTopologyProvisioner:
         )
 
     async def _with_js(self, fn: Any) -> Any:
+        import nats
+
         client = await nats.connect(
             servers=[self.admin_nats_url], allow_reconnect=False, connect_timeout=2
         )
@@ -233,6 +235,8 @@ class TenantTopologyProvisioner:
             ))
 
     async def _provision(self, js: Any, binding: TenantDeploymentBinding) -> TenantTopologyPlan:
+        from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy
+
         initial = await self._plan(js, binding)
         if initial.status == "blocked":
             raise ValueError(f"tenant provisioning refused: {initial.code}")
