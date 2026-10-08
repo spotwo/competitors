@@ -239,16 +239,23 @@ def test_independent_v2_projection_without_source_transaction_or_tenant_rows():
               "source_reference": "OFFLINE-SOURCE"},
     )
     assert process(fake) is True
+    # Distinct tenants may independently index an identical aggregate UUID:
+    # the consumer's projection identity includes tenant_id.
+    second_tenant = uuid4()
+    assert process(replace(fake, tenant_id=second_tenant, event_id=uuid4())) is True
     with lab.connect() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT tenant_id, transaction_id, source_reference
             FROM kernel_lab.inventory_transaction_index_projection
             WHERE consumer_name = %s
             """,
             (CONSUMER_NAME,),
-        ).fetchone()
-        assert row == (tenant, transaction, "OFFLINE-SOURCE")
+        ).fetchall()
+        assert set(rows) == {
+            (tenant, transaction, "OFFLINE-SOURCE"),
+            (second_tenant, transaction, "OFFLINE-SOURCE"),
+        }
         assert conn.execute(
             "SELECT count(*) FROM kernel_lab.inventory_transactions WHERE id = %s",
             (transaction,),
