@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
 
 import conftest as lab
-import test_inventory_transaction_index_scaffold as index_lab
 import test_nats_consumer as nats_lab
 from consumer_runtime import ConsumedEvent, InboxConsumerRuntime, PostgresInboxStore
 from event_pipeline_handlers.inventory_transaction_index import InventoryTransactionIndexProjector
@@ -26,21 +26,25 @@ from publisher_runtime import ClaimedEvent
 
 def routed_event(*, tenant_id: UUID, transaction_id: UUID | None = None) -> ConsumedEvent:
     transaction_id = transaction_id or uuid4()
-    original = index_lab.load_transaction_event(index_lab.create_receipt())
-    envelope = {
-        **original.envelope,
+    occurred_at = datetime.now(timezone.utc).isoformat()
+    return ConsumedEvent.from_envelope({
         "event_id": str(uuid4()),
         "tenant_id": str(tenant_id),
-        "aggregate_id": str(transaction_id),
+        "type": "inventory.transaction.posted",
+        "source": "spotwo.wms.inventory-kernel",
         "subject": f"inventory-transaction/{transaction_id}",
+        "occurred_at": occurred_at,
+        "recorded_at": occurred_at,
+        "aggregate_type": "InventoryTransaction",
+        "aggregate_id": str(transaction_id),
+        "aggregate_version": 1,
+        "schema_version": 2,
         "data": {
             "transaction_id": str(transaction_id),
             "transaction_type": "receipt",
             "source_reference": "TENANT-ROUTED",
         },
-    }
-    return ConsumedEvent.from_envelope(envelope)
-
+    })
 
 def claim_for(event: ConsumedEvent) -> ClaimedEvent:
     return ClaimedEvent(
@@ -101,8 +105,13 @@ def test_publisher_denies_cross_tenant_or_legacy_before_connecting():
         with pytest.raises(ValueError, match="outside the authorized"):
             transport.publish(claim_for(routed_event(tenant_id=other_tenant)))
         with pytest.raises(ValueError, match="Event Contract V2"):
-            legacy = replace(event, schema_version=1, tenant_id=None)
-            transport.publish(claim_for(legacy))
+            legacy_claim = replace(
+                claim_for(event),
+                envelope={k: v for k, v in {
+                    **event.envelope, "schema_version": 1,
+                }.items() if k != "tenant_id"},
+            )
+            transport.publish(legacy_claim)
 
 
 def test_durable_filter_must_equal_exact_tenant_route():
