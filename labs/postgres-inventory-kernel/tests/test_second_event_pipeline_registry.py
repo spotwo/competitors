@@ -18,7 +18,7 @@ def test_registry_enables_second_proven_business_pipeline():
     position = registry.get("inventory-position-projection")
     work = registry.get("warehouse-work-state-projection")
 
-    assert len(registry.pipelines) == 2
+    assert len(registry.pipelines) == 3
     assert position.enabled is True
     assert position.consumer.projection_gap_monitor == "inventory_position"
     assert work.enabled is True
@@ -32,7 +32,7 @@ def test_registry_enables_second_proven_business_pipeline():
 
 def test_registry_requires_global_consumer_and_durable_identity_separation():
     registry = load_registry(REGISTRY_PATH)
-    first, second = registry.pipelines
+    first, second = registry.pipelines[:2]
 
     duplicate_durable = replace(
         second,

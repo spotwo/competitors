@@ -138,3 +138,72 @@ pipelines:
       warning_scheduler_lag_seconds: 15
       critical_scheduler_lag_seconds: 60
       execution_timeout_seconds: 45
+
+  - id: inventory-transaction-index
+    # Third real domain pipeline; live readiness remains fail-closed.
+    enabled: true
+
+    runtime:
+      database_url_env: KERNEL_LAB_DATABASE_URL
+      nats_url_env: KERNEL_LAB_NATS_URL
+      watchdog_state_path_env: KERNEL_LAB_INVENTORY_TRANSACTION_INDEX_CANARY_WATCHDOG_STATE_PATH
+
+    transport:
+      stream: WMS_EVENTS
+      subject_prefix: spotwo.wms.events
+
+    consumer:
+      durable: INVENTORY_TRANSACTION_INDEX_PROJECTOR
+      inbox_consumer_name: inventory_transaction_index
+      malformed_lookback_seconds: 300
+      # Immutable transaction posting uses no pending-version buffer.
+      projection_gap_monitor: none
+      handler_module: event_pipeline_handlers.inventory_transaction_index
+      handler_class: InventoryTransactionIndexProjector
+
+    canary:
+      durable: INVENTORY_TRANSACTION_INDEX_CANARY
+      consumer_name: inventory_transaction_index_canary
+      cadence_seconds: 60
+      timeout_seconds: 30
+
+    topology:
+      stream:
+        subjects:
+          - spotwo.wms.events.>
+        storage: file
+        retention: limits
+        replicas: 1
+        duplicate_window_seconds: 120
+      business_consumer:
+        delivery_mode: pull
+        deliver_policy: all
+        ack_policy: explicit
+        filter_subject: spotwo.wms.events.inventory.transaction.posted
+        max_ack_pending: 10
+        max_deliver: 3
+      canary_consumer:
+        delivery_mode: pull
+        deliver_policy: all
+        ack_policy: explicit
+        filter_subject: spotwo.wms.events.health_check.ping
+        max_ack_pending: 10
+        max_deliver: 3
+
+    slo:
+      availability_target: 0.999
+      latency_target_ratio: 0.99
+      latency_target_seconds: 5
+      stale_after_seconds: 180
+      warning_consecutive_failures: 2
+      critical_consecutive_failures: 3
+      warning_slow_burn_rate: 3.0
+      critical_fast_burn_rate: 14.4
+
+    watchdog:
+      start_grace_seconds: 30
+      warning_missing_executions: 1
+      critical_missing_executions: 2
+      warning_scheduler_lag_seconds: 15
+      critical_scheduler_lag_seconds: 60
+      execution_timeout_seconds: 45
