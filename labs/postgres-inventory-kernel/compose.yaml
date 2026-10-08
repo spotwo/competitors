@@ -22,5 +22,17 @@ services:
     volumes:
       - nats-data:/data
 
+  # Separate authenticated JetStream lab. The normal NATS service remains
+  # unauthenticated for existing regression tests; neither is a production config.
+  nats-auth:
+    image: nats:2.14.5@sha256:026a66a4497c6d7d3eed741781770099c48c755bf3a55b6950d76dd210596eb3
+    command: ["--jetstream", "--store_dir", "/data", "-c", "/etc/nats/tenant-auth.conf"]
+    ports:
+      - "${KERNEL_LAB_NATS_AUTH_PORT:-54223}:4222"
+    volumes:
+      - ./nats-tenant-auth.conf:/etc/nats/tenant-auth.conf:ro
+      - nats-auth-data:/data
+
 volumes:
   nats-data:
+  nats-auth-data:
