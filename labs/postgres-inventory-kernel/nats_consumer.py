@@ -12,6 +12,8 @@ from nats.errors import TimeoutError as NatsTimeoutError
 from nats.js.api import AckPolicy
 from nats.js.client import JetStreamContext
 
+from event_tenant_routing import TENANT_HEADER, TenantEventRoute
+
 from consumer_runtime import (
     ConsumedEvent,
     InboxDeliveryMetadata,
@@ -69,6 +71,7 @@ class NatsJetStreamPullSource:
         connect_timeout_seconds: float = 2.0,
         fetch_timeout_seconds: float = 1.0,
         ack_timeout_seconds: float = 2.0,
+        tenant_route: TenantEventRoute | None = None,
     ):
         if not server_url.strip():
             raise ValueError("server_url is required")
@@ -86,6 +89,7 @@ class NatsJetStreamPullSource:
         self.connect_timeout_seconds = connect_timeout_seconds
         self.fetch_timeout_seconds = fetch_timeout_seconds
         self.ack_timeout_seconds = ack_timeout_seconds
+        self.tenant_route = tenant_route
 
         self._runner = asyncio.Runner()
         self._client: NatsClient | None = None
@@ -150,6 +154,9 @@ class NatsJetStreamPullSource:
             self._validate_consumer_config(
                 consumer_info.config,
                 expected_durable_name=self.durable_name,
+                expected_filter_subject=(
+                    self.tenant_route.subject if self.tenant_route is not None else None
+                ),
             )
             subscription = await jetstream.pull_subscribe_bind(
                 stream=self.stream_name,
@@ -187,6 +194,17 @@ class NatsJetStreamPullSource:
         try:
             envelope = self._decode_envelope(message)
             self._validate_headers(message, envelope)
+            if self.tenant_route is not None:
+                try:
+                    self.tenant_route.validate_delivery(
+                        subject=message.subject,
+                        headers=message.headers or {},
+                        envelope=envelope,
+                    )
+                except ValueError as exc:
+                    raise MalformedJetStreamMessage(
+                        "invalid_tenant_route", str(exc)
+                    ) from exc
             try:
                 ConsumedEvent.from_envelope(envelope)
             except ValueError as exc:
@@ -263,6 +281,7 @@ class NatsJetStreamPullSource:
         config: Any,
         *,
         expected_durable_name: str | None = None,
+        expected_filter_subject: str | None = None,
     ) -> None:
         if config.ack_policy != AckPolicy.EXPLICIT:
             raise ValueError("durable consumer must use explicit acknowledgement")
@@ -272,6 +291,13 @@ class NatsJetStreamPullSource:
             config.durable_name != expected_durable_name
         ):
             raise ValueError("consumer must be durable and match durable_name")
+        if expected_filter_subject is not None and (
+            config.filter_subject != expected_filter_subject
+            or getattr(config, "filter_subjects", None)
+        ):
+            raise ValueError(
+                "tenant-scoped durable must use the exact authorized filter subject"
+            )
 
     @staticmethod
     def _decode_envelope(message: Msg) -> dict[str, Any]:
