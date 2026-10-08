@@ -276,6 +276,66 @@ authorized DB role in production. Production activation requires live
 managed credentials, trusted approval verification, rollout orchestration,
 tenant traffic fencing, runtime SLIs and rollback.
 
+## Tenant rollout waves, projection lag and guarded rollback (lab)
+
+SQL migration `035_tenant_rollout_cutover.sql` adds an activation-receipt-
+fenced per-deployment rollout state and an append-only action journal.
+The controlled CLI accepts **explicit reviewed event IDs only**; it never
+rewrites an entire tenant's backlog or switches newly inserted events
+automatically. Only `inventory.transaction.posted` V2 rows that have
+**never been claimed or attempted** may change from shared to tenant route.
+The DB function atomically locks all selected Outbox rows, enforces
+complete eligibility, stages the full batch or none, and records actions.
+Old direct stage calls are blocked after a rollout begins.
+
+```bash
+# Only after the separate, reviewed activation receipt and an enabled pilot:
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode rollout-start \
+  --activation-receipt <activation-uuid> \
+  --operator-id rollout-owner --change-ref CR-101
+
+# Each wave re-checks live broker ACL + scoped canary; refuses a second
+# wave while the previous tenant rows are pending or not yet projected.
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode rollout-wave \
+  --event-id <reviewed-event-uuid> \
+  --operator-id rollout-owner --change-ref CR-101-wave1
+
+# Read-only, including when the broker or publisher is unavailable.
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode rollout-status
+
+# First pause future waves; then return ONLY never-attempted, unclaimed
+# tenant-staged events to shared. Published/attempted rows remain pinned
+# to the tenant route and require forward recovery, never blind replay.
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode rollout-pause \
+  --operator-id rollout-owner --change-ref CR-101-pause
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode rollout-revert \
+  --event-id <unattempted-event-uuid> \
+  --operator-id rollout-owner --change-ref CR-101-rollback
+```
+
+Monitoring reports tenant pending delivery, attempted/unpublished delivery,
+published-but-not-projected count, and oldest projection lag. A second wave
+requires zero pending and zero unprojected **live** tenant rows. The
+projector's configured tenant Inbox identity is used, not just a matching
+tenant ID. Rollout and rollback are atomic bounded batches (up to 100 event
+IDs) with append-only operator/change reference evidence.
+
+**No automatic runtime traffic routing:** activation and rollout begin do
+not provision worker processes, intercept new producer inserts, replace
+broker ACLs, switch shared durable configuration or activate the shipped
+disabled pilot. A single event cannot safely move after a publish attempt
+because a lost ACK makes broker delivery uncertain. The rollback API
+therefore refuses attempted events, including ones whose lease has expired.
+Partial forward recovery is an explicit operational decision. Publisher
+scheduling, consumer health/SLOs, external approval authentication, broker
+secrets, PostgreSQL restricted roles, and longer-lived replay/archive
+reconciliation remain production rollout gates.
+
 ## Topology contract
 
 The topology section declares:

@@ -222,6 +222,31 @@ supplied `approval-id` is NOT cryptographic or external attestation of
 approval. Production still needs an independent approval/identity workflow,
 managed broker/DB roles, runtime route cutover, health SLIs and rollback.
 
+## Rollout cutover and safe rollback
+
+`035_tenant_rollout_cutover.sql` introduces a durable rollout state keyed
+to the **activation receipt**, explicit bounded event-ID waves, and
+append-only `tenant_deployment_rollout_journal` actions. Stage operations
+take row locks against global Outbox publisher claims, require V2 posting
+schema and `attempt_count = 0`, and commit atomically. The old direct
+single-event staging function cannot bypass an active or paused rollout.
+
+Before every new wave the controller rechecks actual tenant topology,
+authenticated ACL denials and a separate tenant canary. It also requires
+zero pending tenant delivery and zero published-not-projected tenant
+events from the previous wave. These conditions do not replace real
+health/traffic SLOs.
+
+A rollback first pauses further waves, then only moves *never-attempted*
+events from tenant to shared. Event IDs that reached an attempt, including
+an expired lease or an unconfirmed broker ACK, stay on the tenant route.
+The rollback batch is all-or-nothing and leaves an immutable journal trail.
+Previously published facts are **not** replayed to shared.
+
+The shipped tenant pilot remains disabled and no worker topology is
+changed automatically. See `operations/event-pipelines/README.md`
+for the command-level runbook.
+
 ## Scoped publisher invocation (after fenced staging)
 
 The following is a **shape example**, not a recommendation to run against an
