@@ -1,0 +1,12 @@
+id: manhattan-omni-26-2-onx-2026
+subject: manhattan-associates
+source_type: official-release
+grade: A
+title: Manhattan Active Omni 26.2 - Maven MCP Server and Order Network Exchange
+url: https://www.manh.com/releases/2026/waypoints-omnichannel-26.2
+publisher: Manhattan Associates
+captured_at: '2026-10-07'
+supports:
+- Maven can be exposed as an MCP server
+- Order Network Exchange is an open specification built on MCP
+- OnX exposes five tools for order, inventory and product-data operations

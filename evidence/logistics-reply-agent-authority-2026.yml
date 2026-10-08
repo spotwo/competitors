@@ -1,0 +1,13 @@
+id: logistics-reply-agent-authority-2026
+subject: logistics-reply
+source_type: official-release
+grade: A
+title: LEA AI Agent Authority Model
+url: https://www.reply.com/en/newsroom/news/logistics-reply-introduces-the-lea-ai-agent-authority-model
+publisher: Reply
+captured_at: '2026-10-07'
+supports:
+- 'five contextual authority levels: Inform, Recommend, Act, Coordinate, Governed Autonomy'
+- authority is modeled separately from organizational AI maturity
+- five pre-built warehouse agents available from 2026-10-05
+- agents have task-specific data contracts, integration approaches, delegated authority and human oversight

@@ -6,8 +6,8 @@
 |---|---:|
 | Companies | 50 |
 | Products | 88 |
-| Evidence records | 187 |
-| Claims | 26 |
+| Evidence records | 207 |
+| Claims | 29 |
 | Terminology records | 35 |
 | Authorities | 8 |
 | Taxonomy vocabularies | 9 |

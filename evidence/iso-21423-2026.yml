@@ -1,0 +1,13 @@
+id: iso-21423-2026
+subject: iso
+source_type: standard
+grade: A
+title: ISO 21423 - Robotics - Industrial mobile robots - Communications and interoperability
+url: https://www.iso.org/standard/86749.html
+publisher: ISO
+captured_at: '2026-10-07'
+supports:
+- stage 60.00, International Standard under publication
+- communication protocols for interoperability among multi-vendor industrial AMR systems
+- scope includes AMRs, fleet managers and enterprise resources
+notes: Not yet stage 60.60 published as of capture date.

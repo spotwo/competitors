@@ -1,0 +1,14 @@
+id: descartes-expanded-logistics-execution
+subject_type: company
+subject: descartes
+predicate: portfolio-expansion
+value:
+  acquired:
+  - tai
+  - extensiv
+  solution_layers: [wms, tms]
+  target_operations: [3pl-fulfillment, freight-brokerage]
+confidence: high
+status: current
+observed_at: '2026-10-07'
+evidence_refs: [descartes-tai-extensiv-acquisitions-2026]

@@ -1,0 +1,13 @@
+id: anthropic-model-hardware-standard-2026
+subject: anthropic
+source_type: official-release
+grade: A
+title: Model Hardware Standard research preview
+url: https://www.anthropic.com/news/model-hardware-standard-research-preview
+publisher: Anthropic
+captured_at: '2026-10-07'
+supports:
+- research preview of a shared specification for AI agents operating programmable physical devices
+- model-agnostic access using standard protocols including MCP
+- standardized driver and device manifest concepts
+notes: Research preview, not a normative industry standard.

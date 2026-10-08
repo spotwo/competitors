@@ -1,0 +1,12 @@
+id: iso-16400-5-2026
+subject: iso
+source_type: standard
+grade: A
+title: ISO 16400-5:2026 - Equipment behaviour catalogue interfaces
+url: https://www.iso.org/standard/86185.html
+publisher: ISO
+captured_at: '2026-10-07'
+supports:
+- published International Standard, Edition 1, 2026-08
+- interfaces between equipment behaviour catalogues, production systems engineering and manufacturing operations
+- bidirectional integration using technical and contextual information

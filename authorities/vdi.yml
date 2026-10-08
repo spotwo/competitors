@@ -10,7 +10,8 @@ jurisdictions:
 - europe
 - global
 website: https://www.vdi.de/
-notes: VDI 3601 is a strong domain reference for WMS terminology, responsibilities, performance areas, and system-layer integration.
-last_verified: '2026-08-18'
+notes: VDI 3601 is a strong domain reference for WMS terminology, responsibilities, performance areas, and system-layer integration. Track VDI 3299 Blatt 2 as a 2026 draft for order-picking-system planning, not as a final guideline.
+last_verified: '2026-10-07'
 evidence_refs:
 - vdi-3601-wms-2015
+- vdi-3299-2-draft-2026

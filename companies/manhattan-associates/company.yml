@@ -5,7 +5,7 @@ website: https://www.manh.com/
 hq_country: US
 markets: [global]
 segments: [mid-market, enterprise, large-enterprise]
-solution_layers: [wms, wes, lms, yms]
+solution_layers: [wms, wes, lms, yms, tms]
 deployment_models: [saas, cloud]
 industries: [retail, ecommerce, 3pl, wholesale]
 operating_environments: [distribution-center, fulfillment-center, 3pl]
@@ -16,5 +16,5 @@ products:
   categories: [wms, wes, lms, yms]
   notes: 2026 portfolio is offered in Essentials, Enterprise, and Enterprise Premier editions.
 status: active
-last_verified: '2026-08-18'
-evidence_refs: [manhattan-activewarehouse-2026]
+last_verified: '2026-10-07'
+evidence_refs: [manhattan-activewarehouse-2026, manhattan-sce-26-2-2026, manhattan-omni-26-2-onx-2026]
