@@ -18,6 +18,8 @@ pipelines:
       inbox_consumer_name: position_projection
       malformed_lookback_seconds: 300
       projection_gap_monitor: inventory_position
+      handler_module: position_projection
+      handler_class: InventoryPositionQuantityProjector
 
     canary:
       durable: EVENT_PIPELINE_CANARY
@@ -87,6 +89,8 @@ pipelines:
       # Strict ordering rejects gaps into the scoped consumer failure lane.
       # There is no Work State pending-gap buffer to inspect.
       projection_gap_monitor: none
+      handler_module: work_state_projection
+      handler_class: WarehouseWorkStateProjector
 
     canary:
       durable: WORK_EVENT_PIPELINE_CANARY
