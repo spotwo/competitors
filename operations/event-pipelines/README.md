@@ -64,7 +64,7 @@ Both durables must remain explicit-ACK pull consumers. The business filter must 
 
 This isolation matters because the Position projector accepts only `inventory.position.changed`; a broad business wildcard would also deliver synthetic canary traffic to the domain projector.
 
-This is desired-state configuration, not a provisioning mechanism. The registry does not create, update, or repair JetStream resources.
+This is desired-state configuration, not a provisioning mechanism. The registry does not create, update, or repair JetStream resources. Both Position and Work State are enabled in the registry after lab proof, but this flag **does not establish that either runtime is deployed or ready**. The readiness gate still requires live component telemetry, watchdog receipts, and canary SLI; missing runtime signals remain NOT_READY.
 
 ## Bounded topology migration
 
