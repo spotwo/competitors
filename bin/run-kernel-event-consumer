@@ -23,14 +23,7 @@ from consumer_runtime import InboxConsumerRuntime, PostgresInboxStore  # noqa: E
 from event_pipeline_readiness import load_registry  # noqa: E402
 from malformed_delivery import PostgresNatsMalformedDeliveryQuarantine  # noqa: E402
 from nats_consumer import NatsJetStreamPullSource  # noqa: E402
-from position_projection import InventoryPositionQuantityProjector  # noqa: E402
-from work_state_projection import WarehouseWorkStateProjector  # noqa: E402
-
-
-HANDLERS = {
-    "inventory-position-projection": InventoryPositionQuantityProjector,
-    "warehouse-work-state-projection": WarehouseWorkStateProjector,
-}
+from event_pipeline_handler_loader import load_pipeline_handler_type  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -74,9 +67,10 @@ def main() -> int:
             f"event pipeline {spec.pipeline_id} is disabled; use --allow-disabled only for a bounded lab proof"
         )
 
-    handler_type = HANDLERS.get(spec.pipeline_id)
-    if handler_type is None:
-        raise SystemExit(f"no business handler registered for pipeline {spec.pipeline_id}")
+    try:
+        handler_type = load_pipeline_handler_type(spec.consumer)
+    except ValueError as exc:
+        raise SystemExit(f"event pipeline handler unavailable: {exc}") from exc
 
     database_url = args.database_url or os.getenv(spec.runtime.database_url_env)
     nats_url = args.nats_url or os.getenv(spec.runtime.nats_url_env)
