@@ -171,6 +171,24 @@ and duplicate Inbox proof), `test_inventory_transaction_index_e2e.py`
 (real JetStream plus ACK uncertainty) and a regression showing the reviewed
 third registry entry matches `scaffold_event_pipeline.build_pipeline`.
 
+## Tenant-scoped V2 routing and read authorization (opt-in)
+
+The V2 Transaction Index now has a lab-tested, explicit tenant-bound subject:
+`<prefix>.tenants.<canonical-tenant-uuid>.inventory.transaction.posted`.
+An opted-in publisher verifies its tenant scope before network access, and a
+tenant consumer verifies its exact JetStream durable filter and triple match
+of subject, `Spotwo-Tenant-Id` header and envelope identity before Inbox
+handling. Read queries require an authenticated-principal tenant grant and
+`inventory.transactions.read` scope.
+
+This **does not change the current shared routing in the three enabled
+registry pipelines**. NATS broker-enforced per-tenant ACLs, tenant-scoped
+Outbox claiming, per-tenant topology contracts and rollout/canary gates are
+required before enabling tenant routing in production.
+
+See [Tenant Routing and Authorization](../../labs/postgres-inventory-kernel/EVENT_PIPELINE_TENANT_ROUTING.md)
+for the precise opt-in contract, negative tests and staged rollout gates.
+
 ## Topology contract
 
 The topology section declares:
