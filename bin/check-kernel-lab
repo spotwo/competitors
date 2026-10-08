@@ -32,7 +32,18 @@ else
   done
 fi
 
+if [[ -n "${KERNEL_LAB_NATS_AUTH_PORT:-}" ]]; then
+  AUTH_PORT="$KERNEL_LAB_NATS_AUTH_PORT"
+else
+  AUTH_PORT="$(free_port)"
+  while [[ "$AUTH_PORT" == "$PORT" || "$AUTH_PORT" == "$NATS_PORT" ]]; do
+    AUTH_PORT="$(free_port)"
+  done
+fi
+
 export KERNEL_LAB_PORT="$PORT"
+export KERNEL_LAB_NATS_AUTH_PORT="$AUTH_PORT"
+export KERNEL_LAB_NATS_AUTH_URL="${KERNEL_LAB_NATS_AUTH_URL:-nats://lab_admin:lab-admin-only@127.0.0.1:${AUTH_PORT}}"
 export KERNEL_LAB_DATABASE_URL="${KERNEL_LAB_DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:${PORT}/kernel_lab}"
 export KERNEL_LAB_NATS_PORT="$NATS_PORT"
 export KERNEL_LAB_NATS_URL="${KERNEL_LAB_NATS_URL:-nats://127.0.0.1:${NATS_PORT}}"
@@ -85,26 +96,30 @@ async def ignore_client_error(_error: Exception) -> None:
 
 
 async def wait_for_nats() -> None:
-    url = os.environ["KERNEL_LAB_NATS_URL"]
-    for _attempt in range(30):
-        try:
-            client = await asyncio.wait_for(
-                nats.connect(
-                    servers=[url],
-                    error_cb=ignore_client_error,
-                    allow_reconnect=False,
-                    connect_timeout=0.5,
-                    reconnect_time_wait=0,
-                    max_reconnect_attempts=1,
-                ),
-                timeout=0.5,
-            )
-        except Exception:
-            await asyncio.sleep(1)
-            continue
-        await client.close()
-        return
-    raise SystemExit("NATS did not become ready")
+    for url in (
+        os.environ["KERNEL_LAB_NATS_URL"],
+        os.environ["KERNEL_LAB_NATS_AUTH_URL"],
+    ):
+        for _attempt in range(30):
+            try:
+                client = await asyncio.wait_for(
+                    nats.connect(
+                        servers=[url],
+                        error_cb=ignore_client_error,
+                        allow_reconnect=False,
+                        connect_timeout=0.5,
+                        reconnect_time_wait=0,
+                        max_reconnect_attempts=1,
+                    ),
+                    timeout=0.5,
+                )
+            except Exception:
+                await asyncio.sleep(1)
+                continue
+            await client.close()
+            break
+        else:
+            raise SystemExit(f"NATS did not become ready: {url.split('@')[-1]}")
 
 
 asyncio.run(wait_for_nats())
