@@ -240,4 +240,9 @@ BEGIN
 END;
 $$;
 
+-- A deployment must explicitly grant each restricted DB role the necessary
+-- function EXECUTE privileges. PostgreSQL grants PUBLIC by default.
+REVOKE ALL ON FUNCTION stage_tenant_event_route(uuid, uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION claim_tenant_domain_events(uuid, text, integer, integer) FROM PUBLIC;
+
 COMMIT;
