@@ -219,7 +219,8 @@
           "properties": {
             "durable": {"$ref": "#/$defs/name"},
             "inbox_consumer_name": {"$ref": "#/$defs/name"},
-            "malformed_lookback_seconds": {"$ref": "#/$defs/positiveInteger"}
+            "malformed_lookback_seconds": {"$ref": "#/$defs/positiveInteger"},
+            "projection_gap_monitor": {"enum": ["inventory_position", "none"]}
           }
         },
         "canary": {
