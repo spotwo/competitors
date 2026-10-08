@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from uuid import UUID, uuid4
+from datetime import timedelta
+from outbox_retention import PostgresOutboxArchiveStore
 from pathlib import Path
 import subprocess
 import sys
@@ -169,3 +171,57 @@ def test_scoped_publisher_cli_requires_nats_and_canonical_uuid():
     )
     assert invalid.returncode != 0
     assert "canonical lowercase UUID" in invalid.stderr
+
+
+def test_published_tenant_route_and_staging_audit_survive_retention_archive():
+    with lab.connect() as conn:
+        event_id = enqueue_posted(conn, lab.TENANT, suffix="archive-route")
+        assert conn.execute(
+            "SELECT kernel_lab.stage_tenant_event_route(%s, %s, %s)",
+            (event_id, lab.TENANT, "approved-operator"),
+        ).fetchone()[0]
+        conn.commit()
+
+    store = PostgresTenantOutboxStore(lab.DATABASE_URL, tenant_id=lab.TENANT)
+    claim = store.claim(worker_id="tenant-archiver", limit=10, lease_seconds=30)[0]
+    assert store.ack(event_id=event_id, claim_token=claim.claim_token)
+
+    with lab.connect() as conn:
+        observed_at = conn.execute("SELECT statement_timestamp()").fetchone()[0]
+        cutoff = observed_at - timedelta(days=30)
+        conn.execute(
+            """
+            UPDATE kernel_lab.domain_event_outbox
+            SET published_at = %s
+            WHERE event_id = %s
+            """,
+            (cutoff - timedelta(days=1), event_id),
+        )
+
+    archived = PostgresOutboxArchiveStore(lab.DATABASE_URL).archive_batch(
+        before=cutoff, batch_size=10
+    )
+    assert archived.archived_event_count == 1
+    assert archived.archived_operator_action_count == 0
+
+    with lab.connect() as conn:
+        row = conn.execute(
+            """
+            SELECT a.delivery_route, action.tenant_id, action.operator_id,
+                   action.previous_route, action.new_route
+            FROM kernel_lab.domain_event_outbox_archive a
+            JOIN kernel_lab.domain_event_outbox_route_action_archive action
+              ON action.event_id = a.event_id AND action.archive_run_id = a.archive_run_id
+            WHERE a.event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        assert row == (
+            "tenant", lab.TENANT, "approved-operator", "shared", "tenant"
+        )
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.domain_event_outbox_route_actions"
+        ).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.domain_event_outbox"
+        ).fetchone()[0] == 0
