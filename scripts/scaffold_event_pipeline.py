@@ -8,6 +8,7 @@ import copy
 import json
 import os
 import re
+import stat
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -256,6 +257,7 @@ def scaffold(
         ) as output:
             temp_path = Path(output.name)
             output.write(original.rstrip("\n") + "\n\n" + fragment)
+        os.chmod(temp_path, stat.S_IMODE(registry_path.stat().st_mode))
         os.replace(temp_path, registry_path)
         temp_path = None
     except Exception:
