@@ -1,0 +1,14 @@
+id: jasci-phoenix-2026
+subject: jasci-software
+source_type: official-release
+grade: A
+title: JASCI introduces Phoenix AI-native WMS
+url: https://www.jascicloud.com/blog/ai-native-warehouse-management-system
+publisher: JASCI Software
+captured_at: '2026-10-08'
+supports:
+- Phoenix is an announced AI-native WMS with specialist warehouse agents
+- AI Remote Control supports authorized workflow interactions and approval gates
+- Phoenix has tenant isolation, permissions, audit trails and governed MCP access
+- Phoenix general availability is planned for October 2026
+notes: Vendor claims and planned GA; do not represent Phoenix as generally available until independently verified.
