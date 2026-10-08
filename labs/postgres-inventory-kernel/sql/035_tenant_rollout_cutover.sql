@@ -300,7 +300,7 @@ CREATE OR REPLACE FUNCTION stage_tenant_event_route(
 ) RETURNS boolean
 LANGUAGE plpgsql
 SET search_path = kernel_lab, pg_catalog, pg_temp
-AS $
+AS $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM tenant_deployment_rollout_state
@@ -328,7 +328,7 @@ BEGIN
   ) VALUES (p_event_id, p_tenant_id, p_operator_id, 'shared', 'tenant');
   RETURN true;
 END;
-$;
+$$;
 
 -- Privilege control MUST be supplied by deployment role provisioning.
 REVOKE ALL ON FUNCTION begin_tenant_rollout(text,uuid,uuid,text,text) FROM PUBLIC;
