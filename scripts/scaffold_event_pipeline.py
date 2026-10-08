@@ -211,6 +211,15 @@ def test_stub(request: ScaffoldRequest) -> str:
     )
 
 
+def registry_with_pipeline_fragment(original: str, fragment: str) -> str:
+    """Insert into pipelines, not into optional top-level tenant_deployments."""
+    marker = "\\ntenant_deployments:"
+    if marker in original:
+        before, after = original.split(marker, 1)
+        return before.rstrip("\\n") + "\\n\\n" + fragment + "\\n\\n" + marker.lstrip("\\n") + after
+    return original.rstrip("\\n") + "\\n\\n" + fragment
+
+
 def scaffold(
     request: ScaffoldRequest,
     *,
@@ -256,7 +265,7 @@ def scaffold(
             delete=False,
         ) as output:
             temp_path = Path(output.name)
-            output.write(original.rstrip("\n") + "\n\n" + fragment)
+            output.write(registry_with_pipeline_fragment(original, fragment))
         os.chmod(temp_path, stat.S_IMODE(registry_path.stat().st_mode))
         os.replace(temp_path, registry_path)
         temp_path = None
