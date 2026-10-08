@@ -5,6 +5,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
+
+import psycopg
+import conftest as lab
+from tenant_deployment_activation import TenantActivationController
 
 import nats
 import pytest
@@ -104,10 +109,22 @@ def test_authenticated_jetstream_plan_apply_idempotence_and_readiness_fail_close
             binding, operator_id="lab-provisioner", approval_id="change-123",
         ).status == "ready"
 
-        # Real tenant publisher and consumer identities. They can only access
-        # allowed broker API/subjects; the fixture intentionally lacks a
-        # separately authorized tenant A canary credential and heartbeat grant.
-        # The gate MUST NOT claim readiness with only topology + ACL success.
+        # Real tenant-scoped heartbeat now succeeds via a dedicated canary
+        # credential, separate from business consumer and publisher identity.
+        granted_acl, granted_canary = TenantDeploymentProbe(
+            publisher_nats_url=auth_lab.user_url("lab_tenant_a_pub", "lab-a-pub"),
+            consumer_nats_url=auth_lab.user_url("lab_tenant_a_sub", "lab-a-sub"),
+            canary_consumer_nats_url=auth_lab.user_url("lab_tenant_a_canary", "lab-a-canary"),
+        ).run(binding)
+        assert granted_acl["verified"] is True
+        assert granted_canary["verified"] is True
+        assert TenantReadinessGate().assess(
+            binding, topology=provisioner.plan(binding),
+            acl_proof=granted_acl, canary_proof=granted_canary,
+        ).status == "ready"
+
+        # Wrong canary credentials remain fail-closed even though business
+        # topology and broker ACL for the other roles are healthy.
         acl_proof, canary_proof = TenantDeploymentProbe(
             publisher_nats_url=auth_lab.user_url("lab_tenant_a_pub", "lab-a-pub"),
             consumer_nats_url=auth_lab.user_url("lab_tenant_a_sub", "lab-a-sub"),
@@ -124,3 +141,123 @@ def test_authenticated_jetstream_plan_apply_idempotence_and_readiness_fail_close
     finally:
         with asyncio.Runner() as runner:
             runner.run(reset_stream(create=False))
+
+
+def controller(*, canary_user="lab_tenant_a_canary", canary_password="lab-a-canary"):
+    return TenantActivationController(
+        database_url=lab.DATABASE_URL,
+        provisioner_nats_url=auth_lab.ADMIN_URL,
+        publisher_nats_url=auth_lab.user_url("lab_tenant_a_pub", "lab-a-pub"),
+        consumer_nats_url=auth_lab.user_url("lab_tenant_a_sub", "lab-a-sub"),
+        canary_consumer_nats_url=auth_lab.user_url(canary_user, canary_password),
+    )
+
+
+def test_positive_canary_activates_with_immutable_audit_and_idempotent_approval():
+    binding = lab_binding()
+    with asyncio.Runner() as runner:
+        runner.run(reset_stream(create=True))
+    try:
+        assert TenantTopologyProvisioner(auth_lab.ADMIN_URL).provision(
+            binding, operator_id="topology-owner", approval_id="topology-ticket"
+        ).status == "ready"
+
+        inactive = replace(binding, deployment=replace(binding.deployment, enabled=False))
+        with pytest.raises(ValueError, match="disabled in registry"):
+            controller().activate(
+                inactive, operator_id="reviewer", approval_id="ACT-100"
+            )
+
+        receipt = controller().activate(
+            binding, operator_id="reviewer", approval_id="ACT-100"
+        )
+        assert receipt.status == "activated"
+        assert receipt.tenant_id == binding.deployment.tenant_id
+        assert controller().activate(
+            binding, operator_id="reviewer", approval_id="ACT-100"
+        ).receipt_id == receipt.receipt_id
+
+        with lab.connect() as conn:
+            audit = conn.execute(
+                """
+                SELECT operator_id, approval_id, stream_name,
+                       business_subject, canary_subject
+                FROM kernel_lab.tenant_deployment_activation_journal
+                WHERE receipt_id = %s
+                """, (receipt.receipt_id,)
+            ).fetchone()
+            assert audit == (
+                "reviewer", "ACT-100", binding.stream,
+                binding.route.subject, binding.canary_subject,
+            )
+            state = conn.execute(
+                "SELECT tenant_id, activation_receipt_id FROM "
+                "kernel_lab.tenant_deployment_activation_state "
+                "WHERE deployment_id = %s", (binding.deployment.deployment_id,)
+            ).fetchone()
+            assert state == (binding.deployment.tenant_id, receipt.receipt_id)
+
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            controller().activate(
+                binding, operator_id="reviewer", approval_id="ACT-101"
+            )
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            controller().activate(
+                binding, operator_id="different-reviewer", approval_id="ACT-100"
+            )
+        with lab.connect() as conn:
+            with pytest.raises(psycopg.errors.CheckViolation, match="append-only"):
+                conn.execute(
+                    "DELETE FROM kernel_lab.tenant_deployment_activation_journal "
+                    "WHERE receipt_id = %s", (receipt.receipt_id,)
+                )
+    finally:
+        with asyncio.Runner() as runner:
+            runner.run(reset_stream(create=False))
+
+
+def test_activation_denied_without_canary_rights_and_never_writes_journal():
+    binding = lab_binding()
+    with asyncio.Runner() as runner:
+        runner.run(reset_stream(create=True))
+    try:
+        TenantTopologyProvisioner(auth_lab.ADMIN_URL).provision(
+            binding, operator_id="provisioner", approval_id="topology-review"
+        )
+        with pytest.raises(ValueError, match="tenant_canary_unverified"):
+            controller(
+                canary_user="lab_tenant_b_sub", canary_password="lab-b-sub"
+            ).activate(binding, operator_id="reviewer", approval_id="ACT-DENIED")
+        with lab.connect() as conn:
+            assert conn.execute(
+                "SELECT count(*) FROM kernel_lab.tenant_deployment_activation_journal"
+            ).fetchone()[0] == 0
+    finally:
+        with asyncio.Runner() as runner:
+            runner.run(reset_stream(create=False))
+
+
+def test_journal_rejects_stale_evidence_without_state_change():
+    binding = lab_binding()
+    old = datetime.now(timezone.utc) - timedelta(minutes=10)
+    with lab.connect() as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            conn.execute(
+                """
+                SELECT kernel_lab.record_tenant_deployment_activation(
+                  %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                )
+                """,
+                (
+                    binding.deployment.deployment_id,
+                    binding.deployment.tenant_id,
+                    "reviewer", "STALE-APPROVAL", binding.stream,
+                    binding.deployment.business_durable,
+                    binding.deployment.canary_durable,
+                    binding.route.subject, binding.canary_subject, old, old,
+                ),
+            )
+    with lab.connect() as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM kernel_lab.tenant_deployment_activation_state"
+        ).fetchone()[0] == 0

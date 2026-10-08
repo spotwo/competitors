@@ -241,6 +241,41 @@ and an approval/audit integration.
 See [Tenant Routing and Authorization](../../labs/postgres-inventory-kernel/EVENT_PIPELINE_TENANT_ROUTING.md)
 for the full security and migration boundary.
 
+## Tenant canary authorization and audited activation (lab)
+
+The isolated authenticated broker fixture now grants **tenant A** only its
+transaction subject and an independently filtered heartbeat subject. A
+separate tenant-canary identity may access only the canary durable INFO,
+NEXT and ACK control subjects; it cannot use the business durable.
+
+The activation controller uses real credentials to verify denied cross-tenant
+broker operations, exact tenant topology, and canary PUB ACK / pull / ACK.
+A positive readiness assessment permits a single atomic PostgreSQL
+`record_tenant_deployment_activation` receipt, with the exact tenant,
+deployment, stream, business/canary durables and subjects, operator and
+approval references, and fresh proof timestamps. Journal rows are
+append-only, and approval replay is idempotent for the same identity.
+Conflicting approval or a second activation is rejected.
+
+```bash
+# Requires reviewed enabled:true in the registry, real scoped NATS URLs,
+# parent database URL and a separately approved operator/approval reference.
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode activate \
+  --operator-id rollout-owner --approval-id change-ticket
+```
+
+**Safety:** the shipped `transaction-index-pilot-a` remains `enabled: false`.
+The CLI refuses activation of disabled candidates. Unit/E2E tests enable a
+local in-memory copy to prove readiness/activation against the ephemeral
+authenticated NATS broker; the repository registry and production deployments
+are not activated. An approval string is an *operator reference*, not proof
+that a real external approval system authorized the change. The recorder
+function is revoked from `PUBLIC` and requires a separately provisioned,
+authorized DB role in production. Production activation requires live
+managed credentials, trusted approval verification, rollout orchestration,
+tenant traffic fencing, runtime SLIs and rollback.
+
 ## Topology contract
 
 The topology section declares:

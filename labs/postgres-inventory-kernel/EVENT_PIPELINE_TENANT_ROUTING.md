@@ -196,6 +196,32 @@ does not replace database row-level security.
 The existing V1 and V2 paths continue through their old tests.
 
 
+## Canary ACL and append-only activation receipt
+
+The isolated authenticated NATS fixture now grants tenant A's **publisher**
+an exact `<prefix>.tenants.<tenant_id>.health_check.ping` heartbeat subject,
+and grants a **dedicated** canary consumer only the corresponding durable
+INFO/NEXT/ACK JetStream API subjects. The business consumer remains separate.
+The tenant deployment probe confirms a real scoped PUB ACK, PULL and ACK;
+the readiness gate rejects missing, stale or cross-tenant evidence.
+
+`sql/034_tenant_deployment_activation_journal.sql` adds an append-only
+activation journal and single-active-deployment receipt state. Its recorder
+accepts a scoped operator/approval reference only after the controlled CLI
+has verified readiness. The journal captures exact resource names and proof
+timestamps; approval replay with identical scope is idempotent, another
+approval or changed scope fails closed, and recorded journal history cannot
+be updated or deleted by normal SQL. The function is revoked from
+PostgreSQL `PUBLIC` and must be explicitly granted to a tightly scoped
+activation role by the operator.
+
+`--mode activate` does NOT enable registry entries and will reject the
+shipped disabled pilot. Tests use an enabled in-memory copy and ephemeral
+NATS/PostgreSQL fixtures to prove positive activation and rollback. A
+supplied `approval-id` is NOT cryptographic or external attestation of
+approval. Production still needs an independent approval/identity workflow,
+managed broker/DB roles, runtime route cutover, health SLIs and rollback.
+
 ## Scoped publisher invocation (after fenced staging)
 
 The following is a **shape example**, not a recommendation to run against an
