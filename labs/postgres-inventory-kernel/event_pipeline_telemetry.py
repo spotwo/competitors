@@ -294,19 +294,18 @@ class EventPipelineHealthCollector:
                     )
                 ),
             ),
-
         )
         if projection_gap_monitor == "inventory_position":
             components += (
-            self._collect_component(
-                "projection_gap",
-                lambda: self.projection_gap_policy.evaluate(
-                    self.projection_gap_store.snapshot(
-                        observed_at=observed_at,
-                        consumer_name=consumer_name,
-                    )
+                self._collect_component(
+                    "projection_gap",
+                    lambda: self.projection_gap_policy.evaluate(
+                        self.projection_gap_store.snapshot(
+                            observed_at=observed_at,
+                            consumer_name=consumer_name,
+                        )
+                    ),
                 ),
-            ),
             )
 
         status = _status_from_components(components)
