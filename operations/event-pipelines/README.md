@@ -39,6 +39,56 @@ The registry makes those values one reviewed contract and gives the readiness ga
 - optional `topology_migration` authorizes one reviewed source topology only until a deadline.
 - `runtime.*_env` values name environment variables; they do not contain secrets.
 
+## Generate a third pipeline safely
+
+The scaffolder reuses one reviewed pipeline's topology and policies while
+allocating new consumer, canary and watchdog identities. It writes **only local
+repository files**, never touches PostgreSQL, JetStream or a running deployment.
+
+Dry-run first:
+
+```bash
+python scripts/scaffold_event_pipeline.py \
+  --pipeline-id order-picked-projection \
+  --event-type order.picked
+```
+
+Write the reviewed, **disabled** scaffold:
+
+```bash
+python scripts/scaffold_event_pipeline.py \
+  --pipeline-id order-picked-projection \
+  --event-type order.picked \
+  --write
+```
+
+This appends one registry entry without rewriting existing comments and
+creates:
+
+- `labs/postgres-inventory-kernel/event_pipeline_handlers/order_picked_projection.py` - an allowlisted handler that rejects the domain operation until implemented.
+- `labs/postgres-inventory-kernel/tests/test_order_picked_projection_scaffold.py` - a guard that **requires disabled state** plus an explicitly skipped domain E2E test.
+
+The registry includes the handler module and class; `bin/run-kernel-event-consumer`
+now resolves this reviewed binding instead of editing a hardcoded two-projector
+table. Both old pipelines have explicit bindings. Only built-in projector
+modules and reviewed `event_pipeline_handlers.*` modules can be loaded.
+
+Every scaffold is `enabled: false` and uses the strict `projection_gap_monitor: none`
+mode: a new domain has **no known Position pending-gap buffer**. Do not copy
+Inventory Position gap health to an unrelated projector.
+
+Before enabling a new pipeline, implement the Inbox-transaction handler,
+replace both scaffold tests with passing domain and real PostgreSQL/JetStream
+E2E tests (ordering, duplicate redelivery, gap behavior, ACK after commit),
+then change the registry flag as a separately reviewed rollout. The
+scaffolder does **not** claim deployment readiness, automatically provision
+JetStream or synthesize missing domain semantics.
+
+Generation is exclusive: duplicate pipeline IDs or business subjects,
+non-unique durables/Inbox names, invalid identifiers, and existing generated
+files are rejected. CI verifies the deployment JSON Schema, cross-pipeline
+identities, topology invariants, and scaffolder unit tests.
+
 ## Topology contract
 
 The topology section declares:
