@@ -22,9 +22,9 @@ REGISTRY = ROOT / "operations" / "event-pipelines" / "registry.yml"
 CONSUMER_NAME = "inventory_transaction_index"
 
 
-def create_receipt(*, key: str = "transaction-index:receipt", reference: str = "ASN-TX-INDEX"):
+def create_receipt(*, key: str = "transaction-index:receipt", reference: str = "ASN-TX-INDEX", location_id=lab.LOCATION_A):
     with lab.connect() as conn:
-        position_id = lab.insert_position(conn, physical_qty=0)
+        position_id = lab.insert_position(conn, physical_qty=0, location_id=location_id)
         transaction_id = lab.new_id()
         posted = conn.execute(
             "SELECT kernel_lab.post_inventory_receipt(%s, %s, %s, %s, 5, %s)",
