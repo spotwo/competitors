@@ -14,6 +14,7 @@ from scripts.scaffold_event_pipeline import (
     DEFAULT_REGISTRY,
     ScaffoldRequest,
     _registry_yaml,
+    build_pipeline,
     handler_stub,
     scaffold,
     test_stub as generated_test_stub,
@@ -48,6 +49,33 @@ class EventPipelineScaffolderTests(unittest.TestCase):
             tests_dir=self.tests,
             write=write,
         )
+
+    def test_third_real_pipeline_matches_generated_scaffold_contract(self):
+        existing = _registry_yaml(DEFAULT_REGISTRY.read_text(encoding="utf-8"))
+        third = next(
+            item for item in existing["pipelines"]
+            if item["id"] == "inventory-transaction-index"
+        )
+        original = {
+            "version": existing["version"],
+            "pipelines": [
+                item for item in existing["pipelines"]
+                if item["id"] != "inventory-transaction-index"
+            ],
+        }
+        expected = build_pipeline(
+            original,
+            ScaffoldRequest(
+                "inventory-transaction-index",
+                "inventory.transaction.posted",
+            ),
+        )
+        self.assertFalse(expected["enabled"])
+        # Actual event semantics, DB projection, and E2E proof were implemented
+        # after generating the disabled scaffold in the feature branch.
+        actual = dict(third)
+        actual["enabled"] = False
+        self.assertEqual(actual, expected)
 
     def test_dry_run_is_deterministic_and_mutates_nothing(self):
         before = self.registry.read_bytes()
