@@ -9,7 +9,7 @@ from consumer_runtime import ConsumedEvent, InboxTransaction
 
 EVENT_TYPE = "inventory.transaction.posted"
 AGGREGATE_TYPE = "InventoryTransaction"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _uuid(value: Any, name: str) -> UUID:
@@ -27,10 +27,13 @@ def _uuid(value: Any, name: str) -> UUID:
 class InventoryTransactionIndexProjector:
     """Apply exactly one immutable posting fact inside the Inbox transaction."""
 
-    def __init__(self, *, consumer_name: str):
+    def __init__(self, *, consumer_name: str, expected_tenant_id: UUID | None = None):
         if not consumer_name or consumer_name != consumer_name.strip():
             raise ValueError("consumer_name is required without surrounding whitespace")
+        if expected_tenant_id is not None and not isinstance(expected_tenant_id, UUID):
+            raise ValueError("expected_tenant_id must be a UUID")
         self.consumer_name = consumer_name
+        self.expected_tenant_id = expected_tenant_id
 
     def __call__(self, event: ConsumedEvent, transaction: InboxTransaction) -> None:
         self.apply(event, transaction)
@@ -38,8 +41,13 @@ class InventoryTransactionIndexProjector:
     def apply(self, event: ConsumedEvent, transaction: InboxTransaction) -> str:
         if event.event_type != EVENT_TYPE or event.aggregate_type != AGGREGATE_TYPE:
             raise ValueError("unexpected transaction index event type or aggregate")
-        if event.aggregate_version != 1 or event.schema_version != SCHEMA_VERSION:
-            raise ValueError("immutable transaction posting requires version 1")
+        if event.aggregate_version != 1:
+            raise ValueError("immutable transaction posting requires aggregate version 1")
+        if event.schema_version != SCHEMA_VERSION or event.tenant_id is None:
+            raise ValueError("transaction index requires V2 envelope with tenant_id")
+        tenant_id = event.tenant_id
+        if self.expected_tenant_id is not None and tenant_id != self.expected_tenant_id:
+            raise ValueError("transaction posting tenant_id is outside the consumer scope")
         transaction_id = _uuid(event.aggregate_id, "aggregate_id")
         if event.subject != f"inventory-transaction/{transaction_id}":
             raise ValueError("transaction posting subject does not match aggregate")
@@ -54,34 +62,16 @@ class InventoryTransactionIndexProjector:
         if source_ref is not None and not isinstance(source_ref, str):
             raise ValueError("source_reference must be a string or absent")
 
-        # The existing v1 event contains no tenant id. In this PostgreSQL lab,
-        # resolve the authoritative tenant and verify the immutable source row.
-        # A remote projection must first add a tenant identity to the event contract.
-        row = transaction.execute(
-            """
-            SELECT tenant_id, transaction_type, source_reference, recorded_at
-            FROM kernel_lab.inventory_transactions
-            WHERE id = %s
-            """,
-            (transaction_id,),
-        ).fetchone()
-        if row is None:
-            raise ValueError("transaction index cannot resolve source transaction")
-        tenant_id, stored_type, stored_ref, stored_time = row
-        if (
-            event_type != stored_type
-            or source_ref != stored_ref
-            or event.occurred_at != stored_time
-        ):
-            raise ValueError("transaction posting event differs from committed ledger")
-
+        # V2 is self-contained. The projector never SELECTs from the source
+        # ledger or its tenants table. Transport authenticity and access controls
+        # remain the deployment's separate trust boundary.
         transaction.execute(
             """
             INSERT INTO kernel_lab.inventory_transaction_index_projection (
               consumer_name, transaction_id, tenant_id, transaction_type,
               source_reference, occurred_at, event_id
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (consumer_name, transaction_id) DO NOTHING
+            ON CONFLICT (consumer_name, tenant_id, transaction_id) DO NOTHING
             """,
             (
                 self.consumer_name,
@@ -97,9 +87,9 @@ class InventoryTransactionIndexProjector:
             """
             SELECT event_id, tenant_id, transaction_type, source_reference, occurred_at
             FROM kernel_lab.inventory_transaction_index_projection
-            WHERE consumer_name = %s AND transaction_id = %s
+            WHERE consumer_name = %s AND tenant_id = %s AND transaction_id = %s
             """,
-            (self.consumer_name, transaction_id),
+            (self.consumer_name, tenant_id, transaction_id),
         ).fetchone()
         if existing != (
             event.event_id, tenant_id, event_type, source_ref, event.occurred_at
