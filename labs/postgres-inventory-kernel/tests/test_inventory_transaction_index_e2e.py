@@ -100,7 +100,8 @@ def test_transaction_index_jetstream_ack_uncertainty_and_second_posting():
         assert redelivery.acknowledged == 1
 
         second_id = index_lab.create_receipt(
-            key="txindex:e2e:second", reference="ASN-TX-E2E-2"
+            key="txindex:e2e:second", reference="ASN-TX-E2E-2",
+            location_id=lab.LOCATION_B,
         )
         second_event = index_lab.load_transaction_event(second_id)
         published = publish_outbox()
