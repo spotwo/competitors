@@ -67,9 +67,9 @@ pipelines:
       execution_timeout_seconds: 45
 
   - id: warehouse-work-state-projection
-    # The second business pipeline is proven in the lab before deployment enablement.
-    # Its operational health must stop assuming Inventory Position gap telemetry first.
-    enabled: false
+    # Enabled as desired state only after the Work State PostgreSQL/JetStream
+    # integration proof; runtime readiness still fails closed without live signals.
+    enabled: true
 
     runtime:
       database_url_env: KERNEL_LAB_DATABASE_URL
