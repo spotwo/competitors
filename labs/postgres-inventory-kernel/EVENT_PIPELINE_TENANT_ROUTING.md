@@ -1,6 +1,6 @@
 # Tenant-aware Event Routing and Authorization — opt-in lab contract
 
-Status: **implemented and lab-proven route guard; NOT a production ACL rollout**.
+Status: **tenant-scoped DB claim and real authenticated NATS ACL lab proof; NOT a production credential/ACL rollout**.
 
 ## Contract
 
@@ -40,12 +40,18 @@ rollout is staged.
 - The three existing desired-state pipelines in
   `operations/event-pipelines/registry.yml` keep their current shared-subject
   filters; changing those without provisioning would cause delivery outages.
-- Tenant-scoped transport/source are explicit Python opt-in APIs; the
-  unfiltered `PostgresOutboxStore` still claims a shared global Outbox.
-  **Do not attach it to a tenant-only transport**: the transport correctly
-  rejects unrelated V1/cross-tenant claims, but doing so would leave a mixed
-  queue failing/retrying. A tenant-aware source claiming adapter is required
-  before production enablement.
+- SQL migration `033_tenant_scoped_outbox_claim.sql` adds
+  `delivery_route` with `shared` default and only `shared` events remain
+  claimable by the legacy publisher. `PostgresTenantOutboxStore` claims only
+  `delivery_route='tenant'`, one specific tenant, one exact V2 posting type.
+- Route transitions are **explicit**, one event at a time, and audited in
+  `domain_event_outbox_route_actions`. `stage_tenant_event_route`
+  refuses a currently claimed/leased, published, quarantined, V1 or wrong-tenant
+  event. Its execution privilege and the tenant-claim function's are revoked
+  from PostgreSQL `PUBLIC`; separately managed roles require explicit GRANT.
+- The Outbox CLI can opt in with `--tenant-id <canonical UUID> --transport nats`.
+  Omitting it retains the unchanged global publisher mode; do not use a
+  global-claim adapter with a tenant-bound transport.
 - The third projection handler can be instantiated with
   `expected_tenant_id` for in-process domain isolation. It is a second
   layer after the exact JetStream durable filter.
@@ -83,6 +89,26 @@ consumer = NatsJetStreamPullSource(
     tenant_route=route,
 )
 ```
+
+## Authenticated broker laboratory
+
+The lab Docker Compose now starts a **separate** `nats-auth` server
+with intentionally public synthetic credentials from
+`nats-tenant-auth.conf`. Its fixed stream `WMS_TENANT_AUTH` uses
+two pre-provisioned tenant durables and isolated NATS users:
+
+- `lab_tenant_a_pub` and `lab_tenant_b_pub`: publish exactly their
+  own tenant event subject, subscribe only to `_INBOX.>` for JetStream PUB ACK.
+- `lab_tenant_a_sub` and `lab_tenant_b_sub`: publish only their
+  own durable INFO / NEXT / ACK control subjects, subscribe only to
+  reply inboxes, not to the other tenant's event subjects.
+- `lab_admin`: unrestricted **local lab provisioner only**.
+
+The tests check real broker `Permissions Violation` errors for forbidden
+cross-tenant publish and subscribe, other-durable INFO, and consumer DELETE
+control operations. They also prove the authorized JetStream PUB ACK, durable
+pull, Inbox projection, ACK, and broker stream message count. Credentials
+are publicly documented **test data** and MUST NOT be used for deployment.
 
 ## NATS broker ACL / credential contract — mandatory before activation
 
@@ -129,12 +155,16 @@ does not replace database row-level security.
 1. Inventory all pending/outstanding V1 transaction posting events,
    replay/failure lanes, and historical consumers. Drain or reconcile each
    one; do not silently upcast old event IDs.
-2. Implement an Outbox claim adapter that claims only authorized V2
-   `inventory.transaction.posted` events for the tenant, while legacy and
-   other business event types continue through their existing publishers.
-3. Provision reviewed per-tenant JetStream consumer/durable, stream subjects
-   and broker ACL credentials; verify the privilege boundary with real
-   negative credential tests.
+2. **Implemented in lab:** stage selected unclaimed V2 postings into
+   `delivery_route='tenant'` with an audit record, use the scoped Outbox
+   claim for one authorized tenant, keep legacy/unstaged types on the shared
+   publisher. Production still needs role provisioning and orchestrated
+   operator approval for staging.
+3. **Authenticated fixture proven:** distinct user credentials, exact
+   broker publish grants and tenant-durable JetStream INFO/NEXT/ACK privileges,
+   with real negative authorization tests. Production still needs managed
+   secrets, least-privilege provisioning, rotation and account/tenant
+   onboarding.
 4. Add tenant partition identity and routing state to deployment registry,
    schema and readiness preflight; require exact topology and real canary
    results before switching consumers.
@@ -158,3 +188,31 @@ does not replace database row-level security.
 - read authorization gating before SQL and tenant-keyed projection reads.
 
 The existing V1 and V2 paths continue through their old tests.
+
+
+## Scoped publisher invocation (after fenced staging)
+
+The following is a **shape example**, not a recommendation to run against an
+unreviewed live broker. The operator must have first staged a particular V2
+posting via `SELECT kernel_lab.stage_tenant_event_route(event_id, tenant_id,
+operator_id)` using a privileged DB role. Do not stage claimed, quarantined,
+published or V1 records.
+
+```bash
+KERNEL_LAB_DATABASE_URL=postgresql://... \
+KERNEL_LAB_NATS_URL=nats://<tenant-publisher-credentials>@broker:4222 \
+python bin/run-kernel-outbox-publisher \
+  --transport nats --tenant-id 00000000-0000-0000-0000-000000000001 \
+  --nats-stream WMS_EVENTS --nats-subject-prefix spotwo.wms.events \
+  --once
+```
+
+Existing publishers without `--tenant-id` continue to claim only shared
+rows. Tenant-route staging is deliberately not added as an automatic runtime
+action, preventing accidental overlapping routes. The three current registry
+pipelines are unchanged.
+
+**Remaining production boundary:** these tests exercise static credentials
+on a dedicated ephemeral broker; they do not provision customer credentials,
+enforce DB row-level security, manage tenant-specific consumer topology in
+the deployment registry, or switch the desired-state pipelines automatically.
