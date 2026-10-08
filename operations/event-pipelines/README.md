@@ -189,6 +189,58 @@ required before enabling tenant routing in production.
 See [Tenant Routing and Authorization](../../labs/postgres-inventory-kernel/EVENT_PIPELINE_TENANT_ROUTING.md)
 for the precise opt-in contract, negative tests and staged rollout gates.
 
+## Tenant-scoped deployment registry, provisioning, and readiness
+
+The root `tenant_deployments` collection holds reviewed tenant-specific
+candidates, referencing the existing `inventory-transaction-index` parent
+pipeline rather than duplicating its global stream and subject prefix.
+
+The first candidate `transaction-index-pilot-a` is **disabled**. It stores
+an exact tenant UUID, separate business/tenant-canary durable identities, an
+isolated Inbox consumer name, and only the **names** of four NATS credential
+environment variables. It contains no URLs, passwords, tokens or assumed
+runtime status. The three existing shared business pipelines remain unchanged.
+
+The opt-in tooling supports:
+
+```bash
+# Connect using TENANT_PILOT_PROVISIONER_NATS_URL from the environment:
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode plan
+
+# Approved apply: creates ONLY missing exact-subject tenant durables on an
+# already-existing shared stream; refuses drift or missing stream.
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode apply \
+  --operator-id deployment-operator --approval-id reviewed-change-id
+
+# Fail closed until enabled and topology + authenticated ACL + tenant canary
+# all prove healthy (this command also needs scoped client credential envs).
+python bin/run-kernel-event-pipeline-tenant-deployment \
+  --deployment transaction-index-pilot-a --mode readiness
+```
+
+A business durable must filter **exactly**
+`<prefix>.tenants.<tenant_id>.inventory.transaction.posted`, and a separate
+canary durable filters **exactly**
+`<prefix>.tenants.<tenant_id>.health_check.ping`. An admin-only provisioner
+never mutates streams or existing consumers and does not activate any publisher.
+The readiness command makes real negative ACL requests using tenant-scoped
+credentials and sends a bounded canary through PUB ACK, scoped durable pull
+and ACK. Evidence must match the deployment identity and be recent.
+
+Important: `--approval-id` records an operator-supplied reference in the
+invocation, not an external approval-system attestation or persisted audit.
+This candidate is not automatically enabled, and the authenticated NATS
+fixture does not yet authorize tenant A's dedicated canary. The lab
+deliberately proves that this missing permission results in **NOT_READY**,
+rather than claiming deployment success. Production activation still requires
+managed secrets/roles, authenticated canary privileges, a runtime rollout,
+and an approval/audit integration.
+
+See [Tenant Routing and Authorization](../../labs/postgres-inventory-kernel/EVENT_PIPELINE_TENANT_ROUTING.md)
+for the full security and migration boundary.
+
 ## Topology contract
 
 The topology section declares:
