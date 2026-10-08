@@ -100,6 +100,7 @@ def clean_database():
               kernel_lab.event_pipeline_topology_provisioning_runs,
               kernel_lab.event_pipeline_canary_outcomes,
               kernel_lab.event_pipeline_canary_runs,
+              kernel_lab.inventory_transaction_index_projection,
               kernel_lab.warehouse_work_state_projection,
               kernel_lab.inventory_position_projection_control,
               kernel_lab.inventory_position_projection_rebuilds,
