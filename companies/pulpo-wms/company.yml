@@ -1,0 +1,21 @@
+id: pulpo-wms
+name: PULPO WMS
+entity_type: platform-vendor
+website: https://www.pulpowms.com/
+markets: []
+segments: [smb, mid-market]
+solution_layers: [wms]
+deployment_models: []
+industries: [3pl, ecommerce]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [receiving, replenishment, picking, packing, shipping]
+products:
+- id: pulpo-wms-platform
+  name: PULPO WMS
+  categories: [wms]
+  notes: 3PL merchant portal, activity-based billing, demand planning and picking optimization reported in September 2026 announcement; independently verify feature availability.
+status: active
+last_verified: '2026-10-09'
+research_gaps:
+- Confirm official September 2026 release details and GA dates.
+- Verify geographic coverage, deployment model, and pricing.
