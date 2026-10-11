@@ -20,3 +20,4 @@ research_gaps:
 - Confirm WMS/WES integration APIs, protocols and operational exception workflows.
 - Verify customer pricing, uptime, fleet-wide autonomy and throughput independently.
 - Determine canonical robotics product taxonomy rather than treating hardware as software orchestration.
+evidence_refs: [ultra-robotics-2026]
