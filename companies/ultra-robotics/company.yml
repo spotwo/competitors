@@ -1,0 +1,22 @@
+id: ultra-robotics
+name: Ultra Robotics
+entity_type: automation-vendor
+website: https://www.ultra.tech/
+hq_country: US
+markets: [north-america]
+solution_layers: [robotics-orchestration]
+deployment_models: []
+industries: [ecommerce, 3pl]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [packing, automation-orchestration]
+products:
+- id: ultra-operator-op1
+  name: Operator (OP1)
+  categories: [robotics-orchestration]
+  notes: Stationary warehouse robot for packing, sorting and kitting; categories indicate ecosystem adjacency, not a standalone WES/WMS product.
+status: active
+last_verified: '2026-10-11'
+research_gaps:
+- Confirm WMS/WES integration APIs, protocols and operational exception workflows.
+- Verify customer pricing, uptime, fleet-wide autonomy and throughput independently.
+- Determine canonical robotics product taxonomy rather than treating hardware as software orchestration.
