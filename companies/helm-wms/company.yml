@@ -1,0 +1,22 @@
+id: helm-wms
+name: Helm WMS
+entity_type: platform-vendor
+website: https://helmwms.com/
+markets: [global]
+segments: [mid-market]
+solution_layers: [wms]
+deployment_models: []
+industries: []
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [receiving, storage, picking, packing]
+products:
+- id: helm-wms-platform
+  name: Helm WMS
+  categories: [wms]
+  notes: Q3 2026 presentation reportedly covered 2D/3D mapping, slotting, assembly hubs, document recognition and multi-pick packing; verify general availability.
+status: active
+last_verified: '2026-10-09'
+research_gaps:
+- Verify MCP server and app builder documentation and release status.
+- Confirm availability of Q3 2026 features, deployment model, markets, and pricing.
+evidence_refs: [helm-wms-website-2026]
