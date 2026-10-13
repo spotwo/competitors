@@ -1,0 +1,26 @@
+id: symbotic
+name: Symbotic
+entity_type: automation-vendor
+website: https://www.symbotic.com/
+hq_country: US
+markets: [north-america]
+solution_layers: [robotics-orchestration]
+deployment_models: []
+industries: [retail, wholesale]
+operating_environments: [distribution-center, fulfillment-center]
+capabilities: [storage, picking, automation-orchestration]
+products:
+- id: symbotic-system
+  name: Symbotic System
+  categories: [robotics-orchestration]
+- id: symmicro
+  name: SymMicro
+  categories: [robotics-orchestration]
+  notes: Store-level fulfillment system; availability and scope vary by rollout.
+status: active
+last_verified: '2026-10-11'
+evidence_refs: [symbotic-walmart-wsj-2026, symbotic-walmart-sec-2025]
+research_gaps:
+- Map WMS/WES command, confirmation, exception and recovery interfaces.
+- Verify throughput and intervention benchmarks per installation.
+- Distinguish customer-specific rollout milestones from generally available capabilities.
