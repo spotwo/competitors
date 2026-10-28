@@ -29,6 +29,12 @@
 | ShipHero | Verify supported commercial regions outside North America. |
 | TGW Logistics | Verify canonical WERX deployment models. |
 | TOTVS | Map product-line deployment models and exact market segmentation individually. |
+| Takt, Inc. | Confirm public pricing, onboarding fees, minimum contract sizes, and any WMS/vendor-specific restrictions. |
+| Takt, Inc. | Determine supported integration directionality, freshness SLAs, replay/backfill, idempotency, and reconciliation semantics per connector. |
+| Takt, Inc. | Independently validate deployment count, named customer outcomes, and claimed productivity improvements. |
+| Takt, Inc. | Verify current frontend and backend stack from contemporary engineering sources; the Spanner article describes a historical 2023 architecture. |
+| Takt, Inc. | Verify scope and production maturity of AI-powered orchestration versus announced roadmap. |
+| Takt, Inc. | Verify supported markets outside North America and region-specific privacy, labor, and data-residency controls. |
 | Vanderlande | Map the exact VISION WES/WCS boundary and canonical deployment model. |
 
 ## Terminology requiring review
