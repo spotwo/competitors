@@ -1,0 +1,17 @@
+id: takt-financing-2026
+subject_type: company
+subject: takt
+predicate: financing-and-origin
+value:
+  founded: 2021
+  hq: Reston, Virginia, US
+  founders: [Glynn LoPresti, Alex Rhea, Noah MacMichael]
+  round: Series A
+  round_date: '2026-08-17'
+  round_amount_usd: 9250000
+  lead_investor: Ballast Point Partners
+confidence: high
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-series-a-2026, takt-about-2026]
+notes: Figures from company press release; not a valuation or an independently audited total funding figure.
