@@ -1,0 +1,15 @@
+id: takt-positioning-2026
+subject_type: company
+subject: takt
+predicate: product-positioning
+value:
+  primary_layer: lms
+  secondary_layer: analytics
+  model: standalone-saas-over-existing-systems
+  buyers: [3pl, retailers, ecommerce]
+  core_scope: [labor-management, engineered-labor-standards, indirect-labor, labor-planning, performance-analytics, financial-visibility, gamification]
+confidence: high
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-platform-2026, takt-integrations-2026, takt-els-2026]
+notes: Does not establish full inventory-owning WMS, WCS, or billing/invoicing functionality.
