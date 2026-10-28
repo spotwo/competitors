@@ -1,0 +1,14 @@
+id: takt-feed-engine-2026
+subject_type: product
+subject: takt/warehouse-intelligence
+predicate: data-integration-pattern
+value:
+  inputs: [sftp, api-json, api-csv, structured-email]
+  normalization: [source-field-mapping, business-rule-classification, multi-wms-consolidation]
+  classified_dimensions: [facility, department, activity, labor-standard]
+  named_integrations: [manhattan, blue-yonder, infios, extensiv, logiwa, deposco, autostore, 6-river-systems]
+confidence: high
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-integrations-2026]
+notes: Claims reflect vendor descriptions; connector directionality and freshness guarantees remain research gaps.
