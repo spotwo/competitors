@@ -4,11 +4,11 @@
 
 | Layer | Vendors | Count |
 |---|---|---:|
-| analytics | Deposco, EPG (Ehrhardt Partner Group), Geekplus, Hai Robotics, Hardis Supply Chain, Honeywell Intelligrated, KNAPP, Mantis, SSI SCHAEFER, SnapFulfil, Swisslog | 11 |
+| analytics | Deposco, EPG (Ehrhardt Partner Group), Geekplus, Hai Robotics, Hardis Supply Chain, Honeywell Intelligrated, KNAPP, Mantis, SSI SCHAEFER, SnapFulfil, Swisslog, Takt, Inc. | 12 |
 | cmms | SSI SCHAEFER | 1 |
 | dom | Mecalux, Softeon | 2 |
 | erp | ERPNext, Microsoft, NetSuite, Odoo, Oracle, SAP, TOTVS | 7 |
-| lms | Blue Yonder, Generix Group, Hardis Supply Chain, Infios, Infor, Made4net, Manhattan Associates, Softeon | 8 |
+| lms | Blue Yonder, Generix Group, Hardis Supply Chain, Infios, Infor, Made4net, Manhattan Associates, Softeon, Takt, Inc. | 9 |
 | machine-control | Dematic, Element Logic, Hai Robotics, Honeywell Intelligrated, KNAPP | 5 |
 | mfs | SSI SCHAEFER, Swisslog | 2 |
 | oms | Anchanto, Deposco, Hardis Supply Chain, Increff, Infios | 5 |
