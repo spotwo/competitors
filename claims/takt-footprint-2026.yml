@@ -1,0 +1,15 @@
+id: takt-footprint-2026
+subject_type: company
+subject: takt
+predicate: vendor-reported-footprint
+value:
+  active_warehouses_reported: '100+'
+  reported_scope: [north-america, international]
+  reported_at: '2026-08-17'
+  kenco_deployed_distribution_centers: 19
+  kenco_additional_planned_centers: 30
+confidence: medium
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-series-a-2026, takt-about-2026]
+notes: Newer 100+ replaces the stale 70+ text on Takt's about page; vendor-reported, not an independent audit. Planned sites excluded from deployed total.
