@@ -1,0 +1,16 @@
+id: takt-market-feedback-2026
+subject_type: product
+subject: takt/warehouse-intelligence
+predicate: public-review-snapshot
+value:
+  platform: G2
+  average_rating: 4.8
+  rating_scale: 5
+  review_count: 6
+  positive_themes: [performance-visibility, adoption-speed, support]
+  negative_themes: [vendor-dependent-configuration, api-integration-friction, analytics-silo, change-management]
+confidence: medium
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-g2-2026]
+notes: Small and seller-invited sample with North American reviewers; ratings are changeable snapshots.

@@ -1,0 +1,12 @@
+id: takt-financial-2026
+subject: takt
+source_type: official-product-page
+grade: B
+title: Warehouse Financial Visibility and Cost-to-Serve Analysis
+url: https://www.takt.io/solutions/financial-visibility
+publisher: Takt
+captured_at: '2026-10-28'
+supports:
+  - Takt describes modeling labor cost, wage rates, activity revenue rates, and engineered standards for transaction-level cost and margin.
+  - Supports customer, department, activity, and unit-level cost-to-serve and margin analysis.
+notes: This page does not demonstrate invoice creation, tax treatment, or a full 3PL billing workflow.

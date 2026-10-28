@@ -1,0 +1,13 @@
+id: takt-planning-2026
+subject: takt
+source_type: official-product-page
+grade: B
+title: Warehouse Labor Planning and Forecasting
+url: https://www.takt.io/solutions/labor-planning
+publisher: Takt
+captured_at: '2026-10-28'
+supports:
+  - Takt Planning Cube translates forecasts into labor hours and staffing by shift, department, and activity.
+  - Planners can import forecasts or plans and adjust demand, work mix, and productivity assumptions.
+  - Vendor describes AI-generated forecasts and live plan-versus-actual visibility.
+notes: AI forecast accuracy and autonomous intrashift orchestration need independent evaluation.

@@ -1,0 +1,13 @@
+id: takt-spanner-2023
+subject: takt
+source_type: official-docs
+grade: B
+title: How Takt Uses Google Cloud Spanner to Store, Categorize, and Analyze Billions of Warehouse Scans
+url: https://www.takt.io/blog/how-takt-uses-google-cloud-spanner-to-store-categorize-and-analyze-billions-of-warehouse-scans
+publisher: Takt / Alex Rhea
+captured_at: '2026-10-28'
+supports:
+  - The 2023 CTO article says the original MVP used MySQL on Google Cloud SQL before migration to Cloud Spanner.
+  - Describes Golang integration with Spanner and a pipeline normalizing WMS, robotics, and payroll feeds to shift-linked transactions.
+  - Historically reports a five-minute ingestion interval, a 4.5 TB database, 20-30 writes per second, 30-50 reads per second and average reads under 5 ms.
+notes: Historical 2023 technical snapshot; do not treat traffic, ingest interval, stack, or performance as independently verified 2026 current state.

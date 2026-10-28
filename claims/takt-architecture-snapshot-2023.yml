@@ -1,0 +1,19 @@
+id: takt-architecture-snapshot-2023
+subject_type: company
+subject: takt
+predicate: historical-technology-snapshot
+value:
+  publication_year: 2023
+  original_database: mysql-on-google-cloud-sql
+  later_database: google-cloud-spanner
+  backend_language_observed: golang
+  reported_ingest_interval_minutes: 5
+  reported_database_size_tb: 4.5
+  reported_write_rate_per_second: '20-30'
+  reported_read_rate_per_second: '30-50'
+  reported_average_database_read_latency_ms: '<5'
+confidence: high
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-spanner-2023]
+notes: Current means this remains an attributed historical observation, not that these values are current as of 2026. Vendor-authored benchmark is not independently verified.

@@ -1,0 +1,13 @@
+id: takt-integrations-2026
+subject: takt
+source_type: official-product-page
+grade: B
+title: Warehouse Management System and Automation Integrations
+url: https://www.takt.io/integrations
+publisher: Takt
+captured_at: '2026-10-28'
+supports:
+  - Feed Engine can map incoming fields to a Takt schema, normalize records, categorize activity with business rules, and combine multiple WMS feeds.
+  - Describes SFTP, JSON and CSV API ingestion, and structured-email ingestion.
+  - Lists integrations or proven configurations for 6 River Systems, AutoStore, Deposco, Logiwa, Extensiv, Manhattan, Blue Yonder, IFS Softeon, Optoro, Datex, Infios, and VeraCore.
+notes: Listed integrations do not prove bidirectional connectivity, an independently tested adapter, or equal connector depth.

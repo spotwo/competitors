@@ -51,6 +51,7 @@
 | Softeon | enterprise, large-enterprise | wms, wes, dom, lms, yms | north-america | cloud | Softeon WMS, Softeon WES, Softeon DOM | 2026-08-18 |
 | SSI SCHAEFER | smb, mid-market, enterprise, large-enterprise | wms, wes, wcs, mfs, cmms, analytics | global | on-premise | WAMAS WMS, WAMAS WES, WAMAS WCS, WAMAS MFS, WAMAS Control Center, WAMAS Maintenance Center | 2026-08-18 |
 | Swisslog | enterprise, large-enterprise | wms, wes, wcs, mfs, analytics | global | cloud, on-premise | SynQ | 2026-08-18 |
+| Takt, Inc. | mid-market, enterprise, large-enterprise | lms, analytics | north-america, global | saas | Takt Warehouse Labor Management and Intelligence Platform | 2026-10-28 |
 | Tecsys | mid-market, enterprise | wms | north-america, europe | saas, cloud | Tecsys WMS / Elite platform | 2026-08-18 |
 | TGW Logistics | enterprise, large-enterprise | wms, wes, wcs | global |  | WERX | 2026-08-18 |
 | TOTVS | smb, mid-market, enterprise | erp, wms | latam | saas, cloud | TOTVS WMS SaaS, TOTVS WMS - Linha Protheus, TOTVS WMS - Linha Datasul, TOTVS WMS - Linha Logix, TOTVS WMS - Linha Winthor | 2026-08-18 |

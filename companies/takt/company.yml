@@ -1,0 +1,34 @@
+id: takt
+name: Takt, Inc.
+entity_type: vendor
+website: https://www.takt.io/
+hq_country: US
+markets: [north-america, global]
+segments: [mid-market, enterprise, large-enterprise]
+solution_layers: [lms, analytics]
+deployment_models: [saas]
+industries: [3pl, retail, ecommerce]
+operating_environments: [distribution-center, fulfillment-center, 3pl]
+capabilities: [labor-management]
+products:
+  - id: warehouse-intelligence
+    name: Takt Warehouse Labor Management and Intelligence Platform
+    categories: [lms, analytics]
+    deployment_models: [saas]
+    status: active
+    notes: Independent labor intelligence layer integrated with existing WMS, time clocks, robotics, and automation. Not evidenced as a full inventory-owning WMS.
+status: active
+research_gaps:
+  - Verify current frontend and backend stack from contemporary engineering sources; the Spanner article describes a historical 2023 architecture.
+  - Determine supported integration directionality, freshness SLAs, replay/backfill, idempotency, and reconciliation semantics per connector.
+  - Confirm public pricing, onboarding fees, minimum contract sizes, and any WMS/vendor-specific restrictions.
+  - Independently validate deployment count, named customer outcomes, and claimed productivity improvements.
+  - Verify scope and production maturity of AI-powered orchestration versus announced roadmap.
+  - Verify supported markets outside North America and region-specific privacy, labor, and data-residency controls.
+notes: >-
+  Specialist warehouse LMS and intelligence vendor. Competitive with Spotwo's
+  proposed labor intelligence, planning, floor visibility, and indirect-work
+  modules; complementary to inventory WMS/WES. Takt's cost-to-serve analytics
+  must not be classified as native invoicing or full 3PL billing without evidence.
+last_verified: '2026-10-28'
+evidence_refs: [takt-platform-2026, takt-about-2026, takt-series-a-2026, takt-integrations-2026, takt-els-2026]

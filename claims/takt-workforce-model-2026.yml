@@ -1,0 +1,14 @@
+id: takt-workforce-model-2026
+subject_type: product
+subject: takt/warehouse-intelligence
+predicate: workforce-intelligence-capabilities
+value:
+  labor_standards: [rate-based, multi-metric, travel-aware, versioned, custom-javascript-formulas]
+  planning: [forecast-to-staffing, work-mix-modeling, shift-planning, plan-versus-actual]
+  indirect_work: [kitting, maintenance, training, downtime, value-added-services, qr-check-in, audit-trail]
+  financial_analysis: [cost-per-unit, cost-to-serve, customer-margin]
+confidence: high
+status: current
+observed_at: '2026-10-28'
+evidence_refs: [takt-els-2026, takt-planning-2026, takt-indirect-2026, takt-financial-2026]
+notes: Analytical cost-to-serve is not equivalent to native billing or invoice issuance. Functions may vary by deployment.

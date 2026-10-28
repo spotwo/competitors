@@ -6,7 +6,7 @@
 |---|---|---|---|---|---:|
 | cross-functional | 3PL Billing | adopted | 3PL Billing | infios | 1 |
 | cross-functional | Automation Orchestration | adopted | Automation Orchestration | blue-yonder, infios, manhattan-associates, mecalux | 4 |
-| cross-functional | Labor Management | adopted | Labor Management | blue-yonder, infios, manhattan-associates | 3 |
+| cross-functional | Labor Management | adopted | Labor Management | blue-yonder, infios, manhattan-associates, takt | 5 |
 | cross-functional | Yard Management | adopted | Yard Management | infios, manhattan-associates | 2 |
 | fulfillment | Allocation | adopted | Allocation | manhattan-associates, microsoft, oracle | 4 |
 | fulfillment | Consolidation | candidate | Consolidation | odoo | 1 |

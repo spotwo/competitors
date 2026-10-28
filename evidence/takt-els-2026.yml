@@ -1,0 +1,13 @@
+id: takt-els-2026
+subject: takt
+source_type: official-product-page
+grade: B
+title: Engineered Labor Standards
+url: https://www.takt.io/solutions/engineered-labor-standards
+publisher: Takt
+captured_at: '2026-10-28'
+supports:
+  - Supports basic UPH targets, multi-metric standards using quantity, weight, volume and distance, travel-aware modeling, and governed engineered labor standards.
+  - Describes versioned labor standards and custom JavaScript formulas, including MOST, MTM, and PMTS methodologies.
+  - Warehouse travel modeling includes aisle layout and travel speed or movement considerations.
+notes: Labor-standard travel estimation is not proof of a full WMS routing engine or digital twin.

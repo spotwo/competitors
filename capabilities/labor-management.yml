@@ -22,8 +22,14 @@ vendor_observations:
     level: module
     terminology: [Labor]
     evidence_refs: [infios-wms-capabilities-2026]
+  - company_id: takt
+    product_id: takt/warehouse-intelligence
+    level: core
+    terminology: [Warehouse Labor Management, Warehouse Intelligence]
+    notes: Specialist SaaS LMS with engineered standards, indirect work tracking, labor planning, financial visibility, and WMS/robotics data integration; not evidenced as a full inventory WMS.
+    evidence_refs: [takt-platform-2026, takt-els-2026, takt-planning-2026, takt-indirect-2026]
 spotwo:
   canonical_term: Labor Management
   status: adopted
-last_verified: 2026-08-18
-evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-wms-capabilities-2026]
+last_verified: '2026-10-28'
+evidence_refs: [manhattan-activewarehouse-capabilities-2026, blue-yonder-wm-operations-2026, infios-wms-capabilities-2026, takt-platform-2026, takt-els-2026]

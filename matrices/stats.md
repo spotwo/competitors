@@ -4,10 +4,10 @@
 
 | Metric | Count |
 |---|---:|
-| Companies | 51 |
-| Products | 89 |
-| Evidence records | 210 |
-| Claims | 29 |
+| Companies | 52 |
+| Products | 90 |
+| Evidence records | 220 |
+| Claims | 36 |
 | Terminology records | 35 |
 | Authorities | 8 |
 | Taxonomy vocabularies | 9 |
@@ -16,7 +16,7 @@
 | KPI metrics | 25 |
 | Integration patterns | 9 |
 | Capability records | 27 |
-| Vendor capability observations | 74 |
+| Vendor capability observations | 75 |
 | Workflow decompositions | 12 |
 | Workflow stages | 89 |
 | Workflow strategies | 84 |

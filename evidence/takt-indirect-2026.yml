@@ -1,0 +1,13 @@
+id: takt-indirect-2026
+subject: takt
+source_type: official-product-page
+grade: B
+title: Integrated Indirect Labor Tracking
+url: https://www.takt.io/solutions/indirect-labor
+publisher: Takt
+captured_at: '2026-10-28'
+supports:
+  - Virtual Kiosk tracks off-gun work such as training, kitting, downtime, rework, maintenance, and value-added services.
+  - Describes activity templates, QR check-ins, automated rules, approvals, and an audit trail.
+  - Describes deployment to Android Zebra and Honeywell scanners, tablets, workstations, and automation workcells.
+notes: A labor activity record is not necessarily a WMS inventory movement or task confirmation.
